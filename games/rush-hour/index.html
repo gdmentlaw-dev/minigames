@@ -313,8 +313,6 @@
       if (prev != null && improved) t += `<br>🎉 새 기록!`;
       t += `<br>내 최고 기록: ${best[l.id]}번(${stagePts(l, best[l.id])}/${diff(l) * 100})`;
       $("c-text").innerHTML = t.replace(/\n/g, "<br>");
-      const remain = levels.length - clearedCount();
-      if (!allCleared()) $("c-text").innerHTML += `<br>남은 판 ${remain}개`;
       $("c-next").style.display = levels.some((x) => x.id > l.id) ? "" : "none";
       $("clear").classList.add("on");
       if (improved) {
