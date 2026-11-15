@@ -38,6 +38,7 @@
   .row { display: flex; gap: 10px; align-items: center; justify-content: center; }
 
   /* 판 고르기 */
+  .legend { font-size: 12px; color: #b9b3e6; margin-top: -6px; }
   #summary { color: #b9b3e6; font-size: 14px; line-height: 1.5; }
   #summary b { color: #ffc83d; }
   #grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; width: 100%;
@@ -93,6 +94,7 @@
   <!-- stages -->
   <section class="screen" id="s-select">
     <h2 class="title2">stages</h2>
+    <p class="legend">★☆☆ 최대 100점 · ★★☆ 최대 200점 · ★★★ 최대 300점</p>
     <p id="summary"></p>
     <div id="grid"></div>
     <div class="row">
@@ -160,12 +162,27 @@
   const score = () => levels.reduce((s, l) => s + ptsOf(l), 0);
   const maxScore = () => levels.reduce((s, l) => s + diff(l) * 100, 0);
 
+  // 내 순위: 서버의 랭킹표에서 내 등수를 찾아 stages 화면에 보여준다 (stages 화면을 열 때 1번 조회)
+  let me = null, myRank = null;
+  const rankText = () => (myRank ? ` (${myRank}등)` : "");
+  async function refreshRank() {
+    if (!me || clearedCount() === 0) return;
+    try {
+      const list = await MiniHub.getGameRanking(GAME_ID, 1000);
+      const e = list.find((x) => x.player_id === me.id);
+      myRank = e ? e.rank : null;
+      document.querySelectorAll("#summary .rk").forEach((el) => (el.textContent = rankText()));
+    } catch {}
+  }
+
   async function submitScoreNow() {
     if (clearedCount() === 0) return null;
     const t = score();
     if (t === lastSubmitted) return null;
     lastSubmitted = t;
-    return await MiniHub.submitScore(t);
+    const r = await MiniHub.submitScore(t);
+    if (r && r.rank) myRank = r.rank;
+    return r;
   }
 
   // ---------- 판 고르기 ----------
@@ -183,8 +200,8 @@
   function renderSelect() {
     const done = clearedCount();
     $("summary").innerHTML = allCleared()
-      ? `전부 클리어! 내 점수 <b>${score()}</b> / ${maxScore()}<br>✓ 최소 이동으로 깬 판 ${levels.filter((l) => best[l.id] === l.min).length}/${levels.length}`
-      : `클리어 <b>${done}/${levels.length}</b> · 내 점수 <b>${score()}</b> / ${maxScore()}`;
+      ? `전부 클리어! 내 점수 <b>${score()}</b> / ${maxScore()}<span class="rk">${rankText()}</span><br>✓ 최소 이동으로 깬 판 ${levels.filter((l) => best[l.id] === l.min).length}/${levels.length}`
+      : `클리어 <b>${done}/${levels.length}</b> · 내 점수 <b>${score()}</b> / ${maxScore()}<span class="rk">${rankText()}</span>`;
     const g = $("grid"); g.innerHTML = "";
     for (const l of levels) {
       const b = best[l.id];
@@ -196,6 +213,7 @@
       g.appendChild(b2);
     }
     show("s-select");
+    refreshRank();
   }
 
   // ---------- 플레이 ----------
@@ -306,18 +324,23 @@
     updateInfo();
     const l = cur.level, prev = best[l.id], mv = cur.moves;
     let improved = prev == null || mv < prev;
+    const before = score();            // 이번 판 반영 전 총점
     if (improved) { best[l.id] = mv; await saveProgress(); }
     setTimeout(async () => {
       $("c-big").textContent = mv === l.min ? "✓ 최소 이동 클리어!" : "클리어!";
-      let t = `${stars(diff(l))} · ${mv}번 이동 (최소 ${l.min}번)<br><b style="color:#ffc83d">${stagePts(l, mv)}점 획득</b>`;
+      const gain = stagePts(l, best[l.id]) - (prev != null ? stagePts(l, prev) : 0);   // 이 판에서 새로 늘어난 점수
+      let t = `${mv}번 이동 (최소 ${l.min}번)<br>${stars(diff(l))} 최대 ${diff(l) * 100}점<br>` +
+        `<b style="color:#ffc83d">${gain > 0 ? gain + "점 추가" : "점수 갱신 없음"}</b>`;
       if (prev != null && improved) t += `<br>🎉 새 기록!`;
       t += `<br>내 최고 기록: ${best[l.id]}번(${stagePts(l, best[l.id])}/${diff(l) * 100})`;
-      $("c-text").innerHTML = t.replace(/\n/g, "<br>");
+      const after = score();
+      t += `<br>총점 ${after !== before ? before + " → " : ""}<b style="color:#ffc83d">${after}</b>`;
+      $("c-text").innerHTML = t;
       $("c-next").style.display = levels.some((x) => x.id > l.id) ? "" : "none";
       $("clear").classList.add("on");
-      if (improved) {
+      if (improved) {                    // 점수가 바뀐 경우만 서버에 보내고, 순위는 응답이 오면 덧붙임
         const r = await submitScoreNow();
-        if (r) $("c-text").innerHTML += `<br>총점 ${score()}${r.rank ? " · " + r.rank + "위" : ""}`;
+        if (r && r.rank) $("c-text").innerHTML += ` · ${r.rank}위`;
       }
     }, 450);
   }
@@ -328,7 +351,7 @@
 
   async function main() {
     MiniHub.init(GAME_ID);
-    MiniHub.onReady((p) => { $("hello").textContent = p.name + "님"; });
+    MiniHub.onReady((p) => { me = p; $("hello").textContent = p.name + "님"; });
     try { levels = (await (await fetch("./levels.json")).json()).levels; }
     catch { $("hello").textContent = "판 데이터를 불러오지 못했어요"; return; }
     const saved = await MiniHub.load();
