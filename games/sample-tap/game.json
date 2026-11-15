@@ -8,5 +8,5 @@
   "scoreUnit": "회",
   "scoreLimit": 400,
   "thumbnail": "thumbnail.svg",
-  "hidden": true
+  "hidden": false
 }

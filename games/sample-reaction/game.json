@@ -8,5 +8,5 @@
   "scoreUnit": "ms",
   "scoreLimit": 10000,
   "thumbnail": "thumbnail.svg",
-  "hidden": true
+  "hidden": false
 }
