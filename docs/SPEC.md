@@ -29,7 +29,8 @@ index.html (메인페이지)  ── 같은 SDK로 랭킹 조회 ─────
 /hub/                    메인페이지 js, css         (허브 담당자)
 /shared/minihub-sdk.js   점수 기록 SDK + Supabase 설정 (허브 담당자. 게임 담당자 수정 금지)
 /supabase/schema.sql     DB 표·보안 규칙·랭킹 계산
-/games/index.json        메인페이지에 노출할 게임 ID 목록
+/games/index.json        메인페이지 게임 목록 (자동 생성. 직접 수정 금지)
+/scripts/update-game-list.py, /.github/workflows/update-game-list.yml   목록 자동 생성기
 /games/<게임ID>/         각 게임 (담당자 본인만 수정)
     index.html, game.json, thumbnail.png, ...
 /docs/SPEC.md            이 문서
@@ -76,7 +77,7 @@ index.html (메인페이지)  ── 같은 SDK로 랭킹 조회 ─────
    - 1등 = 100, 꼴찌 ≈ 1, 안 한 게임 = 0. 소수 첫째 자리까지.
    - 남이 나를 앞지르면 내 포인트는 내려간다.
 6. 종합 순위 동점: 참여 게임 수가 많은 사람 → 마지막 기록을 먼저 세운 사람 순.
-7. 종합 랭킹에는 `games/index.json`에 있고 hidden이 아닌 게임만 들어간다.
+7. 종합 랭킹에는 메인페이지 목록(`games/index.json`)에 있고 hidden이 아닌 게임만 들어간다.
 
 ## 5. SDK (shared/minihub-sdk.js)
 
@@ -134,5 +135,5 @@ SDK가 하는 일:
 ## 8. 배포 흐름
 
 1. 팀원: `games/<내ID>/` 작업 → 커밋 → 동기화(푸시)
-2. 허브 담당자: `games/index.json`에 ID 추가 → main에 반영
+2. GitHub Actions가 `games/*/game.json` 이 있는 폴더를 찾아 `games/index.json`을 자동 갱신·커밋 (예제 sample-는 맨 뒤)
 3. GitHub Pages가 1~2분 안에 자동 반영. 게임 주소: `https://<계정>.github.io/<저장소>/games/<ID>/`

@@ -1,0 +1,43 @@
+# 팀원이 main에 게임을 올리면 games/index.json(메인페이지 게임 목록)을 자동으로 갱신한다.
+name: 게임 목록 자동 갱신
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "games/**"
+      - "scripts/update-game-list.py"
+      - ".github/workflows/update-game-list.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-game-list
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 게임 목록 만들기
+        run: python3 scripts/update-game-list.py
+
+      - name: 바뀌었으면 커밋
+        run: |
+          if git diff --quiet -- games/index.json; then
+            echo "변경 없음"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+          git add games/index.json
+          git commit -m "게임 목록 자동 갱신"
+          for i in 1 2 3; do
+            git pull --rebase && git push && exit 0
+            sleep 5
+          done
+          exit 1
