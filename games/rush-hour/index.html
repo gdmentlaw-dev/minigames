@@ -344,10 +344,11 @@
     let t = "";
     if (cur.hintText) t = cur.hintText;
     else if (Date.now() < cur.flashUntil) t = "💡 힌트가 생겼어요!";
-    else if (earned < HINT_MAX && (noHintMsg || avail <= 0)) {
+    else if (earned < HINT_MAX) {                     // 다음 힌트까지 남은 조건 (이동 또는 시간 중 먼저 채워지는 쪽)
       const mv = cur.level.min + (movesEarned() + 1) * hintStep(cur.level) - cur.peak;
-      t = `💡 힌트 +1까지: 이동 ${mv}번 더 · ${fmtTime((timeEarned() + 1) * HINT_TIME - cur.elapsed)} 뒤`;
-    } else if (earned >= HINT_MAX && avail <= 0 && noHintMsg) t = "💡 이 판의 힌트를 모두 썼어요";
+      t = `💡 다음 힌트까지 이동 ${mv}번 또는 ${fmtTime((timeEarned() + 1) * HINT_TIME - cur.elapsed)}`;
+    } else if (avail <= 0 && noHintMsg) t = "💡 이 판의 힌트를 모두 썼어요";
+    else if (earned >= HINT_MAX) t = "💡 이 판의 힌트를 모두 얻었어요";
     $("msg").textContent = t || " ";
   }
 
