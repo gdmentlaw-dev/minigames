@@ -13,7 +13,7 @@
   // ===== 허브 담당자 설정 (Supabase → Project Settings → API) =====
   // 둘 다 비어 있으면 "로컬 테스트 모드": 점수가 이 브라우저에만 저장된다.
   const CONFIG = {
-    siteTitle: "8 미니게임",
+    siteTitle: "미니게임",
     supabaseUrl: "https://lrwqrbmsehyevepqlcwp.supabase.co",
     supabaseKey: "sb_publishable_lORBdTR6LW_Bjf1shr4Z0w_KPIjrLOO", // publishable 키 또는 legacy anon 키 (⚠ service_role / secret 키 금지)
   };

@@ -22,7 +22,7 @@
 games/<게임ID>/
   index.html      게임 시작 페이지
   game.json       게임 정보 (아래 형식)
-  thumbnail.png   랭킹 페이지 목록용 정사각형 이미지 (svg도 가능)
+  thumbnail.png   메인페이지 목록용 정사각형 이미지 (svg도 가능)
   그 외 파일 자유
 ```
 - 게임 ID: 영문 소문자·숫자·하이픈만. 폴더 이름과 같게.
@@ -53,7 +53,7 @@ MiniHub.submitScore(점수);           // 한 판이 끝날 때마다 정확히 
   // r = { score, improved, previous, best, rank, players }  (저장 실패 시 null)
   // 알림을 끄려면 MiniHub.submitScore(점수, { toast: false })
   ```
-- (선택) `MiniHub.exit()` → 랭킹 페이지로 이동. "랭킹 보기" 버튼에 쓰면 좋다.
+- (선택) `MiniHub.exit()` → 메인페이지로 이동. "메인으로" 버튼에 쓰면 좋다.
 - (선택) 게임 안에서 순위표를 보여주고 싶으면 `await MiniHub.getGameRanking("<게임ID>", 10)`
   → `[{ rank, name, score, ... }]`
 
@@ -83,7 +83,7 @@ MiniHub.submitScore(점수);           // 한 판이 끝날 때마다 정확히 
 ## 권장 사항 (안 지켜도 랭킹은 동작)
 
 - 휴대폰에서도 플레이 가능하게 (터치 조작, 화면 크기에 맞춤)
-- 흐름: 시작화면 → 플레이 → 게임오버(점수, 다시하기, 랭킹 보기)
+- 흐름: 시작화면 → 플레이 → 게임오버(점수, 다시하기, 메인으로)
 - 터치/클릭 전 소리 자동재생 금지, 음소거 버튼
 - 공통 색: 배경 `#16132e`, 카드 `#231f45`, 강조 `#ffc83d`, 보조 `#7c6cf0`, 글자 `#f4f2ff`
 - 공통 폰트: Pretendard

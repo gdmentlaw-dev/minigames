@@ -1,4 +1,4 @@
-// 랭킹 페이지 — 데이터는 전부 shared/minihub-sdk.js 를 통해 읽는다.
+// 메인페이지 — 데이터는 전부 shared/minihub-sdk.js 를 통해 읽는다.
 (async () => {
   const $ = (id) => document.getElementById(id);
   const esc = (s) =>
@@ -16,8 +16,8 @@
   } catch {}
 
   const title = MiniHub.siteTitle || "미니게임";
-  document.title = `${title} · 랭킹`;
-  $("logo").textContent = `🏆 ${title}`;
+  document.title = title;
+  $("logo").textContent = `🎮 ${title}`;
 
   const banners = $("banners");
   if (MiniHub.mode === "local")

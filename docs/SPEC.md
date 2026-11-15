@@ -14,7 +14,7 @@
 games/<게임ID>/index.html   (각자 자유롭게 만든 게임 페이지)
    └ shared/minihub-sdk.js  ── 닉네임·로그인·점수 기록 ──▶  Supabase (DB + 익명 로그인)
                                                                 ▲
-index.html (랭킹 페이지)  ── 같은 SDK로 랭킹 조회 ─────────────┘
+index.html (메인페이지)  ── 같은 SDK로 랭킹 조회 ─────────────┘
 ```
 
 - 호스팅: GitHub Pages (main 브랜치, 저장소 루트). 서버 코드 없음.
@@ -25,11 +25,11 @@ index.html (랭킹 페이지)  ── 같은 SDK로 랭킹 조회 ────�
 ## 2. 폴더 구조
 
 ```
-/index.html              랭킹 페이지 (내 기록, 게임 바로가기, 종합/게임별 랭킹)
-/hub/                    랭킹 페이지 js, css         (허브 담당자)
+/index.html              메인페이지 (내 기록, 게임 바로가기, 종합/게임별 랭킹)
+/hub/                    메인페이지 js, css         (허브 담당자)
 /shared/minihub-sdk.js   점수 기록 SDK + Supabase 설정 (허브 담당자. 게임 담당자 수정 금지)
 /supabase/schema.sql     DB 표·보안 규칙·랭킹 계산
-/games/index.json        랭킹 페이지에 노출할 게임 ID 목록
+/games/index.json        메인페이지에 노출할 게임 ID 목록
 /games/<게임ID>/         각 게임 (담당자 본인만 수정)
     index.html, game.json, thumbnail.png, ...
 /docs/SPEC.md            이 문서
@@ -54,13 +54,13 @@ index.html (랭킹 페이지)  ── 같은 SDK로 랭킹 조회 ────�
 | 필드 | 필수 | 설명 |
 |---|---|---|
 | id | ✅ | 폴더 이름과 같음. 영문 소문자·숫자·하이픈 |
-| title, author, description | ✅ | 랭킹 페이지 표시용 |
+| title, author, description | ✅ | 메인페이지 표시용 |
 | scoreOrder | ✅ | `desc` = 높을수록 좋음, `asc` = 낮을수록 좋음(시간 기록 등) |
 | scoreUnit | ✅ | 표시 단위 (점, 층, ms, 회 …) |
 | scoreLimit | 권장 | **만점이 아니라 조작 방지 상한선.** 생략 시 1억 |
 | thumbnail | 선택 | 기본 `thumbnail.png` |
 | entry | 선택 | 시작 페이지가 index.html이 아닐 때 파일명 |
-| hidden | 선택 | `true`면 랭킹 페이지 목록에서 숨김 (예제용). `?dev=1`로 보임 |
+| hidden | 선택 | `true`면 메인페이지 목록에서 숨김 (예제용). `?dev=1`로 보임 |
 
 ## 4. 점수 규칙
 
@@ -88,7 +88,7 @@ MiniHub.onReady(player => {});         // 선택. player = { id, name }
 const r = await MiniHub.submitScore(n);// 필수. 한 판 끝날 때마다 1회
 // r = { score, improved, previous, best, rank, players } / 실패 시 null
 // 옵션: submitScore(n, { toast: false }) → 기본 알림 끄기
-MiniHub.exit();                        // 선택. 랭킹 페이지로 이동
+MiniHub.exit();                        // 선택. 메인페이지로 이동
 MiniHub.changeName();                  // 선택. 내 정보 창 (닉네임 바꾸기 / 다른 닉네임으로 접속)
 MiniHub.getGameRanking("snake", 10);   // 선택. 게임 안에서 순위표 보여줄 때
 ```
@@ -106,12 +106,12 @@ SDK가 하는 일:
 ## 6. 로그인
 
 - **닉네임(2~10자) + PIN(숫자 4자리)**. 닉네임은 겹칠 수 없다 (영문 대소문자 구분 없음).
-- 처음 게임이나 랭킹 페이지를 열면 접속 창이 뜬다.
+- 처음 게임이나 메인페이지를 열면 접속 창이 뜬다.
   - 없는 닉네임 → 새로 등록
   - 있는 닉네임 + 맞는 PIN → 그 사람으로 접속 (다른 기기에서도 기록이 이어짐)
   - PIN 5번 틀리면 그 닉네임은 10분 잠금
 - 한 번 접속한 브라우저는 다음부터 자동 접속 (Supabase 익명 로그인 세션이 기기를 기억).
-- 랭킹 페이지 오른쪽 위 이름 → 닉네임 바꾸기 / 다른 닉네임으로 접속.
+- 메인페이지 오른쪽 위 이름 → 닉네임 바꾸기 / 다른 닉네임으로 접속.
 - PIN을 잊으면 허브 담당자가 SQL Editor에서 0000으로 초기화 (schema.sql 맨 아래).
 - PIN 4자리는 장난 방지용이다. 은행 비밀번호처럼 강한 보안은 아니므로 다른 곳 비밀번호를 쓰지 말라고 공지.
 
