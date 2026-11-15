@@ -2,6 +2,7 @@
 
 8명이 각자 만든 미니게임의 점수를 하나의 랭킹으로 모으는 프로젝트.
 게임은 자유롭게 만들고, 점수 기록만 공용 SDK로 통일한다.
+SDK가 해주는 것: 닉네임+PIN 로그인, 점수·최고 기록 저장, 게임 진행 저장/불러오기(`MiniHub.save` / `MiniHub.load`).
 
 - 전체 설계: [docs/SPEC.md](docs/SPEC.md)
 - 게임 만들 때 규칙 (AI도 자동으로 읽음): [CLAUDE.md](CLAUDE.md)

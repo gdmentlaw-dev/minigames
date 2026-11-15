@@ -47,6 +47,10 @@
 - 오픈 전에 예제 기록 지우기: SQL Editor에서
   `delete from public.bests where game_id like 'sample-%';`
 
+## schema.sql이 바뀌었을 때
+- 기능이 추가되면 `schema.sql`이 바뀝니다. **SQL Editor → New query에 전체를 다시 붙여넣고 Run** 하세요.
+- 여러 번 실행해도 기존 기록은 지워지지 않게 만들어져 있습니다.
+
 ## 주의
 - **7일 동안 아무도 접속하지 않으면 프로젝트가 일시정지**됩니다.
   대시보드에서 **Restore**를 누르면 다시 켜집니다. 행사 전날 한 번 확인하세요.

@@ -1,4 +1,4 @@
-// minihub-sdk.js v3 — 게임 점수를 랭킹 DB에 직접 기록하는 공용 파일
+// minihub-sdk.js v4 — 게임 점수·진행 상황을 랭킹 DB에 직접 기록하는 공용 파일
 // ⚠ 게임 담당자는 수정 금지. 아래 CONFIG만 허브 담당자가 채운다.
 // 사용법: docs/SPEC.md 5장
 //
@@ -6,6 +6,8 @@
 //   MiniHub.init("게임ID");                 // 접속 전이면 닉네임+PIN 입력창을 띄움
 //   MiniHub.onReady(player => ...);         // player = { id, name }
 //   const r = await MiniHub.submitScore(n); // 0 이상 정수. r = { improved, previous, best, rank, players }
+//   await MiniHub.save({ stage: 3 });       // 진행 저장 (선택)
+//   const s = await MiniHub.load();         // 진행 불러오기 (선택) → 저장값 또는 null
 //
 (function () {
   if (window.MiniHub) return;
@@ -77,7 +79,7 @@
     const db = () => {
       let d = {};
       try { d = JSON.parse(localStorage.getItem(DB_KEY)) || {}; } catch {}
-      d.players ||= {}; d.games ||= {}; d.bests ||= {}; d.devices ||= {};
+      d.players ||= {}; d.games ||= {}; d.bests ||= {}; d.devices ||= {}; d.saves ||= {};
       return d;
     };
     const save = (d) => { try { localStorage.setItem(DB_KEY, JSON.stringify(d)); } catch {} };
@@ -136,6 +138,14 @@
         return { status: "ok", name };
       },
       async logout() { const d = db(); delete d.devices[uid]; save(d); },
+      async loadSave(gid) { const d = db(), pid = pidOf(d); return (pid && d.saves[pid]?.[gid]) ?? null; },
+      async saveGame(gid, data) {
+        const d = db(), pid = pidOf(d);
+        if (!pid) throw new Error("log in first");
+        d.saves[pid] ||= {};
+        if (data === null) delete d.saves[pid][gid]; else d.saves[pid][gid] = data;
+        save(d);
+      },
       async submitScore(game, score) {
         const d = db(), pid = pidOf(d);
         if (!pid) throw new Error("log in first");
@@ -191,6 +201,8 @@
       async login(name, pin) { return keep(must(await sb.rpc("login", { p_name: name, p_pin: pin }))); },
       async rename(name) { return must(await sb.rpc("rename_player", { p_name: name })); },
       async logout() { must(await sb.rpc("logout")); pid = null; },
+      async loadSave(gid) { return must(await sb.rpc("load_save", { p_game_id: gid })) ?? null; },
+      async saveGame(gid, data) { must(await sb.rpc("save_game", { p_game_id: gid, p_data: data })); },
       async submitScore(game, score) {
         return must(await sb.rpc("submit_score", {
           p_game_id: game.id, p_score: score, p_order: game.scoreOrder, p_limit: game.scoreLimit,
@@ -492,8 +504,46 @@
     return out;
   }
 
+  // ───────────── 게임 진행 저장 (플레이어별·게임별 1칸, 최대 20KB) ─────────────
+  const SAVE_MAX = 20000;
+  let saveSeq = 0, saveChain = Promise.resolve();
+
+  async function readyForSave(what) {
+    if (!gameId) { console.warn(`[MiniHub] ${what}: 먼저 MiniHub.init("게임ID")를 호출하세요`); return false; }
+    try { await init(gameId); } catch { return false; }
+    if (!player || !player.id) { console.warn(`[MiniHub] ${what}: 로그인 전이라 할 수 없어요`); return false; }
+    return true;
+  }
+
+  async function loadProgress() {
+    if (!(await readyForSave("load"))) return null;
+    try { return await store.loadSave(gameId); }
+    catch (e) { console.error("[MiniHub] 저장값 불러오기 실패", e); return null; }
+  }
+
+  function saveProgress(data) {
+    let value;
+    try {
+      const json = JSON.stringify(data === undefined ? null : data);
+      if (new Blob([json]).size > SAVE_MAX) { console.warn(`[MiniHub] 저장값이 너무 커요 (최대 ${SAVE_MAX / 1000}KB)`); return Promise.resolve(false); }
+      value = JSON.parse(json);
+    } catch (e) {
+      console.warn("[MiniHub] 저장할 수 없는 값이에요 (숫자·글자·배열·객체만 가능)", e);
+      return Promise.resolve(false);
+    }
+    const seq = ++saveSeq;
+    const p = saveChain.then(async () => {
+      if (seq !== saveSeq) return true; // 더 새로운 저장이 뒤에 있으면 건너뜀 (그게 덮어씀)
+      if (!(await readyForSave("save"))) return false;
+      try { await store.saveGame(gameId, value); return true; }
+      catch (e) { console.error("[MiniHub] 진행 저장 실패", e); return false; }
+    });
+    saveChain = p.catch(() => {});
+    return p;
+  }
+
   window.MiniHub = {
-    version: 3,
+    version: 4,
     get mode() { return store.mode; },
     root: ROOT,
     siteTitle: CONFIG.siteTitle,
@@ -520,6 +570,13 @@
         if (p) player = p;
       }
       return player;
+    },
+    // 게임 진행 저장/불러오기 (로그인한 플레이어별로 서버에 저장 → 다른 기기에서도 이어짐)
+    save: saveProgress,          // await MiniHub.save({ stage: 3 })  → true/false. null을 넣으면 삭제
+    load: loadProgress,          // await MiniHub.load()              → 저장값 또는 null
+    async getMyBest() {          // 이 게임의 내 최고 기록 (없으면 null)
+      if (!(await readyForSave("getMyBest"))) return null;
+      return (await store.getMyBests().catch(() => ({})))[gameId] ?? null;
     },
     exit() { location.href = ROOT + "index.html"; },
     rankingUrl(id) { return ROOT + "index.html" + (id ? "#" + encodeURIComponent(id) : ""); },

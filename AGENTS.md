@@ -57,10 +57,30 @@ MiniHub.submitScore(점수);           // 한 판이 끝날 때마다 정확히 
 - (선택) `MiniHub.exit()` → 메인페이지로 이동. "메인으로" 버튼에 쓰면 좋다.
 - (선택) 게임 안에서 순위표를 보여주고 싶으면 `await MiniHub.getGameRanking("<게임ID>", 10)`
   → `[{ rank, name, score, ... }]`
+- (선택) 내 최고 기록 표시: `await MiniHub.getMyBest()` → 숫자 또는 null (최고 기록은 SDK가 이미 서버에 저장한다)
+
+### 2-1. 게임 진행 저장·불러오기 (선택)
+하다 만 상태(마지막 스테이지, 해금한 것, 설정 등)를 **로그인한 플레이어별로 서버에 저장**한다.
+같은 닉네임+PIN이면 다른 기기에서도 이어서 할 수 있다. 게임마다 한 칸(덮어쓰기).
+```js
+MiniHub.init("<게임ID>");
+const saved = await MiniHub.load();          // 저장값 또는 null (처음이면 null)
+let stage = saved ? saved.stage : 1;
+
+// 스테이지를 깼을 때, 게임오버 때 등 "중요한 순간"에 저장
+await MiniHub.save({ stage: stage, cleared: [1, 2, 3] });   // → true(성공) / false(실패)
+// 처음부터 다시: await MiniHub.save(null)
+```
+- 저장값은 숫자·글자·배열·객체(JSON)만. 최대 20KB.
+- 매 프레임마다 저장하지 말 것. 스테이지 클리어·게임오버·설정 변경 때만.
+- `load()`는 init 이후 아무 때나 불러도 된다 (로그인이 끝날 때까지 기다렸다가 돌려준다).
+- 저장값 구조를 바꾸면 예전 저장값도 처리하게 만든다 (예: `saved?.stage ?? 1`).
+- 점수 랭킹은 여전히 `submitScore`로 보낸다. `save`는 랭킹에 안 쓰인다.
+- 로그인과 관계없는 이 기기만의 값(예: 음소거)은 localStorage에 `<게임ID>_` 키로 저장해도 된다.
 
 ### 3. 하지 말 것
 - 자체 로그인·닉네임·PIN 입력창 만들기 (SDK가 한다)
-- 서버·DB에 직접 연결하기, 점수를 다른 곳에 저장하기
+- 서버·DB에 직접 연결하기, 점수·진행 상황을 다른 서버에 저장하기 (`MiniHub.save` 사용)
 - `minihub_` 또는 `sb-` 로 시작하는 localStorage 키 건드리기 (닉네임·로그인 정보)
 - 게임 자체 저장값의 localStorage 키는 `<게임ID>_` 로 시작 (예: `snake_settings`). 모든 게임이 같은 저장공간을 쓴다.
 

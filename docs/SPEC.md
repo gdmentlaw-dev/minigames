@@ -92,7 +92,16 @@ const r = await MiniHub.submitScore(n);// 필수. 한 판 끝날 때마다 1회
 MiniHub.exit();                        // 선택. 메인페이지로 이동
 MiniHub.changeName();                  // 선택. 내 정보 창 (닉네임 바꾸기 / 다른 닉네임으로 접속)
 MiniHub.getGameRanking("snake", 10);   // 선택. 게임 안에서 순위표 보여줄 때
+MiniHub.getMyBest();                   // 선택. 이 게임의 내 최고 기록 → 숫자 또는 null
+await MiniHub.save({ stage: 3 });      // 선택. 진행 저장 (플레이어·게임별 1칸, 최대 20KB) → true/false
+await MiniHub.load();                  // 선택. 진행 불러오기 → 저장값 또는 null
 ```
+
+진행 저장(`save`/`load`):
+- 하다 만 상태(마지막 스테이지 등)를 로그인한 플레이어별로 서버에 저장. 다른 기기에서도 이어짐.
+- 게임마다 한 칸, 덮어쓰기. `save(null)`이면 삭제. JSON 값만, 최대 20KB.
+- 본인만 읽고 쓸 수 있음. 랭킹과는 무관 (랭킹은 `submitScore`).
+- 빠르게 여러 번 불러도 마지막 값만 저장됨. 스테이지 클리어·게임오버 등 중요한 순간에만 호출 권장.
 
 SDK가 하는 일:
 - 익명 로그인 + 닉네임·PIN 접속 창 (Shadow DOM이라 게임 CSS와 안 섞임)
@@ -125,10 +134,11 @@ SDK가 하는 일:
 | `player_devices` | 기기(익명 로그인 uid) → 플레이어 연결. 한 사람이 여러 기기 가능 |
 | `games` | id, score_order, score_limit — 첫 점수가 들어올 때 game.json 값으로 자동 등록 |
 | `bests` | game_id, player_id, score, achieved_at — 플레이어·게임별 최고 기록 |
+| `saves` | player_id, game_id, data(json), updated_at — 게임 진행 저장. 본인만 `load_save`/`save_game` 함수로 접근 |
 | `game_ranking` (뷰) | 게임별 순위·포인트 |
 | `overall_ranking(p_games)` (함수) | 종합 순위 |
 
-- 접속은 `login`, 닉네임 변경은 `rename_player`, 점수 저장은 `submit_score` 함수로만 가능 (표에 직접 쓰기 금지).
+- 접속은 `login`, 닉네임 변경은 `rename_player`, 점수 저장은 `submit_score`, 진행 저장은 `save_game` 함수로만 가능 (표에 직접 쓰기 금지).
 - 닉네임·기록 읽기는 누구나, PIN은 아무도 못 읽음, 삭제는 관리자만 (SQL Editor). PIN 초기화도 SQL Editor에서 (schema.sql 맨 아래).
 - 게임의 scoreOrder/scoreLimit을 나중에 바꾸면 `games` 표도 SQL로 고쳐야 한다 (schema.sql 맨 아래 참고).
 

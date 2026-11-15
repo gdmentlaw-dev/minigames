@@ -54,6 +54,15 @@ create table if not exists public.bests (
 create index if not exists bests_game_score_idx on public.bests (game_id, score);
 create index if not exists bests_player_idx on public.bests (player_id);
 
+-- 게임 진행 저장 (플레이어별·게임별 1칸. 예: 마지막 스테이지, 설정). 본인만 읽고 씀
+create table if not exists public.saves (
+  player_id   uuid not null references public.players (id) on delete cascade,
+  game_id     text not null check (game_id ~ '^[a-z0-9-]{1,40}$'),
+  data        jsonb not null,
+  updated_at  timestamptz not null default now(),
+  primary key (player_id, game_id)
+);
+
 -- 2) 보안 규칙 (RLS) -----------------------------------------
 --  읽기: 닉네임·게임·기록은 누구나 / PIN·기기 연결은 아무도 못 읽음
 --  쓰기: 전부 아래 함수(login, rename_player, logout, submit_score)로만. 삭제: 관리자만(SQL Editor)
@@ -63,6 +72,7 @@ alter table public.player_secrets enable row level security;
 alter table public.player_devices enable row level security;
 alter table public.games          enable row level security;
 alter table public.bests          enable row level security;
+alter table public.saves          enable row level security;
 
 drop policy if exists "players read" on public.players;
 create policy "players read" on public.players for select using (true);
@@ -73,7 +83,7 @@ create policy "games read" on public.games for select using (true);
 drop policy if exists "bests read" on public.bests;
 create policy "bests read" on public.bests for select using (true);
 
-revoke all on public.player_secrets, public.player_devices from anon, authenticated;
+revoke all on public.player_secrets, public.player_devices, public.saves from anon, authenticated;
 
 -- 3) 로그인 · 닉네임 · 점수 함수 ------------------------------
 
@@ -250,6 +260,46 @@ begin
 end;
 $$;
 
+-- 게임 진행 불러오기: 내 저장값(json) 또는 null
+create or replace function public.load_save(p_game_id text)
+returns jsonb
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select data from public.saves
+  where player_id = public.current_player_id() and game_id = p_game_id;
+$$;
+
+-- 게임 진행 저장 (덮어쓰기, 최대 20KB). p_data가 null이면 저장값 삭제
+create or replace function public.save_game(p_game_id text, p_data jsonb)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_pid uuid := public.current_player_id();
+begin
+  if v_pid is null then raise exception 'log in first'; end if;
+  if p_game_id is null or p_game_id !~ '^[a-z0-9-]{1,40}$' then raise exception 'bad game id'; end if;
+  if p_data is null or p_data = 'null'::jsonb then
+    delete from public.saves where player_id = v_pid and game_id = p_game_id;
+    return;
+  end if;
+  if octet_length(p_data::text) > 20000 then raise exception 'save data too large (max 20KB)'; end if;
+  insert into public.saves (player_id, game_id, data, updated_at)
+  values (v_pid, p_game_id, p_data, now())
+  on conflict (player_id, game_id) do update set data = excluded.data, updated_at = now();
+end;
+$$;
+
+revoke all on function public.load_save(text)                          from public, anon;
+revoke all on function public.save_game(text, jsonb)                   from public, anon;
+grant execute on function public.load_save(text)                        to authenticated;
+grant execute on function public.save_game(text, jsonb)                 to authenticated;
+
 revoke all on function public.current_player_id()                      from public, anon;
 revoke all on function public.me()                                     from public, anon;
 revoke all on function public.login(text, text)                        from public, anon;
@@ -341,9 +391,12 @@ grant execute on function public.overall_ranking(text[]) to anon, authenticated;
 --    update public.player_secrets set failed = 0, locked_until = null
 --    where player_id = (select id from public.players where name = '닉네임');
 --
---  플레이어 완전히 삭제 (기록도 같이 지워짐):
+--  특정 게임의 진행 저장값 전부 초기화 (예: 스테이지 구조를 바꿨을 때):
+--    delete from public.saves where game_id = '게임ID';
+--
+--  플레이어 완전히 삭제 (기록·저장값도 같이 지워짐):
 --    delete from public.players where name = '닉네임';
 --
 --  전부 지우고 처음부터 다시 (⚠ 모든 기록 삭제. 그 다음 이 파일 전체를 다시 Run):
---    drop table if exists public.bests, public.player_devices, public.player_secrets,
+--    drop table if exists public.saves, public.bests, public.player_devices, public.player_secrets,
 --                         public.players, public.games cascade;
