@@ -8,5 +8,5 @@
   "scoreUnit": "점",
   "scoreLimit": 100000,
   "thumbnail": "thumbnail.svg",
-  "hidden": true
+  "hidden": false
 }
