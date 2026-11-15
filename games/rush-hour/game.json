@@ -1,0 +1,12 @@
+{
+  "id": "rush-hour",
+  "title": "러시아워",
+  "author": "gdpark",
+  "description": "차를 밀어 빨간 차를 탈출시키세요. 적게 움직이고 많이 깰수록 점수가 올라가요",
+  "controls": "차를 끌기 (마우스 / 터치)",
+  "scoreOrder": "desc",
+  "scoreUnit": "점",
+  "scoreLimit": 100000,
+  "thumbnail": "thumbnail.svg",
+  "hidden": true
+}

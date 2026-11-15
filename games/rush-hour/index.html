@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>러시아워</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+  /* 점수 = 판별 점수의 합 (높을수록 좋음, scoreOrder "desc"). 판 점수는 난이도(별 1~3) x 이동 효율 */
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #16132e; }
+  body { display: flex; align-items: center; justify-content: center;
+         font-family: Pretendard, system-ui, sans-serif; color: #f4f2ff;
+         user-select: none; -webkit-user-select: none; touch-action: none; }
+  #stage { width: 360px; height: 640px; flex: none; position: relative; transform-origin: center center; }
+  .screen { position: absolute; inset: 0; display: none; flex-direction: column;
+            align-items: center; padding: 24px 18px; text-align: center; gap: 14px; }
+  .screen.on { display: flex; }
+  #s-start { justify-content: center; gap: 18px; }
+  h1 { font-size: 40px; font-weight: 800; }
+  h2 { font-size: 24px; font-weight: 800; }
+  /* 시작 화면 로고: 기울인 굵은 글씨 + 달리는 느낌의 그림자 */
+  .logo { font-style: italic; font-weight: 900; font-size: 38px; letter-spacing: -1px; text-transform: uppercase;
+          transform: skewX(-8deg); white-space: nowrap; color: #ffc83d;
+          text-shadow: 3px 3px 0 #e0453a, 6px 6px 0 rgba(124,108,240,.6); }
+  .logo .car-l, .logo .car-r { display: inline-block; font-size: 32px; text-shadow: none; }
+  .logo .car-l { transform: scaleX(-1); }   /* 왼쪽 차는 오른쪽을 보게 */
+  .logo .car-r { animation: dash 1.2s ease-in-out infinite alternate; }
+  .title2 { font-style: italic; font-weight: 900; font-size: 30px; transform: skewX(-8deg); color: #ffc83d;
+            text-transform: uppercase; text-shadow: 2px 2px 0 #e0453a, 4px 4px 0 rgba(124,108,240,.6); }
+  @keyframes dash { from { transform: translateX(-3px); } to { transform: translateX(4px); } }
+  .hello { color: #ffc83d; font-size: 18px; font-weight: 700; min-height: 1.4em; }
+  .desc { color: #b9b3e6; font-size: 15px; line-height: 1.6; }
+  .btn { border: 0; border-radius: 14px; padding: 13px 24px; font: inherit; font-size: 18px;
+         font-weight: 800; cursor: pointer; background: #ffc83d; color: #16132e; min-width: 150px; }
+  .btn.sub { background: #231f45; color: #f4f2ff; }
+  .btn.small { font-size: 15px; padding: 9px 14px; min-width: 0; }
+  .row { display: flex; gap: 10px; align-items: center; justify-content: center; }
+
+  /* 판 고르기 */
+  #summary { color: #b9b3e6; font-size: 14px; line-height: 1.5; }
+  #summary b { color: #ffc83d; }
+  #grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; width: 100%;
+          overflow-y: auto; max-height: 440px; padding: 2px; touch-action: pan-y; }
+  .lv { background: #231f45; border: 2px solid transparent; border-radius: 12px; padding: 8px 2px;
+        cursor: pointer; font: inherit; color: inherit; display: flex; flex-direction: column; gap: 2px; align-items: center; }
+  .lv .n { font-size: 18px; font-weight: 800; }
+  .lv svg { width: 66px; height: 66px; display: block; }
+  .lv .m { font-size: 10px; color: #b9b3e6; }
+  .lv .df { font-size: 12px; color: #ffc83d; letter-spacing: 1px; }
+  .lv .st { font-size: 12px; min-height: 1.2em; font-weight: 700; }
+  .lv.done { border-color: #7c6cf0; }                 /* 깼지만 최소 이동이 아님 → 다시 도전 가능 */
+  .lv.done .st { color: #ffc83d; }
+  .lv.perfect { border-color: #27ae60; }
+  .lv.perfect .st { color: #5fe08f; }
+
+  /* 플레이 */
+  #top { width: 100%; display: flex; justify-content: space-between; align-items: center; }
+  #info { font-size: 15px; color: #b9b3e6; line-height: 1.5; }
+  #info b { color: #ffc83d; font-size: 18px; }
+  #board { width: 324px; height: 324px; background: #231f45; border-radius: 12px; position: relative;
+           flex: none; box-shadow: 0 0 0 5px #3a3470; touch-action: none; }
+  #exit { position: absolute; right: -9px; top: 108px; width: 9px; height: 54px; background: #16132e; }
+  #exit::after { content: "▶"; position: absolute; right: -18px; top: 15px; color: #ffc83d; font-size: 16px; }
+  .cell { position: absolute; width: 54px; height: 54px; }
+  .car { position: absolute; border-radius: 9px; cursor: grab; transition: left .12s, top .12s; }
+  .car.drag { transition: none; cursor: grabbing; z-index: 5; }
+  /* 일반 차: 차분한 색 + 어두운 창문 자국 */
+  .car { box-shadow: inset 0 -4px 0 rgba(0,0,0,.25); }
+  .car::after { content: ""; position: absolute; inset: 7px; border-radius: 6px; background: rgba(0,0,0,.2); }
+  /* 빨간 차: 밝은 빨강 + 노란 테두리 + 빛 + 자동차 아이콘 */
+  .car.red { background: linear-gradient(#ff6a5c, #d1281c); z-index: 3;
+             box-shadow: 0 0 0 3px #ffc83d, 0 0 16px 4px rgba(255,90,77,.75); }
+  .car.red::after { background: rgba(255,255,255,.22); }
+  #msg { min-height: 1.5em; font-size: 16px; color: #ffc83d; font-weight: 700; }
+  #clear { position: absolute; inset: 0; background: rgba(22,19,46,.92); display: none; flex-direction: column;
+           align-items: center; justify-content: center; gap: 14px; z-index: 10; padding: 24px; }
+  #clear.on { display: flex; }
+  #c-big { font-size: 34px; font-weight: 800; color: #ffc83d; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <!-- 시작 -->
+  <section class="screen on" id="s-start">
+    <h1 class="logo"><span class="car-l">🚗</span> rush hour <span class="car-r">🚗</span></h1>
+    <p class="hello" id="hello">&nbsp;</p>
+    <p class="desc">차를 밀어서 <b style="color:#ff5a4d">빨간 차</b>를 오른쪽 출구로 빼내세요.<br>이동 횟수가 적을수록 좋은 기록이에요!<br>조작: 차를 끌기 (마우스/터치)</p>
+    <button class="btn" id="btn-start">시작</button>
+    <button class="btn sub" id="btn-exit1">메인으로</button>
+  </section>
+
+  <!-- stages -->
+  <section class="screen" id="s-select">
+    <h2 class="title2">stages</h2>
+    <p id="summary"></p>
+    <div id="grid"></div>
+    <div class="row">
+      <button class="btn sub small" id="btn-exit2">메인으로</button>
+    </div>
+  </section>
+
+  <!-- 플레이 -->
+  <section class="screen" id="s-play">
+    <div id="top">
+      <button class="btn sub small" id="btn-list">☰ stages</button>
+      <div id="info"></div>
+    </div>
+    <div id="board"><div id="exit"></div></div>
+    <p id="msg">&nbsp;</p>
+    <div class="row">
+      <button class="btn sub small" id="btn-undo">↩ 되돌리기</button>
+      <button class="btn sub small" id="btn-reset">⟲ 처음부터</button>
+    </div>
+    <div id="clear">
+      <div id="c-big">클리어!</div>
+      <p class="desc" id="c-text"></p>
+      <button class="btn" id="c-next">다음 판 →</button>
+      <button class="btn sub" id="c-retry">⟲ 다시 도전</button>
+      <button class="btn sub" id="c-list">☰ stages</button>
+    </div>
+  </section>
+</div>
+
+<script src="../../shared/minihub-sdk.js"></script>
+<script>
+(() => {
+  const GAME_ID = "rush-hour";
+  const N = 6, CELL = 54;
+  const COLORS = ["#5d6b8f", "#4c7c84", "#76688f", "#8a7d5c", "#5f7f66", "#7d6670", "#68758a", "#867b72"];
+  const $ = (id) => document.getElementById(id);
+
+  let levels = [];
+  let best = {};          // { "1": 최소로 깬 이동 횟수, ... }  ← 서버에 저장
+  let cur = null;         // 현재 판 상태
+  let lastSubmitted = null;
+
+  // ---------- 화면 크기 맞추기 ----------
+  const stage = $("stage");
+  function fit() {
+    const s = Math.min(innerWidth / 360, innerHeight / 640);
+    stage.style.transform = `scale(${s})`;
+  }
+  addEventListener("resize", fit); fit();
+
+  function show(id) {
+    document.querySelectorAll(".screen").forEach((e) => e.classList.toggle("on", e.id === id));
+  }
+
+  // ---------- 저장 / 점수 ----------
+  async function saveProgress() { try { await MiniHub.save({ v: 1, best }); } catch {} }
+  const clearedCount = () => levels.filter((l) => best[l.id] != null).length;
+  const allCleared = () => levels.length > 0 && clearedCount() === levels.length;
+  // 난이도 별: 최소 이동 8 이하 ★, 9~14 ★★, 15 이상 ★★★ (판 점수 최대 = 별 x 100)
+  const diff = (l) => (l.min <= 8 ? 1 : l.min <= 14 ? 2 : 3);
+  const stars = (n) => "★".repeat(n) + "☆".repeat(3 - n);
+  // 판 점수: 최소 이동이면 별x100, 더 쓴 수 1마다 별x5 감점, 깨기만 해도 별x50은 받음
+  const stagePts = (l, moves) => diff(l) * Math.max(50, 100 - 5 * Math.max(0, moves - l.min));
+  const ptsOf = (l) => (best[l.id] != null ? stagePts(l, best[l.id]) : 0);
+  const score = () => levels.reduce((s, l) => s + ptsOf(l), 0);
+  const maxScore = () => levels.reduce((s, l) => s + diff(l) * 100, 0);
+
+  async function submitScoreNow() {
+    if (clearedCount() === 0) return null;
+    const t = score();
+    if (t === lastSubmitted) return null;
+    lastSubmitted = t;
+    return await MiniHub.submitScore(t);
+  }
+
+  // ---------- 판 고르기 ----------
+  // 시작 상태를 작은 그림(SVG)으로 그린다. 서버 요청 없이 levels.json 정보만 사용
+  function thumb(l) {
+    const u = 10, pad = 2, size = N * u + pad * 2;
+    let r = "";
+    l.cars.forEach((c, i) => {
+      const h = c[3] === "h", w = (h ? c[2] : 1) * u - 1, ht = (h ? 1 : c[2]) * u - 1;
+      const fill = i === 0 ? "#ff5a4d" : COLORS[i % COLORS.length];
+      r += `<rect x="${pad + c[0] * u + .5}" y="${pad + c[1] * u + .5}" width="${w}" height="${ht}" rx="2" fill="${fill}"${i === 0 ? ' stroke="#ffc83d" stroke-width=".8"' : ""}/>`;
+    });
+    return `<svg viewBox="0 0 ${size} ${size}"><rect width="${size}" height="${size}" rx="3" fill="#16132e"/>${r}</svg>`;
+  }
+  function renderSelect() {
+    const done = clearedCount();
+    $("summary").innerHTML = allCleared()
+      ? `전부 클리어! 내 점수 <b>${score()}</b> / ${maxScore()}<br>✓ 최소 이동으로 깬 판 ${levels.filter((l) => best[l.id] === l.min).length}/${levels.length}`
+      : `클리어 <b>${done}/${levels.length}</b> · 내 점수 <b>${score()}</b> / ${maxScore()}`;
+    const g = $("grid"); g.innerHTML = "";
+    for (const l of levels) {
+      const b = best[l.id];
+      const b2 = document.createElement("button");
+      b2.className = "lv" + (b != null ? (b === l.min ? " perfect" : " done") : "");
+      b2.innerHTML = `<span class="n">${l.id}</span>${thumb(l)}<span class="df">${stars(diff(l))}</span><span class="m">${diff(l) * 100}점 · 최소 ${l.min}</span>` +
+        `<span class="st">${b == null ? "" : (b === l.min ? "✓ " : "↻ ") + ptsOf(l) + "점"}</span>`;
+      b2.onclick = () => startLevel(l.id);
+      g.appendChild(b2);
+    }
+    show("s-select");
+  }
+
+  // ---------- 플레이 ----------
+  const board = $("board");
+  function startLevel(id) {
+    const l = levels.find((x) => x.id === id);
+    cur = { level: l, cars: l.cars.map((c) => ({ x: c[0], y: c[1], len: c[2], h: c[3] === "h" })),
+            moves: 0, hist: [], done: false };
+    $("clear").classList.remove("on");
+    $("msg").innerHTML = "&nbsp;";
+    buildBoard(); updateInfo(); show("s-play");
+  }
+
+  function buildBoard() {
+    board.querySelectorAll(".car").forEach((e) => e.remove());
+    cur.cars.forEach((c, i) => {
+      const d = document.createElement("div");
+      d.className = "car" + (i === 0 ? " red" : "");
+      if (i) d.style.background = COLORS[i % COLORS.length];
+      d.style.width = (c.h ? c.len * CELL : CELL) - 4 + "px";
+      d.style.height = (c.h ? CELL : c.len * CELL) - 4 + "px";
+      c.el = d; place(c);
+      d.addEventListener("pointerdown", (e) => dragStart(e, i));
+      board.appendChild(d);
+    });
+  }
+  function place(c) { c.el.style.left = c.x * CELL + 2 + "px"; c.el.style.top = c.y * CELL + 2 + "px"; }
+
+  function updateInfo() {
+    const b = best[cur.level.id];
+    $("info").innerHTML = `${cur.level.id}판 <span style="color:#ffc83d">${stars(diff(cur.level))}</span> · 이동 <b>${cur.moves}</b><br>최소 ${cur.level.min}${b != null ? "<br>내 최고 기록: " + b + "번(" + stagePts(cur.level, b) + "/" + diff(cur.level) * 100 + ")" : ""}`;
+  }
+
+  function grid(except) {
+    const g = Array.from({ length: N }, () => Array(N).fill(-1));
+    cur.cars.forEach((c, i) => {
+      if (i === except) return;
+      for (let k = 0; k < c.len; k++) g[c.h ? c.y : c.y + k][c.h ? c.x + k : c.x] = i;
+    });
+    return g;
+  }
+  // 이 차가 움직일 수 있는 범위(시작 위치 기준 최소/최대 칸 수)
+  function range(i) {
+    const c = cur.cars[i], g = grid(i);
+    const pos = c.h ? c.x : c.y;
+    const at = (p) => (c.h ? g[c.y][p] : g[p][c.x]);
+    let lo = pos, hi = pos;
+    while (lo - 1 >= 0 && at(lo - 1) === -1) lo--;
+    while (hi + c.len < N && at(hi + c.len) === -1) hi++;
+    return [lo, hi];
+  }
+
+  let drag = null;
+  function dragStart(e, i) {
+    if (cur.done) return;
+    e.preventDefault();
+    const c = cur.cars[i], [lo, hi] = range(i);
+    drag = { i, lo, hi, startPos: c.h ? c.x : c.y, startPx: c.h ? e.clientX : e.clientY, pos: c.h ? c.x : c.y };
+    c.el.classList.add("drag");
+    c.el.setPointerCapture(e.pointerId);
+    const scale = stage.getBoundingClientRect().width / 360;
+    drag.scale = scale;
+    c.el.onpointermove = (ev) => {
+      const px = ((c.h ? ev.clientX : ev.clientY) - drag.startPx) / drag.scale;
+      let p = drag.startPos + px / CELL;
+      p = Math.max(drag.lo, Math.min(drag.hi, p));
+      drag.pos = p;
+      if (c.h) c.el.style.left = p * CELL + 2 + "px"; else c.el.style.top = p * CELL + 2 + "px";
+    };
+    c.el.onpointerup = c.el.onpointercancel = () => dragEnd();
+  }
+  function dragEnd() {
+    if (!drag) return;
+    const c = cur.cars[drag.i];
+    c.el.classList.remove("drag");
+    c.el.onpointermove = c.el.onpointerup = c.el.onpointercancel = null;
+    const np = Math.round(drag.pos), op = drag.startPos;
+    drag = null;
+    if (np !== op) {
+      cur.hist.push({ i: cur.cars.indexOf(c), from: op, moves: cur.moves });
+      if (c.h) c.x = np; else c.y = np;
+      cur.moves++;
+    }
+    place(c); updateInfo();
+    if (cur.cars[0].x === N - 2 && !cur.done) win();
+  }
+
+  $("btn-undo").onclick = () => {
+    if (cur.done || !cur.hist.length) return;
+    const h = cur.hist.pop(), c = cur.cars[h.i];
+    if (c.h) c.x = h.from; else c.y = h.from;
+    cur.moves = h.moves; place(c); updateInfo();
+  };
+  $("btn-reset").onclick = () => startLevel(cur.level.id);
+  $("btn-list").onclick = renderSelect;
+  $("c-list").onclick = renderSelect;
+  $("c-retry").onclick = () => startLevel(cur.level.id);
+  $("c-next").onclick = () => {
+    const next = levels.find((l) => l.id > cur.level.id && best[l.id] == null) || levels.find((l) => l.id > cur.level.id);
+    next ? startLevel(next.id) : renderSelect();
+  };
+
+  async function win() {
+    cur.done = true;
+    cur.moves++;                       // 빨간 차가 밖으로 나가는 마지막 1수
+    const red = cur.cars[0].el;
+    red.style.left = (N * CELL + 20) + "px";
+    updateInfo();
+    const l = cur.level, prev = best[l.id], mv = cur.moves;
+    let improved = prev == null || mv < prev;
+    if (improved) { best[l.id] = mv; await saveProgress(); }
+    setTimeout(async () => {
+      $("c-big").textContent = mv === l.min ? "✓ 최소 이동 클리어!" : "클리어!";
+      let t = `${stars(diff(l))} · ${mv}번 이동 (최소 ${l.min}번)<br><b style="color:#ffc83d">${stagePts(l, mv)}점 획득</b>`;
+      if (prev != null && improved) t += `<br>🎉 새 기록!`;
+      t += `<br>내 최고 기록: ${best[l.id]}번(${stagePts(l, best[l.id])}/${diff(l) * 100})`;
+      $("c-text").innerHTML = t.replace(/\n/g, "<br>");
+      const remain = levels.length - clearedCount();
+      if (!allCleared()) $("c-text").innerHTML += `<br>남은 판 ${remain}개`;
+      $("c-next").style.display = levels.some((x) => x.id > l.id) ? "" : "none";
+      $("clear").classList.add("on");
+      if (improved) {
+        const r = await submitScoreNow();
+        if (r) $("c-text").innerHTML += `<br>총점 ${score()}${r.rank ? " · " + r.rank + "위" : ""}`;
+      }
+    }, 450);
+  }
+
+  // ---------- 시작 ----------
+  $("btn-start").onclick = renderSelect;
+  $("btn-exit1").onclick = $("btn-exit2").onclick = () => MiniHub.exit();
+
+  async function main() {
+    MiniHub.init(GAME_ID);
+    MiniHub.onReady((p) => { $("hello").textContent = p.name + "님"; });
+    try { levels = (await (await fetch("./levels.json")).json()).levels; }
+    catch { $("hello").textContent = "판 데이터를 불러오지 못했어요"; return; }
+    const saved = await MiniHub.load();
+    best = (saved && saved.best) || {};
+    lastSubmitted = clearedCount() > 0 ? score() : null;   // 이미 기록된 점수는 다시 보내지 않음
+  }
+  main();
+})();
+</script>
+</body>
+</html>
