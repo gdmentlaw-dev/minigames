@@ -38,6 +38,9 @@
   .row { display: flex; gap: 10px; align-items: center; justify-content: center; }
 
   /* 판 고르기 */
+  /* 최소 이동 횟수는 초록 배지로 다른 기록과 구분 */
+  .minb { display: inline-block; background: rgba(95,224,143,.18); color: #5fe08f; font-weight: 800;
+          border-radius: 6px; padding: 0 7px; }
   .legend { font-size: 12px; color: #b9b3e6; margin-top: -6px; }
   #summary { color: #b9b3e6; font-size: 14px; line-height: 1.5; }
   #summary b { color: #ffc83d; }
@@ -73,7 +76,14 @@
   .car.red { background: linear-gradient(#ff6a5c, #d1281c); z-index: 3;
              box-shadow: 0 0 0 3px #ffc83d, 0 0 16px 4px rgba(255,90,77,.75); }
   .car.red::after { background: rgba(255,255,255,.22); }
-  #msg { min-height: 1.5em; font-size: 16px; color: #ffc83d; font-weight: 700; }
+  #msg { min-height: 1.5em; font-size: 14px; color: #ffc83d; font-weight: 700; }
+  #timer { font-size: 16px; color: #b9b3e6; font-weight: 700; min-width: 72px; text-align: left; font-variant-numeric: tabular-nums; }
+  #btn-hint.empty { opacity: .45; }
+  /* 힌트 표시: 움직일 차(노란 깜빡임) / 도착 자리(점선) */
+  .car.hl-move { outline: 3px solid #ffc83d; outline-offset: 2px; z-index: 4; animation: blink .7s ease-in-out infinite alternate; }
+  .ghost { position: absolute; border: 3px dashed #ffc83d; border-radius: 9px; background: rgba(255,200,61,.15);
+           z-index: 6; pointer-events: none; animation: blink .7s ease-in-out infinite alternate; }
+  @keyframes blink { from { opacity: 1; } to { opacity: .35; } }
   #clear { position: absolute; inset: 0; background: rgba(22,19,46,.92); display: none; flex-direction: column;
            align-items: center; justify-content: center; gap: 14px; z-index: 10; padding: 24px; }
   #clear.on { display: flex; }
@@ -86,7 +96,7 @@
   <section class="screen on" id="s-start">
     <h1 class="logo"><span class="car-l">🚗</span> rush hour <span class="car-r">🚗</span></h1>
     <p class="hello" id="hello">&nbsp;</p>
-    <p class="desc">차를 밀어서 <b style="color:#ff5a4d">빨간 차</b>를 오른쪽 출구로 빼내세요.<br>이동 횟수가 적을수록 좋은 기록이에요!<br>조작: 차를 끌기 (마우스/터치)</p>
+    <p class="desc">차를 밀어서 <b style="color:#ff5a4d">빨간 차</b>를 오른쪽 출구로 빼내세요.<br>이동 횟수가 적을수록 좋은 기록이에요!<br>많이 헤매면 💡힌트가 열려요.<br>조작: 차를 끌기 (마우스/터치)</p>
     <button class="btn" id="btn-start">시작</button>
     <button class="btn sub" id="btn-exit1">메인으로</button>
   </section>
@@ -110,6 +120,10 @@
     </div>
     <div id="board"><div id="exit"></div></div>
     <p id="msg">&nbsp;</p>
+    <div class="row">
+      <button class="btn small" id="btn-hint">💡 힌트 0</button>
+      <span id="timer">⏱ 0:00</span>
+    </div>
     <div class="row">
       <button class="btn sub small" id="btn-undo">↩ 되돌리기</button>
       <button class="btn sub small" id="btn-reset">⟲ 처음부터</button>
@@ -150,14 +164,17 @@
   }
 
   // ---------- 저장 / 점수 ----------
-  async function saveProgress() { try { await MiniHub.save({ v: 1, best }); } catch {} }
+  async function saveProgress() { try { await MiniHub.save({ v: 2, best }); } catch {} }
   const clearedCount = () => levels.filter((l) => best[l.id] != null).length;
   const allCleared = () => levels.length > 0 && clearedCount() === levels.length;
-  // 난이도 별: 최소 이동 8 이하 ★, 9~14 ★★, 15 이상 ★★★ (판 점수 최대 = 별 x 100)
-  const diff = (l) => (l.min <= 8 ? 1 : l.min <= 14 ? 2 : 3);
+  // 난이도 별: 최소 이동 7 이하 ★, 8~13 ★★, 14 이상 ★★★ (판 점수 최대 = 별 x 100)
+  const diff = (l) => (l.min <= 7 ? 1 : l.min <= 13 ? 2 : 3);
   const stars = (n) => "★".repeat(n) + "☆".repeat(3 - n);
-  // 판 점수: 최소 이동이면 별x100, 더 쓴 수 1마다 별x5 감점, 깨기만 해도 별x50은 받음
-  const stagePts = (l, moves) => diff(l) * Math.max(50, 100 - 5 * Math.max(0, moves - l.min));
+  // 판 점수(최대 별x100): 최소 이동이면 만점. 더 쓴 수가 최소 이동(작은 판은 5)의 2배가 될 때까지 곧게 줄어 만점의 20%에서 멈춘다.
+  const stagePts = (l, moves) => {
+    const r = Math.max(0, moves - l.min) / Math.max(l.min, 5);
+    return Math.round(diff(l) * 100 * Math.max(0.2, 1 - 0.4 * r));
+  };
   const ptsOf = (l) => (best[l.id] != null ? stagePts(l, best[l.id]) : 0);
   const score = () => levels.reduce((s, l) => s + ptsOf(l), 0);
   const maxScore = () => levels.reduce((s, l) => s + diff(l) * 100, 0);
@@ -207,7 +224,7 @@
       const b = best[l.id];
       const b2 = document.createElement("button");
       b2.className = "lv" + (b != null ? (b === l.min ? " perfect" : " done") : "");
-      b2.innerHTML = `<span class="n">${l.id}</span>${thumb(l)}<span class="df">${stars(diff(l))}</span><span class="m">${diff(l) * 100}점 · 최소 ${l.min}</span>` +
+      b2.innerHTML = `<span class="n">${l.no}</span>${thumb(l)}<span class="df">${stars(diff(l))}</span><span class="m">${diff(l) * 100}점 · 최소 ${l.min}</span>` +
         `<span class="st">${b == null ? "" : (b === l.min ? "✓ " : "↻ ") + ptsOf(l) + "점"}</span>`;
       b2.onclick = () => startLevel(l.id);
       g.appendChild(b2);
@@ -218,17 +235,134 @@
 
   // ---------- 플레이 ----------
   const board = $("board");
-  function startLevel(id) {
+  // keep: "처음부터"일 때 이전 판의 힌트 진행(가장 많이 움직인 횟수, 걸린 시간, 쓴 힌트)을 이어받는다
+  function startLevel(id, keep) {
     const l = levels.find((x) => x.id === id);
     cur = { level: l, cars: l.cars.map((c) => ({ x: c[0], y: c[1], len: c[2], h: c[3] === "h" })),
-            moves: 0, hist: [], done: false };
+            moves: 0, hist: [], done: false,
+            peak: keep ? keep.peak : 0, elapsed: keep ? keep.elapsed : 0, used: keep ? keep.used : 0,
+            hintStage: 0, hintText: "", lastEarned: 0, flashUntil: 0 };
+    cur.lastEarned = earnedHints();
     $("clear").classList.remove("on");
-    $("msg").innerHTML = "&nbsp;";
     buildBoard(); updateInfo(); show("s-play");
   }
 
+  // ---------- 힌트 ----------
+  const HINT_MAX = 6;         // 판당 얻을 수 있는 힌트 최대 개수
+  const HINT_TIME = 120;    // 이 시간(초)마다 힌트 1개 (시간 보너스)
+  const hintStep = (l) => Math.ceil(Math.max(l.min, 5) / 3);  // 최소 이동 대비 이만큼 더 움직일 때마다 힌트 1개
+  const movesEarned = () => Math.max(0, Math.floor((cur.peak - cur.level.min) / hintStep(cur.level)));
+  const timeEarned = () => Math.floor(cur.elapsed / HINT_TIME);
+  const earnedHints = () => Math.min(HINT_MAX, movesEarned() + timeEarned());
+  const fmtTime = (s) => { s = Math.max(0, Math.floor(s)); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); };
+
+  // 지금 상태에서 빨간 차를 빼내는 가장 짧은 길(BFS)의 첫 수. 차 하나를 원하는 만큼 미는 것이 1수.
+  function solveNext() {
+    const cars = cur.cars, n = cars.length;
+    const enc = (p) => p.reduce((k, v) => k * N + v, 0);
+    const start = cars.map((c) => (c.h ? c.x : c.y));
+    if (start[0] === N - 2) return null;
+    const seen = new Map([[enc(start), null]]);       // 상태 → { prev, i, from, to }
+    let queue = [start];
+    while (queue.length) {
+      const next = [];
+      for (const p of queue) {
+        const occ = new Array(N * N).fill(-1);
+        cars.forEach((c, i) => { for (let k = 0; k < c.len; k++) occ[c.h ? c.y * N + p[i] + k : (p[i] + k) * N + c.x] = i; });
+        const pk = enc(p);
+        for (let i = 0; i < n; i++) {
+          const c = cars[i];
+          const free = (q) => occ[c.h ? c.y * N + q : q * N + c.x] === -1;
+          for (const d of [-1, 1]) {
+            for (let q = p[i] + d; q >= 0 && q + c.len <= N; q += d) {
+              if (!free(d < 0 ? q : q + c.len - 1)) break;
+              const np = p.slice(); np[i] = q;
+              const k = enc(np);
+              if (seen.has(k)) continue;
+              seen.set(k, { prev: pk, i, from: p[i], to: q });
+              if (np[0] === N - 2) {                  // 도착: 거꾸로 따라가 첫 수를 찾는다
+                let node = seen.get(k), first = node;
+                while (node) { first = node; node = seen.get(node.prev); }
+                return first;
+              }
+              next.push(np);
+            }
+          }
+        }
+      }
+      queue = next;
+    }
+    return null;
+  }
+
+  function clearHint() {
+    if (!cur) return;
+    cur.hintStage = 0; cur.hintText = "";
+    board.querySelectorAll(".ghost").forEach((e) => e.remove());
+    cur.cars.forEach((c) => c.el && c.el.classList.remove("hl-move"));
+  }
+
+  function useHint() {
+    if (!cur || cur.done) return;
+    if (earnedHints() - cur.used <= 0) { cur.flashUntil = 0; refreshHud(true); return; }
+    if (cur.hintStage >= 3) return;                   // 이미 마지막 단계를 보여주는 중이면 힌트를 더 쓰지 않는다
+    const mv = solveNext();
+    if (!mv) { cur.hintText = "힌트를 찾지 못했어요"; refreshHud(); return; }
+    cur.used++;
+    const st = Math.min(3, cur.hintStage + 1);
+    clearHint();
+    cur.hintStage = st;
+    // 1단계: 움직일 차 / 2단계: 방향과 칸 수 / 3단계: 도착 자리(점선)
+    const c = cur.cars[mv.i], n = Math.abs(mv.to - mv.from);
+    const dir = c.h ? (mv.to < mv.from ? "왼쪽으로" : "오른쪽으로") : (mv.to < mv.from ? "위로" : "아래로");
+    c.el.classList.add("hl-move");
+    if (st === 1) cur.hintText = mv.i === 0 ? "💡 먼저 빨간 차를 움직여야 해요" : "💡 깜빡이는 차를 먼저 움직여 보세요";
+    else if (st === 2) cur.hintText = `💡 ${mv.i === 0 ? "빨간 차를" : "깜빡이는 차를"} ${dir} ${n}칸`;
+    else {
+      const g = document.createElement("div");
+      g.className = "ghost";
+      g.style.width = (c.h ? c.len * CELL : CELL) - 4 + "px";
+      g.style.height = (c.h ? CELL : c.len * CELL) - 4 + "px";
+      g.style.left = (c.h ? mv.to : c.x) * CELL + 2 + "px";
+      g.style.top = (c.h ? c.y : mv.to) * CELL + 2 + "px";
+      board.appendChild(g);
+      cur.hintText = "💡 점선 자리로 옮겨 보세요";
+    }
+    refreshHud();
+  }
+
+  // 타이머·힌트 개수·안내 문구 갱신
+  function refreshHud(noHintMsg) {
+    if (!cur) return;
+    const earned = earnedHints(), avail = earned - cur.used;
+    $("timer").textContent = "⏱ " + fmtTime(cur.elapsed);
+    $("btn-hint").textContent = "💡 힌트 " + Math.max(0, avail);
+    $("btn-hint").classList.toggle("empty", avail <= 0);
+    if (cur.done) { $("msg").innerHTML = "&nbsp;"; return; }
+    if (earned > cur.lastEarned) cur.flashUntil = Date.now() + 3500;
+    cur.lastEarned = earned;
+    let t = "";
+    if (cur.hintText) t = cur.hintText;
+    else if (Date.now() < cur.flashUntil) t = "💡 힌트가 생겼어요!";
+    else if (earned < HINT_MAX && (noHintMsg || avail <= 0)) {
+      const mv = cur.level.min + (movesEarned() + 1) * hintStep(cur.level) - cur.peak;
+      t = `💡 힌트 +1까지: 이동 ${mv}번 더 · ${fmtTime((timeEarned() + 1) * HINT_TIME - cur.elapsed)} 뒤`;
+    } else if (earned >= HINT_MAX && avail <= 0 && noHintMsg) t = "💡 이 판의 힌트를 모두 썼어요";
+    $("msg").textContent = t || " ";
+  }
+
+  // 타이머: 플레이 화면이 보일 때만 흐른다 (stages 화면·탭 숨김·클리어 후에는 멈춤)
+  let lastTick = Date.now();
+  setInterval(() => {
+    const now = Date.now(), dt = Math.min(1, (now - lastTick) / 1000);
+    lastTick = now;
+    if (!cur || cur.done || document.hidden || !$("s-play").classList.contains("on")) return;
+    cur.elapsed += dt;
+    refreshHud();
+  }, 250);
+
   function buildBoard() {
-    board.querySelectorAll(".car").forEach((e) => e.remove());
+    board.querySelectorAll(".car, .ghost").forEach((e) => e.remove());
     cur.cars.forEach((c, i) => {
       const d = document.createElement("div");
       d.className = "car" + (i === 0 ? " red" : "");
@@ -244,7 +378,8 @@
 
   function updateInfo() {
     const b = best[cur.level.id];
-    $("info").innerHTML = `${cur.level.id}판 <span style="color:#ffc83d">${stars(diff(cur.level))}</span> · 이동 <b>${cur.moves}</b><br>최소 ${cur.level.min}${b != null ? "<br>내 최고 기록: " + b + "번(" + stagePts(cur.level, b) + "/" + diff(cur.level) * 100 + ")" : ""}`;
+    $("info").innerHTML = `${cur.level.no}판 <span style="color:#ffc83d">${stars(diff(cur.level))}</span> · 이동 <b>${cur.moves}</b><br><span class="minb">최소 ${cur.level.min}번</span>${b != null ? "<br>내 최고 기록: " + b + "번(" + stagePts(cur.level, b) + "/" + diff(cur.level) * 100 + ")" : ""}`;
+    refreshHud();
   }
 
   function grid(except) {
@@ -296,6 +431,8 @@
       cur.hist.push({ i: cur.cars.indexOf(c), from: op, moves: cur.moves });
       if (c.h) c.x = np; else c.y = np;
       cur.moves++;
+      cur.peak = Math.max(cur.peak, cur.moves);   // 되돌려도 힌트가 줄지 않게 가장 많이 움직인 횟수를 기억
+      clearHint();
     }
     place(c); updateInfo();
     if (cur.cars[0].x === N - 2 && !cur.done) win();
@@ -305,20 +442,21 @@
     if (cur.done || !cur.hist.length) return;
     const h = cur.hist.pop(), c = cur.cars[h.i];
     if (c.h) c.x = h.from; else c.y = h.from;
-    cur.moves = h.moves; place(c); updateInfo();
+    cur.moves = h.moves; place(c); clearHint(); updateInfo();
   };
-  $("btn-reset").onclick = () => startLevel(cur.level.id);
+  $("btn-reset").onclick = () => startLevel(cur.level.id, cur);
+  $("btn-hint").onclick = useHint;
   $("btn-list").onclick = renderSelect;
   $("c-list").onclick = renderSelect;
   $("c-retry").onclick = () => startLevel(cur.level.id);
   $("c-next").onclick = () => {
-    const next = levels.find((l) => l.id > cur.level.id && best[l.id] == null) || levels.find((l) => l.id > cur.level.id);
+    const next = levels.find((l) => l.no > cur.level.no && best[l.id] == null) || levels.find((l) => l.no > cur.level.no);
     next ? startLevel(next.id) : renderSelect();
   };
 
   async function win() {
     cur.done = true;
-    cur.moves++;                       // 빨간 차가 밖으로 나가는 마지막 1수
+    clearHint();
     const red = cur.cars[0].el;
     red.style.left = (N * CELL + 20) + "px";
     updateInfo();
@@ -329,14 +467,14 @@
     setTimeout(async () => {
       $("c-big").textContent = mv === l.min ? "✓ 최소 이동 클리어!" : "클리어!";
       const gain = stagePts(l, best[l.id]) - (prev != null ? stagePts(l, prev) : 0);   // 이 판에서 새로 늘어난 점수
-      let t = `${mv}번 이동 (최소 ${l.min}번)<br>${stars(diff(l))} 최대 ${diff(l) * 100}점<br>` +
+      let t = `${mv}번 이동 <span class="minb">최소 ${l.min}번</span><br>${stars(diff(l))} 최대 ${diff(l) * 100}점<br>` +
         `<b style="color:#ffc83d">${gain > 0 ? gain + "점 추가" : "점수 갱신 없음"}</b>`;
       if (prev != null && improved) t += `<br>🎉 새 기록!`;
       t += `<br>내 최고 기록: ${best[l.id]}번(${stagePts(l, best[l.id])}/${diff(l) * 100})`;
       const after = score();
       t += `<br>총점 ${after !== before ? before + " → " : ""}<b style="color:#ffc83d">${after}</b>`;
       $("c-text").innerHTML = t;
-      $("c-next").style.display = levels.some((x) => x.id > l.id) ? "" : "none";
+      $("c-next").style.display = levels.some((x) => x.no > l.no) ? "" : "none";
       $("clear").classList.add("on");
       if (improved) {                    // 점수가 바뀐 경우만 서버에 보내고, 순위는 응답이 오면 덧붙임
         const r = await submitScoreNow();
@@ -352,10 +490,16 @@
   async function main() {
     MiniHub.init(GAME_ID);
     MiniHub.onReady((p) => { me = p; $("hello").textContent = p.name + "님"; });
-    try { levels = (await (await fetch("./levels.json")).json()).levels; }
+    try { levels = (await (await fetch("./levels.json")).json()).levels;
+      levels.forEach((l, i) => { if (l.no == null) l.no = i + 1; });
+      levels.sort((a, b) => a.no - b.no); }
     catch { $("hello").textContent = "판 데이터를 불러오지 못했어요"; return; }
     const saved = await MiniHub.load();
     best = (saved && saved.best) || {};
+    if (saved && saved.best && saved.v !== 2) {          // 예전 기록(출구로 나가는 1수를 더해서 셌음)을 새 방식으로 변환
+      for (const k of Object.keys(best)) best[k] = Math.max(1, best[k] - 1);
+      saveProgress();
+    }
     lastSubmitted = clearedCount() > 0 ? score() : null;   // 이미 기록된 점수는 다시 보내지 않음
   }
   main();
