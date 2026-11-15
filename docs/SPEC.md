@@ -1,39 +1,37 @@
-# 미니게임 통합 사이트 설계서 (SPEC v1)
+# 미니게임 랭킹 설계서 (SPEC v2)
 
-8명이 각자 만든 미니게임을 한 사이트(허브)에 모아, 하나의 닉네임으로 플레이하고
-게임별 랭킹과 종합 랭킹을 보여준다. 최대 사용자 약 210명, 온라인 서비스.
+8명이 각자 만든 미니게임의 점수를 한 곳에 모아, 플레이어별·게임별 최고 기록과
+종합 랭킹을 관리한다. 최대 사용자 약 210명, 온라인 서비스.
 
-> 이 문서는 팀 전체의 약속이다. 바꿔야 할 일이 생기면 허브 담당자가 고치고 공지한다.
+> v2 변경: 게임을 감싸는 공통 화면(play.html, iframe)을 없앴다. 각 게임은 독립된 페이지이고,
+> 공용 SDK가 게임 페이지에서 직접 점수를 DB에 기록한다.
 
 ---
 
 ## 1. 전체 구조
 
 ```
-[사용자 브라우저]
-  허브 페이지 (index / play / ranking)  ──점수 저장·조회──▶  Supabase (DB + 익명 로그인)
-     └ iframe: games/<게임ID>/index.html
-          └ shared/minihub-sdk.js  ──postMessage──▶ 허브
+games/<게임ID>/index.html   (각자 자유롭게 만든 게임 페이지)
+   └ shared/minihub-sdk.js  ── 닉네임·로그인·점수 기록 ──▶  Supabase (DB + 익명 로그인)
+                                                                ▲
+index.html (랭킹 페이지)  ── 같은 SDK로 랭킹 조회 ─────────────┘
 ```
 
 - 호스팅: GitHub Pages (main 브랜치, 저장소 루트). 서버 코드 없음.
-- DB: Supabase 무료 플랜. 허브만 DB에 접근한다. 게임은 DB를 모른다.
-- 게임은 iframe 안에서 돈다. 서로의 코드·CSS가 섞이지 않는다.
+- 모든 게임이 **같은 사이트 주소** 아래에 있으므로 닉네임·로그인 정보가 공유된다.
+  (브라우저 저장공간은 사이트 주소별로 나뉜다. 다른 주소에 배포한 게임은 다른 사람으로 기록됨)
+- 게임 담당자는 DB를 몰라도 된다. SDK 함수 2개(init, submitScore)만 쓴다.
 
 ## 2. 폴더 구조
 
 ```
-/index.html              허브 메인 (닉네임, 게임 목록, 종합 랭킹 미리보기)
-/play.html?game=<id>     게임 플레이 화면 (iframe)
-/ranking.html            종합 랭킹 / 게임별 랭킹
-/hub/                    허브 전용 js, css  (허브 담당자만 수정)
-/shared/minihub-sdk.js   게임↔허브 연결 SDK  (수정 금지, 허브 담당자만 버전업)
+/index.html              랭킹 페이지 (내 기록, 게임 바로가기, 종합/게임별 랭킹)
+/hub/                    랭킹 페이지 js, css         (허브 담당자)
+/shared/minihub-sdk.js   점수 기록 SDK + Supabase 설정 (허브 담당자. 게임 담당자 수정 금지)
 /supabase/schema.sql     DB 표·보안 규칙·랭킹 계산
-/games/index.json        사이트에 노출할 게임 ID 목록
+/games/index.json        랭킹 페이지에 노출할 게임 ID 목록
 /games/<게임ID>/         각 게임 (담당자 본인만 수정)
-    index.html
-    game.json
-    thumbnail.png (또는 game.json의 thumbnail에 적은 파일)
+    index.html, game.json, thumbnail.png, ...
 /docs/SPEC.md            이 문서
 /CLAUDE.md, /AGENTS.md, /.github/copilot-instructions.md   AI용 규칙 (내용 동일)
 ```
@@ -46,7 +44,6 @@
   "title": "스네이크",
   "author": "홍길동",
   "description": "사과를 먹고 길어지세요",
-  "controls": "방향키 / 스와이프",
   "scoreOrder": "desc",
   "scoreUnit": "점",
   "scoreLimit": 1000000,
@@ -57,81 +54,85 @@
 | 필드 | 필수 | 설명 |
 |---|---|---|
 | id | ✅ | 폴더 이름과 같음. 영문 소문자·숫자·하이픈 |
-| title, author, description, controls | ✅ | 화면 표시용 |
+| title, author, description | ✅ | 랭킹 페이지 표시용 |
 | scoreOrder | ✅ | `desc` = 높을수록 좋음, `asc` = 낮을수록 좋음(시간 기록 등) |
 | scoreUnit | ✅ | 표시 단위 (점, 층, ms, 회 …) |
-| scoreLimit | 선택 | **만점이 아니라 조작 방지 상한선.** 넉넉하게(고수 기록의 10배 정도). 생략 시 1억 |
+| scoreLimit | 권장 | **만점이 아니라 조작 방지 상한선.** 생략 시 1억 |
 | thumbnail | 선택 | 기본 `thumbnail.png` |
-| hidden | 선택 | `true`면 목록에서 숨김 (샘플·개발용). `?dev=1`로 보임 |
+| entry | 선택 | 시작 페이지가 index.html이 아닐 때 파일명 |
+| hidden | 선택 | `true`면 랭킹 페이지 목록에서 숨김 (예제용). `?dev=1`로 보임 |
 
 ## 4. 점수 규칙
 
-1. **점수에는 상한이 없다.** 스테이지를 더 깨고 기록이 좋아질수록 점수가 계속 오른다.
-2. 점수는 **0 이상 정수**. 시간 기록은 ms 정수로 보낸다.
+1. **점수에는 상한이 없다.** 스테이지를 더 깨고 기록이 좋아질수록 계속 오른다.
+2. 점수는 **0 이상 정수**. 시간 기록은 ms 정수.
 3. 플레이어마다 게임별로 **최고 기록 1개만** 남는다. 못한 판은 저장되지 않는다.
-4. 게임별 랭킹은 **실제 점수**로 정렬한다 (scoreOrder 기준). 동점은 같은 순위.
-5. 종합 랭킹은 게임별 순위를 **0~100 포인트**로 바꿔 합산한다 (8게임이면 최대 800).
+4. 게임별 랭킹은 **실제 점수**로 정렬 (scoreOrder 기준). 동점은 같은 순위.
+5. 종합 랭킹은 게임별 순위를 **0~100 포인트**로 바꿔 합산 (8게임이면 최대 800).
 
    ```
    포인트 = 100 × (그 게임에서 나보다 기록이 나쁜 사람 수 + 1) ÷ 그 게임 참여자 수
    ```
    - 1등 = 100, 꼴찌 ≈ 1, 안 한 게임 = 0. 소수 첫째 자리까지.
-   - 참여자 수가 달라도 공평하고, 많은 게임에 참여할수록 유리하다.
    - 남이 나를 앞지르면 내 포인트는 내려간다.
 6. 종합 순위 동점: 참여 게임 수가 많은 사람 → 마지막 기록을 먼저 세운 사람 순.
+7. 종합 랭킹에는 `games/index.json`에 있고 hidden이 아닌 게임만 들어간다.
 
-## 5. 게임 ↔ 허브 통신 (postMessage)
+## 5. SDK (shared/minihub-sdk.js)
 
-게임은 `shared/minihub-sdk.js`의 함수만 쓴다.
+게임에서 쓰는 것:
 
 ```js
-MiniHub.init("snake");               // 로드 시 1회
-MiniHub.onReady(player => {});       // player = { id, name }
-MiniHub.submitScore(1250);           // 게임오버마다 정확히 1회, 0 이상 정수
-MiniHub.exit();                      // 허브로 나가기
+MiniHub.init("snake");                 // 필수. 페이지 로드 시 1회. 접속 전이면 닉네임+PIN 입력창 표시
+MiniHub.onReady(player => {});         // 선택. player = { id, name }
+const r = await MiniHub.submitScore(n);// 필수. 한 판 끝날 때마다 1회
+// r = { score, improved, previous, best, rank, players } / 실패 시 null
+// 옵션: submitScore(n, { toast: false }) → 기본 알림 끄기
+MiniHub.exit();                        // 선택. 랭킹 페이지로 이동
+MiniHub.changeName();                  // 선택. 내 정보 창 (닉네임 바꾸기 / 다른 닉네임으로 접속)
+MiniHub.getGameRanking("snake", 10);   // 선택. 게임 안에서 순위표 보여줄 때
 ```
 
-메시지 형식 (SDK가 처리하므로 게임 담당자는 몰라도 됨):
+SDK가 하는 일:
+- 익명 로그인 + 닉네임·PIN 접속 창 (Shadow DOM이라 게임 CSS와 안 섞임)
+- `games/<id>/game.json`을 읽어 scoreOrder / scoreLimit 확인
+- 점수 검증(정수, 0 ≤ score ≤ scoreLimit) → DB `submit_score` 함수 호출
+- 저장 결과 알림 (신기록, 순위)
+- 여러 판을 빨리 보내도 순서대로 하나씩 저장
 
-| 방향 | 메시지 |
-|---|---|
-| 게임 → 허브 | `{ type: "MINIHUB_READY", gameId, version: 1 }` |
-| 허브 → 게임 | `{ type: "MINIHUB_INIT", player: { id, name } }` |
-| 게임 → 허브 | `{ type: "MINIHUB_SCORE", gameId, score }` |
-| 게임 → 허브 | `{ type: "MINIHUB_EXIT", gameId }` |
-
-허브 검증: `event.source === iframe.contentWindow`, gameId 일치, 정수, 0 ≤ score ≤ scoreLimit.
-DB에서도 같은 검증을 한 번 더 한다 (`submit_score` 함수).
+설정(허브 담당자): SDK 맨 위 `CONFIG`의 `supabaseUrl`, `supabaseKey`.
+비어 있으면 **로컬 테스트 모드**(이 브라우저의 localStorage에만 저장).
 
 ## 6. 로그인
 
-- Supabase **익명 로그인**. 같은 브라우저면 자동으로 같은 사람.
-- 첫 방문 시 닉네임(2~10자) 입력, 언제든 변경 가능. 랭킹에는 바뀐 이름이 바로 반영.
-- 다른 기기·브라우저로 접속하면 새 사람으로 취급된다. (공지할 것)
+- **닉네임(2~10자) + PIN(숫자 4자리)**. 닉네임은 겹칠 수 없다 (영문 대소문자 구분 없음).
+- 처음 게임이나 랭킹 페이지를 열면 접속 창이 뜬다.
+  - 없는 닉네임 → 새로 등록
+  - 있는 닉네임 + 맞는 PIN → 그 사람으로 접속 (다른 기기에서도 기록이 이어짐)
+  - PIN 5번 틀리면 그 닉네임은 10분 잠금
+- 한 번 접속한 브라우저는 다음부터 자동 접속 (Supabase 익명 로그인 세션이 기기를 기억).
+- 랭킹 페이지 오른쪽 위 이름 → 닉네임 바꾸기 / 다른 닉네임으로 접속.
+- PIN을 잊으면 허브 담당자가 SQL Editor에서 0000으로 초기화 (schema.sql 맨 아래).
+- PIN 4자리는 장난 방지용이다. 은행 비밀번호처럼 강한 보안은 아니므로 다른 곳 비밀번호를 쓰지 말라고 공지.
 
 ## 7. 데이터 (Supabase)
 
 | 표 / 뷰 | 내용 |
 |---|---|
-| `players` | id(로그인 uid), name |
+| `players` | id, name (닉네임 중복 불가) |
+| `player_secrets` | PIN(암호화), 틀린 횟수, 잠금 시각 — 아무도 직접 못 읽음 |
+| `player_devices` | 기기(익명 로그인 uid) → 플레이어 연결. 한 사람이 여러 기기 가능 |
 | `games` | id, score_order, score_limit — 첫 점수가 들어올 때 game.json 값으로 자동 등록 |
 | `bests` | game_id, player_id, score, achieved_at — 플레이어·게임별 최고 기록 |
 | `game_ranking` (뷰) | 게임별 순위·포인트 |
-| `overall_ranking` (뷰) | 종합 순위 |
+| `overall_ranking(p_games)` (함수) | 종합 순위 |
 
-- 점수 저장은 `submit_score` 함수로만 가능 (표에 직접 쓰기 금지).
-- 읽기는 누구나, 이름 변경은 본인만, 삭제는 아무도 못 함.
-- 게임의 scoreOrder/scoreLimit을 나중에 바꾸면 `games` 표도 SQL로 고쳐야 한다.
+- 접속은 `login`, 닉네임 변경은 `rename_player`, 점수 저장은 `submit_score` 함수로만 가능 (표에 직접 쓰기 금지).
+- 닉네임·기록 읽기는 누구나, PIN은 아무도 못 읽음, 삭제는 관리자만 (SQL Editor). PIN 초기화도 SQL Editor에서 (schema.sql 맨 아래).
+- 게임의 scoreOrder/scoreLimit을 나중에 바꾸면 `games` 표도 SQL로 고쳐야 한다 (schema.sql 맨 아래 참고).
 
-## 8. 화면 공통 규칙
+## 8. 배포 흐름
 
-- 게임 기준 화면: 세로 9:16 (360×640 기준), 창에 맞춰 비율 유지 스케일.
-- 터치 필수, 키보드 선택. 시작화면 → 플레이 → 게임오버(점수·다시하기·나가기).
-- 공통 색: 배경 `#16132e`, 카드 `#231f45`, 강조 `#ffc83d`, 보조 `#7c6cf0`, 글자 `#f4f2ff`
-- 공통 폰트: Pretendard (없으면 시스템 기본)
-
-## 9. 배포 흐름
-
-1. 팀원: `games/<내ID>/` 작업 → 커밋 → 동기화(푸시) 또는 PR
-2. 허브 담당자: 확인 후 main에 합치고 `games/index.json`에 ID 추가
-3. GitHub Pages가 1~2분 안에 자동 반영
+1. 팀원: `games/<내ID>/` 작업 → 커밋 → 동기화(푸시)
+2. 허브 담당자: `games/index.json`에 ID 추가 → main에 반영
+3. GitHub Pages가 1~2분 안에 자동 반영. 게임 주소: `https://<계정>.github.io/<저장소>/games/<ID>/`

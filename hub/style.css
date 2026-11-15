@@ -34,9 +34,6 @@ h1, h2, h3 { margin: 0; line-height: 1.25; }
   border-bottom: 1px solid var(--line);
 }
 .logo { font-weight: 800; font-size: 18px; text-decoration: none; white-space: nowrap; }
-#topbar nav { display: flex; align-items: center; gap: 4px; }
-#topbar nav a { text-decoration: none; padding: 6px 10px; border-radius: 10px; color: var(--muted); font-weight: 700; }
-#topbar nav a.on { color: var(--text); background: var(--card); }
 .chip {
   border: 1px solid var(--line); background: var(--card); color: var(--text);
   font: inherit; font-weight: 700; font-size: 14px; padding: 6px 12px; border-radius: 999px;
@@ -46,7 +43,7 @@ h1, h2, h3 { margin: 0; line-height: 1.25; }
 .banner.dev { background: #2a2350; color: var(--muted); }
 
 main { max-width: 960px; margin: 0 auto; padding: 20px 16px 48px; }
-.section-title { display: flex; align-items: baseline; justify-content: space-between; margin: 28px 0 12px; }
+.section-title { display: flex; align-items: center; justify-content: space-between; margin: 28px 0 12px; }
 .section-title h2 { font-size: 20px; }
 .section-title a { color: var(--muted); font-size: 14px; }
 
@@ -57,6 +54,8 @@ main { max-width: 960px; margin: 0 auto; padding: 20px 16px 48px; }
 }
 .btn.ghost { background: var(--card-2); color: var(--text); }
 .btn:disabled { opacity: .5; cursor: default; }
+.btn.small { padding: 8px 14px; font-size: 14px; }
+p.desc { font-size: 13px; margin: 0 0 10px; }
 
 .card { background: var(--card); border-radius: var(--radius); padding: 18px; }
 .card.error pre { white-space: pre-wrap; color: var(--bad); font-size: 13px; }
@@ -104,34 +103,6 @@ table.rank td.pos { width: 56px; font-weight: 800; }
 .name { font-weight: 700; overflow-wrap: anywhere; }
 .sub { display: block; font-size: 12px; color: var(--muted); font-weight: 400; }
 .mine { margin-top: 10px; }
-
-/* 플레이 화면 */
-body.play { height: 100vh; height: 100dvh; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
-.playbar {
-  display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--line);
-  background: var(--bg); flex: none;
-}
-.playbar .back { text-decoration: none; font-weight: 800; padding: 6px 10px; border-radius: 10px; background: var(--card); white-space: nowrap; }
-.playbar .title { font-weight: 800; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.playbar .mybest { font-size: 13px; color: var(--muted); white-space: nowrap; text-align: right; }
-.playbar .mybest b { color: var(--gold); }
-#frame-wrap { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; background: #0d0b1f; }
-#game-frame { border: 0; background: var(--bg); display: block; }
-
-/* 토스트 */
-#toasts { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); z-index: 50;
-  display: flex; flex-direction: column; gap: 8px; width: min(92vw, 380px); pointer-events: none; }
-.toast { background: var(--card-2); border: 1px solid var(--violet); border-radius: 14px; padding: 12px 16px;
-  box-shadow: 0 10px 30px rgba(0,0,0,.4); transition: opacity .4s, transform .4s; font-size: 15px; }
-.toast.out { opacity: 0; transform: translateY(10px); }
-.toast b { color: var(--gold); }
-
-/* 닉네임 창 */
-.modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 16px; }
-.modal { background: var(--card); border-radius: 20px; padding: 24px; width: min(100%, 360px); display: flex; flex-direction: column; gap: 10px; }
-.modal input { font: inherit; font-size: 18px; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); color: var(--text); }
-.modal .row { display: flex; gap: 8px; justify-content: flex-end; margin-top: 6px; }
-.modal .err { color: var(--bad); margin: 0; font-size: 14px; }
 
 @media (max-width: 520px) {
   .logo { font-size: 16px; }

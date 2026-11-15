@@ -3,17 +3,21 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>8 미니게임</title>
+<title>랭킹</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
 <link rel="stylesheet" href="hub/style.css">
 </head>
 <body>
-<header id="topbar"></header>
+<header id="topbar">
+  <span class="logo" id="logo">🏆 랭킹</span>
+  <button id="name-chip" class="chip" type="button" title="내 정보 · 닉네임 바꾸기 · 다른 닉네임으로 접속">…</button>
+</header>
+<div id="banners"></div>
 <main>
   <section class="card hero">
     <div>
       <p class="muted" id="hello">불러오는 중…</p>
-      <h1>게임을 골라 도전하세요!</h1>
+      <h1>내 기록</h1>
     </div>
     <div class="stats">
       <div class="stat"><b id="my-rank">-</b><span>종합 순위</span></div>
@@ -25,62 +29,14 @@
   <div class="section-title"><h2>게임</h2></div>
   <div class="grid" id="games"></div>
 
-  <div class="section-title"><h2>종합 랭킹 TOP 5</h2><a href="ranking.html">전체 보기 →</a></div>
-  <div id="top5"></div>
+  <div class="section-title"><h2>랭킹</h2><button class="btn ghost small" id="refresh">↻ 새로고침</button></div>
+  <div class="tabs" id="tabs"></div>
+  <p class="muted desc" id="board-desc"></p>
+  <div id="board"><p class="card empty">불러오는 중…</p></div>
+  <div id="mine" class="mine"></div>
 </main>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
-<script src="hub/config.js"></script>
-<script src="hub/store.js"></script>
-<script src="hub/common.js"></script>
-<script>
-(async () => {
-  const { store, esc, fmtScore, fmtPoints } = Hub;
-  document.title = (MINIHUB_CONFIG.siteTitle || "미니게임");
-  await Hub.boot("home");
-
-  const games = await Hub.loadGames();
-  const ids = games.map((g) => g.id);
-
-  async function render() {
-    document.getElementById("hello").textContent = `${Hub.name}님, 반가워요!`;
-    const [bests, me, top] = await Promise.all([
-      store.getMyBests(), store.getMyOverall(ids), store.getOverall(ids, 5),
-    ]);
-
-    document.getElementById("my-rank").textContent = me ? `${me.rank}위` : "-";
-    document.getElementById("my-total").textContent = me ? fmtPoints(me.total) : "0";
-    document.getElementById("my-played").textContent = `${me ? me.games_played : 0}/${games.length}`;
-
-    const grid = document.getElementById("games");
-    grid.innerHTML = games.length
-      ? games.map((g) => `
-        <a class="game" href="play.html?game=${encodeURIComponent(g.id)}">
-          <img src="${esc(g.thumbnail)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">
-          <div class="body">
-            <h3>${esc(g.title)}</h3>
-            <p class="desc">${esc(g.description)}</p>
-            <div class="meta">
-              <span class="muted">${esc(g.author)}</span>
-              <span class="best">${g.id in bests ? "최고 " + esc(fmtScore(bests[g.id], g.scoreUnit)) : "도전 전"}</span>
-            </div>
-          </div>
-        </a>`).join("")
-      : `<p class="empty">아직 등록된 게임이 없어요.<br><small>games/index.json에 게임 ID를 추가하세요 (예제는 ?dev=1)</small></p>`;
-
-    document.getElementById("top5").innerHTML = top.length
-      ? `<table class="rank"><tbody>${top.map((r) => `
-          <tr class="${r.player_id === store.uid() ? "me" : ""}">
-            <td class="pos">${["🥇", "🥈", "🥉"][r.rank - 1] ? `<span class="medal">${["🥇", "🥈", "🥉"][r.rank - 1]}</span>` : r.rank}</td>
-            <td class="name">${esc(r.name)}</td>
-            <td class="num"><b>${fmtPoints(r.total)}</b> <span class="muted">pt</span></td>
-          </tr>`).join("")}</tbody></table>`
-      : `<p class="card empty">아직 기록이 없어요. 첫 번째 주인공이 되어보세요!</p>`;
-  }
-
-  try { await render(); } catch (e) { console.error(e); Hub.toast("랭킹을 불러오지 못했어요"); }
-  document.addEventListener("hub:namechange", render);
-})();
-</script>
+<script src="shared/minihub-sdk.js"></script>
+<script src="hub/app.js"></script>
 </body>
 </html>

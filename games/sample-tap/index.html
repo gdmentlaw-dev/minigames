@@ -31,6 +31,7 @@
          color: #fff; font: inherit; font-size: 36px; font-weight: 800; cursor: pointer;
          box-shadow: 0 10px 0 #4e40b8; }
   #tap:active { transform: translateY(6px); box-shadow: 0 4px 0 #4e40b8; }
+  .result { font-size: 17px; font-weight: 700; color: #b9b3e6; min-height: 1.5em; }
   #final { font-size: 64px; font-weight: 800; color: #ffc83d; }
 </style>
 </head>
@@ -41,7 +42,7 @@
     <p class="hello" id="hello">&nbsp;</p>
     <p class="desc">10초 동안 버튼을 최대한 많이 누르세요.<br>조작: 화면 탭 / 스페이스바</p>
     <button class="btn" id="btn-start">시작</button>
-    <button class="btn sub" id="btn-exit1">나가기</button>
+    <button class="btn sub" id="btn-exit1">랭킹 보기</button>
   </section>
 
   <section class="screen" id="s-play">
@@ -53,8 +54,9 @@
   <section class="screen" id="s-over">
     <h1>끝!</h1>
     <p id="final">0회</p>
+    <p class="result" id="result">&nbsp;</p>
     <button class="btn" id="btn-retry">다시하기</button>
-    <button class="btn sub" id="btn-exit2">나가기</button>
+    <button class="btn sub" id="btn-exit2">랭킹 보기</button>
   </section>
 </div>
 
@@ -112,7 +114,18 @@
     playing = false;
     $("final").textContent = `${count}회`;
     show("s-over");
-    MiniHub.submitScore(count); // 게임오버마다 정확히 1번
+    showResult(MiniHub.submitScore(count)); // 게임오버마다 정확히 1번
+  }
+
+  // 저장 결과를 게임 화면에도 표시 (선택 사항 — 안 해도 SDK가 위쪽에 알림을 띄움)
+  async function showResult(promise) {
+    const el = $("result");
+    el.textContent = "기록 저장 중…";
+    const r = await promise;
+    if (!r) el.textContent = "기록을 저장하지 못했어요";
+    else if (r.improved && r.previous !== null) el.textContent = `🎉 신기록! (이전 ${r.previous}회) · ${r.rank}위`;
+    else if (r.improved) el.textContent = `첫 기록 저장! · ${r.rank}위`;
+    else el.textContent = `내 최고 ${r.best}회 · ${r.rank}위`;
   }
 
   // 탭이 숨겨지면 일시정지
