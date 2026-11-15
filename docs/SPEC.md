@@ -97,6 +97,11 @@ await MiniHub.save({ stage: 3 });      // 선택. 진행 저장 (플레이어·�
 await MiniHub.load();                  // 선택. 진행 불러오기 → 저장값 또는 null
 ```
 
+여러 명이 동시에 하는 게임(실시간 통신):
+- 공용 SDK 범위 밖. 게임 담당자가 본인 계정의 무료 실시간 서비스(본인 Supabase 프로젝트, Firebase 등)를 연결한다.
+- 게임 파일은 이 저장소 `games/<게임ID>/` 안에 두고, 실시간 통신만 외부 서비스로 한다 (로그인·랭킹 유지).
+- 이름은 `MiniHub.onReady`의 player.name, 점수는 각자 `submitScore`로 자기 점수만.
+
 진행 저장(`save`/`load`):
 - 하다 만 상태(마지막 스테이지 등)를 로그인한 플레이어별로 서버에 저장. 다른 기기에서도 이어짐.
 - 게임마다 한 칸, 덮어쓰기. `save(null)`이면 삭제. JSON 값만, 최대 20KB.
