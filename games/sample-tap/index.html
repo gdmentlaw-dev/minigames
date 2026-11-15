@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>10초 연타</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+  /* 예제 게임: 높을수록 좋은 점수(scoreOrder "desc") */
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #16132e; }
+  body { display: flex; align-items: center; justify-content: center;
+         font-family: Pretendard, system-ui, sans-serif; color: #f4f2ff;
+         user-select: none; -webkit-user-select: none; touch-action: manipulation; }
+
+  /* 360×640 기준으로 만들고 JS로 비율 유지 스케일 */
+  #stage { width: 360px; height: 640px; flex: none; position: relative;
+           transform-origin: center center; }
+  .screen { position: absolute; inset: 0; display: none; flex-direction: column;
+            align-items: center; justify-content: center; gap: 18px; padding: 32px; text-align: center; }
+  .screen.on { display: flex; }
+  h1 { font-size: 40px; font-weight: 800; }
+  .hello { color: #ffc83d; font-size: 18px; font-weight: 700; }
+  .desc { color: #b9b3e6; font-size: 16px; line-height: 1.6; }
+  .btn { border: 0; border-radius: 16px; padding: 16px 28px; font: inherit; font-size: 20px;
+         font-weight: 800; cursor: pointer; background: #ffc83d; color: #16132e; min-width: 200px; }
+  .btn.sub { background: #231f45; color: #f4f2ff; }
+  #timer { font-size: 28px; font-weight: 800; color: #ffc83d; }
+  #count { font-size: 72px; font-weight: 800; }
+  #tap { width: 220px; height: 220px; border-radius: 50%; border: 0; background: #7c6cf0;
+         color: #fff; font: inherit; font-size: 36px; font-weight: 800; cursor: pointer;
+         box-shadow: 0 10px 0 #4e40b8; }
+  #tap:active { transform: translateY(6px); box-shadow: 0 4px 0 #4e40b8; }
+  #final { font-size: 64px; font-weight: 800; color: #ffc83d; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <section class="screen on" id="s-start">
+    <h1>10초 연타</h1>
+    <p class="hello" id="hello">&nbsp;</p>
+    <p class="desc">10초 동안 버튼을 최대한 많이 누르세요.<br>조작: 화면 탭 / 스페이스바</p>
+    <button class="btn" id="btn-start">시작</button>
+    <button class="btn sub" id="btn-exit1">나가기</button>
+  </section>
+
+  <section class="screen" id="s-play">
+    <p id="timer">10.0</p>
+    <p id="count">0</p>
+    <button id="tap">TAP!</button>
+  </section>
+
+  <section class="screen" id="s-over">
+    <h1>끝!</h1>
+    <p id="final">0회</p>
+    <button class="btn" id="btn-retry">다시하기</button>
+    <button class="btn sub" id="btn-exit2">나가기</button>
+  </section>
+</div>
+
+<script src="../../shared/minihub-sdk.js"></script>
+<script>
+  const GAME_ID = "sample-tap";
+  const DURATION = 10000;
+
+  // ── 화면 비율 유지 스케일 ──
+  const stage = document.getElementById("stage");
+  function fit() {
+    const s = Math.min(window.innerWidth / 360, window.innerHeight / 640);
+    stage.style.transform = `scale(${s})`;
+  }
+  window.addEventListener("resize", fit);
+  fit();
+
+  // ── 허브 연결 ──
+  MiniHub.init(GAME_ID);
+  MiniHub.onReady(p => {
+    document.getElementById("hello").textContent = `${p.name}님, 준비되셨나요?`;
+  });
+
+  // ── 게임 ──
+  const $ = id => document.getElementById(id);
+  let count = 0, startAt = 0, playing = false, paused = false, pausedLeft = 0, raf = 0;
+
+  function show(id) {
+    document.querySelectorAll(".screen").forEach(s => s.classList.toggle("on", s.id === id));
+  }
+
+  function start() {
+    count = 0; playing = true; paused = false;
+    startAt = performance.now();
+    $("count").textContent = "0";
+    show("s-play");
+    loop();
+  }
+
+  function loop() {
+    if (!playing || paused) return;
+    const left = Math.max(0, DURATION - (performance.now() - startAt));
+    $("timer").textContent = (left / 1000).toFixed(1);
+    if (left <= 0) return end();
+    raf = requestAnimationFrame(loop);
+  }
+
+  function tap() {
+    if (!playing || paused) return;
+    count++;
+    $("count").textContent = count;
+  }
+
+  function end() {
+    playing = false;
+    $("final").textContent = `${count}회`;
+    show("s-over");
+    MiniHub.submitScore(count); // 게임오버마다 정확히 1번
+  }
+
+  // 탭이 숨겨지면 일시정지
+  document.addEventListener("visibilitychange", () => {
+    if (!playing) return;
+    if (document.hidden) {
+      paused = true; cancelAnimationFrame(raf);
+      pausedLeft = DURATION - (performance.now() - startAt);
+    } else {
+      paused = false;
+      startAt = performance.now() - (DURATION - pausedLeft);
+      loop();
+    }
+  });
+
+  $("btn-start").onclick = start;
+  $("btn-retry").onclick = start;
+  $("btn-exit1").onclick = () => MiniHub.exit();
+  $("btn-exit2").onclick = () => MiniHub.exit();
+  $("tap").addEventListener("pointerdown", e => { e.preventDefault(); tap(); });
+  window.addEventListener("keydown", e => {
+    if (e.code === "Space" && !e.repeat) { e.preventDefault(); tap(); }
+  });
+</script>
+</body>
+</html>

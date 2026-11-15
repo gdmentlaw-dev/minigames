@@ -1,0 +1,12 @@
+{
+  "id": "sample-reaction",
+  "title": "반응속도 (예제)",
+  "author": "허브 담당",
+  "description": "초록색이 되면 바로 누르세요. 빠를수록 좋아요",
+  "controls": "화면 탭 / 스페이스바",
+  "scoreOrder": "asc",
+  "scoreUnit": "ms",
+  "scoreLimit": 10000,
+  "thumbnail": "thumbnail.svg",
+  "hidden": true
+}
