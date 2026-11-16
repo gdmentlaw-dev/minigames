@@ -42,7 +42,7 @@
   let current = validTab(location.hash.slice(1)) ? location.hash.slice(1) : "overall";
   let myBests = {}, myEntries = {}, myOverall = null;
 
-  // ── 순위 변동: 서버의 "직전 순위(가장 최근 기록 갱신 바로 전)"와 지금 순위를 비교 ──
+  // ── 순위 변동: 서버의 "직전 순위(순위가 마지막으로 바뀌기 바로 전)"와 지금 순위를 비교 ──
   // 서버에 직전 순위 기능이 없거나 로컬 모드이면, 이 브라우저에 날짜별 순위를 기억해 두는 임시 방식을 쓴다.
   const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   const deltaOf = (prev, r) => {
@@ -56,7 +56,7 @@
   function serverDelta(prevRows) {
     if (!prevRows.length) return { basis: "아직 변동이 없어요", of: () => ({ cls: "flat", text: "", cell: "" }) };
     const prev = Object.fromEntries(prevRows.map((x) => [x.player_id, x.rank]));
-    return { basis: "변동 · 직전 갱신 대비", of: (r) => deltaOf(prev, r) };
+    return { basis: "변동 · 최근 순위 변동 대비", of: (r) => deltaOf(prev, r) };
   }
   function snapshot(board, list) {
     const key = "minihub_rank_snap_" + board, today = ymd(new Date());

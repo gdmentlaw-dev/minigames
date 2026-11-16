@@ -387,8 +387,8 @@ $$;
 grant execute on function public.overall_ranking(text[]) to anon, authenticated;
 
 -- 6) 직전 순위 (순위 등락 표시용) -------------------------------
---  "직전" = 가장 최근 기록 갱신이 일어나기 바로 전의 순위. 지금 순위와 비교해 ▲▼를 보여준다.
---  (누가 기록을 갱신하면 그 사람은 ▲, 밀려난 사람은 ▼. 다음 갱신이 있을 때까지 유지)
+--  "직전" = 순위가 실제로 바뀐 가장 최근 시점의 바로 전 순위. 지금 순위와 비교해 ▲▼를 보여준다.
+--  (누가 기록을 갱신해 순위가 바뀌면 그 사람은 ▲, 밀려난 사람은 ▼. 다음에 순위가 바뀔 때까지 유지)
 --  score_log(기록 갱신 이력)로 계산하므로 따로 저장하는 순위표가 없어 용량이 늘지 않는다.
 
 drop view if exists public.game_ranking_prev;
@@ -421,23 +421,42 @@ as $$
   ) t;
 $$;
 
--- 게임 하나의 직전 순위
+-- 게임 하나의 직전 순위: "순위가 실제로 바뀐 가장 최근 시점의 바로 전 순위"
+--  (최근 기록 갱신이 순위를 안 바꿨다면, 순위가 바뀐 갱신까지 거슬러 올라가서 비교한다. 최대 30번)
+--  순위가 바뀐 적이 없으면 빈 결과
 create or replace function public.game_ranking_prev(p_game text)
 returns table (player_id uuid, rank bigint)
-language sql
+language plpgsql
 stable
 security invoker
 set search_path = public
 as $$
-  select r.player_id, r.rank
-  from public.ranking_asof(
-    array[p_game],
-    (select max(achieved_at) from public.score_log where game_id = p_game)
-  ) r;
+#variable_conflict use_column
+declare
+  c    timestamptz;
+  diff boolean;
+begin
+  for c in
+    select distinct l.achieved_at from public.score_log l
+    where l.game_id = p_game order by 1 desc limit 30
+  loop
+    select exists (
+      select 1
+      from (select gr.player_id, gr.rank from public.game_ranking gr where gr.game_id = p_game) cur
+      full join (select a.player_id, a.rank from public.ranking_asof(array[p_game], c) a) pv
+        on pv.player_id = cur.player_id
+      where cur.rank is distinct from pv.rank
+    ) into diff;
+    if diff then
+      return query select a.player_id, a.rank from public.ranking_asof(array[p_game], c) a;
+      return;
+    end if;
+  end loop;
+end;
 $$;
 
--- 종합 직전 순위 (p_games 안의 게임 중 가장 최근 갱신 직전 기준)
-create or replace function public.overall_ranking_prev(p_games text[])
+-- 종합 순위를 p_cutoff 이전 기록으로 매긴 것
+create or replace function public.overall_ranking_asof(p_games text[], p_cutoff timestamptz)
 returns table (rank bigint, player_id uuid, total numeric, games_played bigint)
 language sql
 stable
@@ -449,14 +468,43 @@ as $$
     r.player_id,
     sum(r.points),
     count(*)
-  from public.ranking_asof(
-    p_games,
-    (select max(achieved_at) from public.score_log where game_id = any (p_games))
-  ) r
+  from public.ranking_asof(p_games, p_cutoff) r
   group by r.player_id
   order by 1;
 $$;
 
+-- 종합 직전 순위: 게임별과 같은 방식 (종합 순위가 실제로 바뀐 가장 최근 시점의 바로 전)
+create or replace function public.overall_ranking_prev(p_games text[])
+returns table (rank bigint, player_id uuid, total numeric, games_played bigint)
+language plpgsql
+stable
+security invoker
+set search_path = public
+as $$
+#variable_conflict use_column
+declare
+  c    timestamptz;
+  diff boolean;
+begin
+  for c in
+    select distinct l.achieved_at from public.score_log l
+    where l.game_id = any (p_games) order by 1 desc limit 30
+  loop
+    select exists (
+      select 1
+      from public.overall_ranking(p_games) cur
+      full join public.overall_ranking_asof(p_games, c) pv on pv.player_id = cur.player_id
+      where cur.rank is distinct from pv.rank
+    ) into diff;
+    if diff then
+      return query select o.rank, o.player_id, o.total, o.games_played from public.overall_ranking_asof(p_games, c) o;
+      return;
+    end if;
+  end loop;
+end;
+$$;
+
+grant execute on function public.overall_ranking_asof(text[], timestamptz) to anon, authenticated;
 grant execute on function public.ranking_asof(text[], timestamptz) to anon, authenticated;
 grant execute on function public.game_ranking_prev(text)           to anon, authenticated;
 grant execute on function public.overall_ranking_prev(text[])      to anon, authenticated;
