@@ -9,7 +9,7 @@
   /* 점수 = 판별 점수의 합 (높을수록 좋음, scoreOrder "desc"). 판 점수는 난이도(별 1~3) x 이동 효율 */
   /* 디자인: 밝은 회색 바탕 + 흰 카드 + 어두운 격자판 + 유리창·라이트가 있는 차 */
   :root { --bg: #e8ecef; --card: #fff; --line: #d7dce2; --ink: #2b313b; --sub: #5a6372; --green: #1f7a4d;
-          --gold: #c98a00; --board: #353b45; --frame: #bdc3cc; --amber: #ffb800; }
+          --gold: #c98a00; --board: #353b45; --frame: #bdc3cc; --amber: #f0ae1e; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { width: 100%; height: 100%; overflow: hidden; background: var(--bg); }
   body { display: flex; align-items: center; justify-content: center;
@@ -86,7 +86,7 @@
   .car.h .ls { width: 8px; height: 44%; top: 28%; }  .car.h .ls.a { left: 9px; }  .car.h .ls.b { right: 9px; }
   .car.v .ls { height: 8px; width: 44%; left: 28%; }  .car.v .ls.a { top: 9px; }  .car.v .ls.b { bottom: 9px; }
   /* 빨간 차: 더 진한 빨강 + GO */
-  .car.red { z-index: 3; background-color: #e8301c; }
+  .car.red { z-index: 3; background-color: #dc3b2a; }
   .car.red .gl { background: rgba(255,255,255,.22); }
   .car.red .gl b { color: #fff; font-size: 14px; font-weight: 900; letter-spacing: 1px; }
   #msg { min-height: 1.5em; font-size: 14px; color: #8a5a00; font-weight: 700; }
@@ -157,7 +157,7 @@
 (() => {
   const GAME_ID = "rush-hour";
   const N = 6, CELL = 54;
-  const COLORS = ["#f5730f", "#10b4cc", "#1f6fe8", "#ffb800", "#8a4be8", "#10b06a", "#f03c78", "#7cc70c"];
+  const COLORS = ["#e9762b", "#2fa8bd", "#2f6fd0", "#f0ae1e", "#8656d0", "#249e6c", "#d9507f", "#8cb82e"];
   const $ = (id) => document.getElementById(id);
 
   let levels = [];
@@ -223,7 +223,7 @@
     let r = "";
     l.cars.forEach((c, i) => {
       const h = c[3] === "h", w = (h ? c[2] : 1) * u - 1, ht = (h ? 1 : c[2]) * u - 1;
-      const fill = i === 0 ? "#e8301c" : COLORS[i % COLORS.length];
+      const fill = i === 0 ? "#dc3b2a" : COLORS[i % COLORS.length];
       r += `<rect x="${pad + c[0] * u + .5}" y="${pad + c[1] * u + .5}" width="${w}" height="${ht}" rx="1" fill="${fill}"${i === 0 ? '' : ""}/>`;
     });
     return `<svg viewBox="0 0 ${size} ${size}"><rect width="${size}" height="${size}" rx="1" fill="#353b45"/>${r}</svg>`;
