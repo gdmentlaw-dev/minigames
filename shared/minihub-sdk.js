@@ -227,9 +227,9 @@
         if (!pid) return null;
         return must(await sb.rpc("overall_ranking", { p_games: ids }).eq("player_id", pid).maybeSingle());
       },
-      // 어제(오늘 0시 직전) 기준 순위. DB에 6번 항목(어제 순위)이 아직 없으면 오류 → 호출한 쪽에서 무시
+      // 직전(가장 최근 기록 갱신 바로 전) 순위. DB에 6번 항목(직전 순위)이 아직 없으면 오류 → 호출한 쪽에서 무시
       async getGameRankingPrev(gid) {
-        return must(await sb.from("game_ranking_prev").select("player_id, rank").eq("game_id", gid).limit(1000));
+        return must(await sb.rpc("game_ranking_prev", { p_game: gid }).limit(1000));
       },
       async getOverallPrev(ids) {
         return must(await sb.rpc("overall_ranking_prev", { p_games: ids }).limit(1000));
@@ -615,7 +615,7 @@
     getMyBests: async () => { await init(gameId); return store.getMyBests(); },
     getOverall: async (ids, limit) => { await init(gameId); return store.getOverall(ids, limit); },
     getMyOverall: async (ids) => { await init(gameId); return store.getMyOverall(ids); },
-    getGameRankingPrev: async (id) => { await init(gameId); return store.getGameRankingPrev(id); }, // 어제 순위 [{player_id, rank}] 또는 null
+    getGameRankingPrev: async (id) => { await init(gameId); return store.getGameRankingPrev(id); }, // 직전 순위 [{player_id, rank}] 또는 null
     getOverallPrev: async (ids) => { await init(gameId); return store.getOverallPrev(ids); },
 
     // 표시 도우미

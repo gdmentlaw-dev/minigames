@@ -42,8 +42,8 @@
   let current = validTab(location.hash.slice(1)) ? location.hash.slice(1) : "overall";
   let myBests = {}, myEntries = {}, myOverall = null;
 
-  // ── 순위 변동: 서버의 "어제(오늘 0시 직전) 순위"와 지금 순위를 비교 ──
-  // 서버에 어제 순위 기능이 없거나 로컬 모드이면, 이 브라우저에 날짜별 순위를 기억해 두는 임시 방식을 쓴다.
+  // ── 순위 변동: 서버의 "직전 순위(가장 최근 기록 갱신 바로 전)"와 지금 순위를 비교 ──
+  // 서버에 직전 순위 기능이 없거나 로컬 모드이면, 이 브라우저에 날짜별 순위를 기억해 두는 임시 방식을 쓴다.
   const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   const deltaOf = (prev, r) => {
     const p = prev[r.player_id];
@@ -54,9 +54,9 @@
     return { cls: "flat", text: "", cell: "—" };
   };
   function serverDelta(prevRows) {
-    if (!prevRows.length) return { basis: "변동은 내일부터 보여요", of: () => ({ cls: "flat", text: "", cell: "" }) };
+    if (!prevRows.length) return { basis: "아직 변동이 없어요", of: () => ({ cls: "flat", text: "", cell: "" }) };
     const prev = Object.fromEntries(prevRows.map((x) => [x.player_id, x.rank]));
-    return { basis: "변동 · 어제 대비", of: (r) => deltaOf(prev, r) };
+    return { basis: "변동 · 직전 갱신 대비", of: (r) => deltaOf(prev, r) };
   }
   function snapshot(board, list) {
     const key = "minihub_rank_snap_" + board, today = ymd(new Date());
@@ -217,7 +217,7 @@
       const [rows, me] = g
         ? await Promise.all([MiniHub.getGameRanking(g.id, 100), MiniHub.getMyGameEntry(g.id)])
         : await Promise.all([MiniHub.getOverall(ids, 100), MiniHub.getMyOverall(ids)]);
-      // 어제 순위 (오래된 SDK가 캐시에 남아 있으면 함수가 없을 수 있어 안전하게 부른다)
+      // 직전 순위 (오래된 SDK가 캐시에 남아 있으면 함수가 없을 수 있어 안전하게 부른다)
       const prevRows = await Promise.resolve()
         .then(() => (g ? MiniHub.getGameRankingPrev(g.id) : MiniHub.getOverallPrev(ids)))
         .catch(() => null);

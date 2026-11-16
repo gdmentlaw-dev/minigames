@@ -63,7 +63,7 @@ create table if not exists public.saves (
   primary key (player_id, game_id)
 );
 
--- 최고 기록이 갱신될 때마다 한 줄씩 쌓는 기록 (어제 순위 계산용. 순위 등락 표시에 쓴다)
+-- 최고 기록이 갱신될 때마다 한 줄씩 쌓는 기록 (직전 순위 계산용. 순위 등락 표시에 쓴다)
 create table if not exists public.score_log (
   id           bigint generated always as identity primary key,
   game_id      text not null references public.games (id) on delete cascade,
@@ -386,37 +386,57 @@ $$;
 
 grant execute on function public.overall_ranking(text[]) to anon, authenticated;
 
--- 6) 어제 순위 (순위 등락 표시용) -------------------------------
---  "어제" = 오늘 0시(한국 시간) 직전까지의 기록으로 매긴 순위. 오늘 순위와 비교해 ▲▼를 보여준다.
---  어제 기록은 score_log(기록 갱신 이력)로 계산한다. 이력이 쌓이기 시작한 날부터 정확해진다.
+-- 6) 직전 순위 (순위 등락 표시용) -------------------------------
+--  "직전" = 가장 최근 기록 갱신이 일어나기 바로 전의 순위. 지금 순위와 비교해 ▲▼를 보여준다.
+--  (누가 기록을 갱신하면 그 사람은 ▲, 밀려난 사람은 ▼. 다음 갱신이 있을 때까지 유지)
+--  score_log(기록 갱신 이력)로 계산하므로 따로 저장하는 순위표가 없어 용량이 늘지 않는다.
 
-create or replace function public.day_start() returns timestamptz
-language sql stable as $$
-  select date_trunc('day', now() at time zone 'Asia/Seoul') at time zone 'Asia/Seoul'
+drop view if exists public.game_ranking_prev;
+drop function if exists public.day_start();
+
+-- p_cutoff 이전 기록만으로 매긴 순위 (game_ranking 과 같은 방식)
+create or replace function public.ranking_asof(p_games text[], p_cutoff timestamptz)
+returns table (game_id text, player_id uuid, score bigint, achieved_at timestamptz,
+               rank bigint, players bigint, points numeric)
+language sql
+stable
+security invoker
+set search_path = public
+as $$
+  select
+    t.game_id, t.player_id, t.score, t.achieved_at,
+    rank()   over (partition by t.game_id order by t.k desc),
+    count(*) over (partition by t.game_id),
+    round(100.0 * (rank() over (partition by t.game_id order by t.k asc))
+          / count(*) over (partition by t.game_id), 1)
+  from (
+    select distinct on (l.game_id, l.player_id)
+           l.game_id, l.player_id, l.score, l.achieved_at,
+           case when g.score_order = 'asc' then -l.score else l.score end as k
+    from public.score_log l
+    join public.bests b on b.game_id = l.game_id and b.player_id = l.player_id  -- 지워진 기록 제외
+    join public.games g on g.id = l.game_id
+    where l.game_id = any (p_games) and l.achieved_at < p_cutoff
+    order by l.game_id, l.player_id, k desc, l.achieved_at asc
+  ) t;
 $$;
 
-create or replace view public.game_ranking_prev with (security_invoker = true) as
-select
-  game_id, player_id, score, achieved_at,
-  rank()   over (partition by game_id order by k desc)        as rank,
-  count(*) over (partition by game_id)                         as players,
-  round(
-    100.0 * (rank() over (partition by game_id order by k asc))
-    / count(*) over (partition by game_id), 1
-  ) as points
-from (
-  select distinct on (l.game_id, l.player_id)
-         l.game_id, l.player_id, l.score, l.achieved_at,
-         case when g.score_order = 'asc' then -l.score else l.score end as k
-  from public.score_log l
-  join public.bests b on b.game_id = l.game_id and b.player_id = l.player_id  -- 지워진 기록 제외
-  join public.games g on g.id = l.game_id
-  where l.achieved_at < public.day_start()
-  order by l.game_id, l.player_id, k desc, l.achieved_at asc
-) t;
+-- 게임 하나의 직전 순위
+create or replace function public.game_ranking_prev(p_game text)
+returns table (player_id uuid, rank bigint)
+language sql
+stable
+security invoker
+set search_path = public
+as $$
+  select r.player_id, r.rank
+  from public.ranking_asof(
+    array[p_game],
+    (select max(achieved_at) from public.score_log where game_id = p_game)
+  ) r;
+$$;
 
-grant select on public.game_ranking_prev to anon, authenticated;
-
+-- 종합 직전 순위 (p_games 안의 게임 중 가장 최근 갱신 직전 기준)
 create or replace function public.overall_ranking_prev(p_games text[])
 returns table (rank bigint, player_id uuid, total numeric, games_played bigint)
 language sql
@@ -429,14 +449,17 @@ as $$
     r.player_id,
     sum(r.points),
     count(*)
-  from public.game_ranking_prev r
-  where r.game_id = any (p_games)
+  from public.ranking_asof(
+    p_games,
+    (select max(achieved_at) from public.score_log where game_id = any (p_games))
+  ) r
   group by r.player_id
   order by 1;
 $$;
 
-grant execute on function public.overall_ranking_prev(text[]) to anon, authenticated;
-grant execute on function public.day_start() to anon, authenticated;
+grant execute on function public.ranking_asof(text[], timestamptz) to anon, authenticated;
+grant execute on function public.game_ranking_prev(text)           to anon, authenticated;
+grant execute on function public.overall_ranking_prev(text[])      to anon, authenticated;
 
 -- ============================================================
 --  관리용 SQL (필요할 때 한 줄씩 골라서 실행)
