@@ -282,29 +282,46 @@
     const host = document.createElement("div");
     host.id = "minihub-ui";
     host.style.cssText = "position:fixed;inset:0;pointer-events:none;z-index:2147483647;";
+    if (document.documentElement.dataset.minihubTheme === "light") host.dataset.theme = "light";
     const root = host.attachShadow({ mode: "open" });
     root.innerHTML = `<style>
-      :host{all:initial}
-      *{box-sizing:border-box;font-family:Pretendard,system-ui,-apple-system,"Segoe UI",sans-serif}
-      .bg{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:16px;pointer-events:auto}
-      form{background:#231f45;color:#f4f2ff;border-radius:20px;padding:24px;width:min(100%,340px);display:flex;flex-direction:column;gap:10px}
-      h2{margin:0;font-size:20px} p{margin:0;font-size:14px;color:#b9b3e6}
-      input{font:inherit;font-size:18px;padding:12px 14px;border-radius:12px;border:1px solid #3a3470;background:#16132e;color:#f4f2ff;outline:none}
-      input:focus{border-color:#7c6cf0}
+      :host{all:initial;
+        --font:Pretendard,system-ui,-apple-system,"Segoe UI",sans-serif; --head:var(--font);
+        --card:#231f45; --text:#f4f2ff; --sub:#b9b3e6; --field:#16132e; --line:#3a3470; --focus:#7c6cf0;
+        --btn:#ffc83d; --btn-text:#16132e; --ghost:#2d2858; --err:#ff6b6b; --back:rgba(0,0,0,.6);
+        --toast:#2d2858; --toast-line:#7c6cf0; --hi:#ffc83d; --r:20px; --r-in:12px; --shadow:rgba(0,0,0,.4)}
+      /* 밝은 화면(랭킹 메인페이지)용: <html data-minihub-theme="light"> */
+      :host([data-theme=light]){
+        --font:Lora,"Noto Serif KR",serif; --head:"Cormorant Garamond","Noto Serif KR",serif;
+        --card:#f3f2f2; --text:#201f1d; --sub:#605d5d; --field:#fff; --line:rgba(32,31,29,.22); --focus:#b68235;
+        --btn:#fff3e4; --btn-text:#7d5411; --ghost:transparent; --err:#b0443a; --back:rgba(45,43,43,.42);
+        --toast:#f3f2f2; --toast-line:#b68235; --hi:#7d5411; --r:4px; --r-in:4px; --shadow:rgba(45,43,43,.22)}
+      *{box-sizing:border-box;font-family:var(--font)}
+      .bg{position:fixed;inset:0;background:var(--back);display:flex;align-items:center;justify-content:center;padding:16px;pointer-events:auto}
+      form{background:var(--card);color:var(--text);border-radius:var(--r);padding:24px;width:min(100%,340px);display:flex;flex-direction:column;gap:10px}
+      :host([data-theme=light]) form{border:1px solid #b68235;box-shadow:0 12px 32px var(--shadow);word-break:keep-all}
+      h2{margin:0;font-size:20px;font-family:var(--head)} p{margin:0;font-size:14px;color:var(--sub)}
+      :host([data-theme=light]) h2{font-size:26px;font-weight:600;line-height:1.15}
+      input{font:inherit;font-size:18px;padding:12px 14px;border-radius:var(--r-in);border:1px solid var(--line);background:var(--field);color:var(--text);outline:none}
+      input:focus{border-color:var(--focus)}
       .row{display:flex;gap:8px;justify-content:flex-end;margin-top:6px}
-      button{border:0;border-radius:12px;padding:12px 18px;font:inherit;font-weight:800;cursor:pointer;background:#ffc83d;color:#16132e}
-      button.ghost{background:#2d2858;color:#f4f2ff}
-      .err{color:#ff6b6b;line-height:1.5} p b{color:#f4f2ff}
+      button{border:0;border-radius:var(--r-in);padding:12px 18px;font:inherit;font-weight:800;cursor:pointer;background:var(--btn);color:var(--btn-text)}
+      button.ghost{background:var(--ghost);color:var(--text)}
+      :host([data-theme=light]) button{font-family:var(--head);font-weight:600;font-size:16px;border:1px solid #b68235;min-height:44px}
+      :host([data-theme=light]) button:hover{background:#ffe3bf}
+      :host([data-theme=light]) button.ghost{border-color:var(--line)}
+      :host([data-theme=light]) button.ghost:hover{background:rgba(32,31,29,.07)}
+      .err{color:var(--err);line-height:1.5} p b{color:var(--text)}
       label{display:block;font-size:15px;font-weight:700}
       label input{display:block;width:100%;margin-top:6px}
-      label small{font-weight:400;color:#b9b3e6;margin-left:4px}
+      label small{font-weight:400;color:var(--sub);margin-left:4px}
       input[name=pin]{letter-spacing:.4em}
       button.wide{width:100%;text-align:left}
       button:disabled{opacity:.6;cursor:default}
       .toasts{position:fixed;left:50%;top:12px;transform:translateX(-50%);display:flex;flex-direction:column;gap:8px;width:min(92vw,360px)}
-      .toast{background:#2d2858;color:#f4f2ff;border:1px solid #7c6cf0;border-radius:14px;padding:10px 14px;font-size:14px;
-             box-shadow:0 8px 24px rgba(0,0,0,.4);transition:opacity .4s,transform .4s}
-      .toast.out{opacity:0;transform:translateY(-8px)} .toast b{color:#ffc83d}
+      .toast{background:var(--toast);color:var(--text);border:1px solid var(--toast-line);border-radius:calc(var(--r-in) + 2px);padding:10px 14px;font-size:14px;
+             box-shadow:0 8px 24px var(--shadow);transition:opacity .4s,transform .4s}
+      .toast.out{opacity:0;transform:translateY(-8px)} .toast b{color:var(--hi)}
     </style><div class="toasts"></div>`;
     (document.body || document.documentElement).appendChild(host);
     ui = root;
