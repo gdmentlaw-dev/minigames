@@ -102,6 +102,9 @@
   #clear { position: absolute; inset: 0; background: rgba(232,236,239,.95); display: none; flex-direction: column;
            align-items: center; justify-content: center; gap: 14px; z-index: 10; padding: 24px; }
   #clear.on { display: flex; }
+  #c-next { position: relative; }
+  #c-next .new { position: absolute; top: -8px; right: -8px; background: #dc3b2a; color: #fff; font-size: 11px;
+                 font-weight: 900; letter-spacing: .5px; padding: 2px 6px; border-radius: 3px; }
   #c-big { font-size: 34px; font-weight: 800; color: var(--green); }
 </style>
 </head>
@@ -466,8 +469,10 @@
   $("btn-list").onclick = renderSelect;
   $("c-list").onclick = renderSelect;
   $("c-retry").onclick = () => startLevel(cur.level.id);
+  // 다음 판: 번호가 더 큰 판 중 아직 안 깬 첫 판, 없으면 바로 다음 번호
+  const nextTarget = () => levels.find((l) => l.no > cur.level.no && best[l.id] == null) || levels.find((l) => l.no > cur.level.no);
   $("c-next").onclick = () => {
-    const next = levels.find((l) => l.no > cur.level.no && best[l.id] == null) || levels.find((l) => l.no > cur.level.no);
+    const next = nextTarget();
     next ? startLevel(next.id) : renderSelect();
   };
 
@@ -491,7 +496,9 @@
       const after = score();
       t += `<br>총점 ${after !== before ? before + " → " : ""}<b style="color:#c98a00">${after}</b>`;
       $("c-text").innerHTML = t;
-      $("c-next").style.display = levels.some((x) => x.no > l.no) ? "" : "none";
+      const nx = nextTarget();
+      $("c-next").style.display = nx ? "" : "none";
+      if (nx) $("c-next").innerHTML = `${nx.no}판 →` + (best[nx.id] == null ? '<span class="new">NEW</span>' : "");
       $("clear").classList.add("on");
       if (improved) {                    // 점수가 바뀐 경우만 서버에 보내고, 순위는 응답이 오면 덧붙임
         const r = await submitScoreNow();
