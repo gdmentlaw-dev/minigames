@@ -2,41 +2,43 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>미니게임</title>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
-<link rel="stylesheet" href="hub/style.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=Lora:wght@400;600&family=Noto+Serif+KR:wght@400;600&display=swap">
+<link rel="stylesheet" href="hub/ranking.css">
 </head>
 <body>
-<header id="topbar">
-  <span class="logo" id="logo">🎮 미니게임</span>
+<header class="top">
+  <a class="brand" href="index.html" id="brand">미니게임</a>
   <button id="name-chip" class="chip" type="button" title="내 정보 · 닉네임 바꾸기 · 다른 닉네임으로 접속">…</button>
 </header>
 <div id="banners"></div>
-<main>
-  <section class="card hero">
-    <div>
-      <p class="muted" id="hello">불러오는 중…</p>
-      <h1>내 기록</h1>
+<div class="layout">
+  <aside class="switcher">
+    <h6 class="side-h">순위표</h6>
+    <div class="tiles" id="tiles"></div>
+  </aside>
+  <main class="main">
+    <div class="head">
+      <div><h1 id="title">랭킹</h1><p class="desc" id="desc"></p></div>
+      <span class="basis" id="basis"></span>
     </div>
-    <div class="stats">
-      <div class="stat"><b id="my-rank">-</b><span>종합 순위</span></div>
-      <div class="stat"><b id="my-total">-</b><span>종합 포인트</span></div>
-      <div class="stat"><b id="my-played">-</b><span>참여 게임</span></div>
+    <div id="board"><p class="empty">불러오는 중…</p></div>
+  </main>
+</div>
+<div class="mybar" id="mybar" hidden></div>
+<div class="sheet-bg" id="sheet" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+    <span class="grab"></span>
+    <div class="sheet-h">
+      <div><h2 id="sheet-title">어떤 게임을 할까요?</h2><p>안 해본 게임은 한 판만 해도 종합 포인트가 올라가요.</p></div>
+      <button class="x" type="button" id="sheet-x" aria-label="닫기"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
     </div>
-  </section>
-
-  <div class="section-title"><h2>게임</h2></div>
-  <div class="grid" id="games"></div>
-
-  <div class="section-title"><h2>랭킹</h2><button class="btn ghost small" id="refresh">↻ 새로고침</button></div>
-  <div class="tabs" id="tabs"></div>
-  <p class="muted desc" id="board-desc"></p>
-  <div id="board"><p class="card empty">불러오는 중…</p></div>
-  <div id="mine" class="mine"></div>
-</main>
-
+    <div class="picks" id="picks"></div>
+  </div>
+</div>
 <script src="shared/minihub-sdk.js"></script>
-<script src="hub/app.js"></script>
+<script src="hub/ranking.js"></script>
 </body>
 </html>
