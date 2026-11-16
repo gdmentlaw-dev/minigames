@@ -7,10 +7,13 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
 <style>
   /* 점수 = 판별 점수의 합 (높을수록 좋음, scoreOrder "desc"). 판 점수는 난이도(별 1~3) x 이동 효율 */
+  /* 디자인: 밝은 회색 바탕 + 흰 카드 + 어두운 격자판 + 유리창·라이트가 있는 차 */
+  :root { --bg: #e8ecef; --card: #fff; --line: #d7dce2; --ink: #2b313b; --sub: #5a6372; --green: #1f7a4d;
+          --gold: #c98a00; --board: #353b45; --frame: #bdc3cc; --amber: #ffb800; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body { width: 100%; height: 100%; overflow: hidden; background: #16132e; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: var(--bg); }
   body { display: flex; align-items: center; justify-content: center;
-         font-family: Pretendard, system-ui, sans-serif; color: #f4f2ff;
+         font-family: Pretendard, system-ui, sans-serif; color: var(--ink);
          user-select: none; -webkit-user-select: none; touch-action: none; }
   #stage { width: 360px; height: 640px; flex: none; position: relative; transform-origin: center center; }
   .screen { position: absolute; inset: 0; display: none; flex-direction: column;
@@ -19,75 +22,86 @@
   #s-start { justify-content: center; gap: 18px; }
   h1 { font-size: 40px; font-weight: 800; }
   h2 { font-size: 24px; font-weight: 800; }
-  /* 시작 화면 로고: 기울인 굵은 글씨 + 달리는 느낌의 그림자 */
-  .logo { font-style: italic; font-weight: 900; font-size: 38px; letter-spacing: -1px; text-transform: uppercase;
-          transform: skewX(-8deg); white-space: nowrap; color: #ffc83d;
-          text-shadow: 3px 3px 0 #e0453a, 6px 6px 0 rgba(124,108,240,.6); }
-  .logo .car-l, .logo .car-r { display: inline-block; font-size: 32px; text-shadow: none; }
+  /* 로고: 초록 도로 표지판 */
+  .logo, .title2 { background: var(--green); color: #fff; font-style: italic; font-weight: 900; text-transform: uppercase;
+                   border: 2px solid rgba(255,255,255,.7); border-radius: 4px; transform: skewX(-6deg);
+                   box-shadow: 0 0 0 3px var(--green), 0 8px 16px rgba(30,50,40,.25); white-space: nowrap; }
+  .logo { font-size: 32px; letter-spacing: -1px; padding: 10px 18px; }
+  .title2 { font-size: 22px; padding: 4px 16px; }
+  .logo .car-l, .logo .car-r { display: inline-block; font-size: 28px; }
   .logo .car-l { transform: scaleX(-1); }   /* 왼쪽 차는 오른쪽을 보게 */
   .logo .car-r { animation: dash 1.2s ease-in-out infinite alternate; }
-  .title2 { font-style: italic; font-weight: 900; font-size: 30px; transform: skewX(-8deg); color: #ffc83d;
-            text-transform: uppercase; text-shadow: 2px 2px 0 #e0453a, 4px 4px 0 rgba(124,108,240,.6); }
   @keyframes dash { from { transform: translateX(-3px); } to { transform: translateX(4px); } }
-  .hello { color: #ffc83d; font-size: 18px; font-weight: 700; min-height: 1.4em; }
-  .desc { color: #b9b3e6; font-size: 15px; line-height: 1.6; }
-  .btn { border: 0; border-radius: 14px; padding: 13px 24px; font: inherit; font-size: 18px;
-         font-weight: 800; cursor: pointer; background: #ffc83d; color: #16132e; min-width: 150px; }
-  .btn.sub { background: #231f45; color: #f4f2ff; }
+  .hello { color: var(--green); font-size: 18px; font-weight: 700; min-height: 1.4em; }
+  .desc { color: var(--sub); font-size: 15px; line-height: 1.6; }
+  .btn { border: 0; border-radius: 6px; padding: 13px 24px; font: inherit; font-size: 18px;
+         font-weight: 800; cursor: pointer; background: var(--green); color: #fff; min-width: 150px; }
+  .btn.sub { background: var(--card); color: var(--ink); border: 1px solid var(--line); }
   .btn.small { font-size: 15px; padding: 9px 14px; min-width: 0; }
   .row { display: flex; gap: 10px; align-items: center; justify-content: center; }
 
   /* 판 고르기 */
   /* 최소 이동 횟수는 초록 배지로 다른 기록과 구분 */
-  .minb { display: inline-block; background: rgba(95,224,143,.18); color: #5fe08f; font-weight: 800;
-          border-radius: 6px; padding: 0 7px; }
-  .legend { font-size: 12px; color: #b9b3e6; margin-top: -6px; }
-  #summary { color: #b9b3e6; font-size: 14px; line-height: 1.5; }
-  #summary b { color: #ffc83d; }
+  .minb { display: inline-block; background: #d3f2e2; color: var(--green); font-weight: 800;
+          border-radius: 3px; padding: 0 7px; }
+  .legend { font-size: 12px; color: var(--sub); margin-top: -6px; }
+  #summary { color: var(--sub); font-size: 14px; line-height: 1.5; }
+  #summary b { color: var(--green); }
   #grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; width: 100%;
           overflow-y: auto; max-height: 440px; padding: 2px; touch-action: pan-y; }
-  .lv { background: #231f45; border: 2px solid transparent; border-radius: 12px; padding: 8px 2px;
+  .lv { background: var(--card); border: 2px solid var(--line); border-radius: 6px; padding: 8px 2px;
         cursor: pointer; font: inherit; color: inherit; display: flex; flex-direction: column; gap: 2px; align-items: center; }
   .lv .n { font-size: 18px; font-weight: 800; }
   .lv svg { width: 66px; height: 66px; display: block; }
-  .lv .m { font-size: 10px; color: #b9b3e6; }
-  .lv .df { font-size: 12px; color: #ffc83d; letter-spacing: 1px; }
+  .lv .m { font-size: 10px; color: var(--sub); }
+  .lv .df { font-size: 12px; color: var(--gold); letter-spacing: 1px; }
   .lv .st { font-size: 12px; min-height: 1.2em; font-weight: 700; }
-  .lv.done { border-color: #7c6cf0; }                 /* 깼지만 최소 이동이 아님 → 다시 도전 가능 */
-  .lv.done .st { color: #ffc83d; }
-  .lv.perfect { border-color: #27ae60; }
-  .lv.perfect .st { color: #5fe08f; }
+  .lv.done { border-color: var(--amber); }                 /* 깼지만 최소 이동이 아님 → 다시 도전 가능 */
+  .lv.done .st { color: var(--gold); }
+  .lv.perfect { border-color: #2fa476; }
+  .lv.perfect .st { color: var(--green); }
 
   /* 플레이 */
   #top { width: 100%; display: flex; justify-content: space-between; align-items: center; }
-  #info { font-size: 15px; color: #b9b3e6; line-height: 1.5; }
-  #info b { color: #ffc83d; font-size: 18px; }
-  #board { width: 324px; height: 324px; background: #231f45; border-radius: 12px; position: relative;
-           flex: none; box-shadow: 0 0 0 5px #3a3470; touch-action: none; }
-  #exit { position: absolute; right: -9px; top: 108px; width: 9px; height: 54px; background: #16132e; }
-  #exit::after { content: "▶"; position: absolute; right: -18px; top: 15px; color: #ffc83d; font-size: 16px; }
+  #info { font-size: 14px; color: var(--sub); line-height: 1.5; background: var(--card); border: 1px solid var(--line);
+          border-radius: 6px; padding: 6px 12px; text-align: right; }
+  #info b { color: var(--ink); font-size: 18px; }
+  #board { width: 324px; height: 324px; background-color: var(--board); border-radius: 4px; position: relative;
+           flex: none; box-shadow: 0 0 0 8px var(--frame), 0 10px 22px rgba(40,50,70,.25); touch-action: none;
+           background-image: linear-gradient(rgba(255,255,255,.07) 1px, transparent 1px),
+                             linear-gradient(90deg, rgba(255,255,255,.07) 1px, transparent 1px);
+           background-size: 54px 54px; }
+  #exit { position: absolute; right: -8px; top: 108px; width: 8px; height: 54px; background: var(--board); }
   .cell { position: absolute; width: 54px; height: 54px; }
-  .car { position: absolute; border-radius: 9px; cursor: grab; transition: left .12s, top .12s; }
-  .car.drag { transition: none; cursor: grabbing; z-index: 5; }
-  /* 일반 차: 차분한 색 + 어두운 창문 자국 */
-  .car { box-shadow: inset 0 -4px 0 rgba(0,0,0,.25); }
-  .car::after { content: ""; position: absolute; inset: 7px; border-radius: 6px; background: rgba(0,0,0,.2); }
-  /* 빨간 차: 밝은 빨강 + 노란 테두리 + 빛 + 자동차 아이콘 */
-  .car.red { background: linear-gradient(#ff6a5c, #d1281c); z-index: 3;
-             box-shadow: 0 0 0 3px #ffc83d, 0 0 16px 4px rgba(255,90,77,.75); }
-  .car.red::after { background: rgba(255,255,255,.22); }
-  #msg { min-height: 1.5em; font-size: 14px; color: #ffc83d; font-weight: 700; }
-  #timer { font-size: 16px; color: #b9b3e6; font-weight: 700; min-width: 72px; text-align: left; font-variant-numeric: tabular-nums; }
+  /* 차: 둥근 몸체 + 유리창 + 앞뒤 라이트 + 아래쪽 그림자 */
+  .car { position: absolute; border-radius: 6px; cursor: grab; transition: left .12s, top .12s;
+         background-image: linear-gradient(rgba(255,255,255,.1), rgba(0,0,0,.05));
+         box-shadow: 0 4px 0 rgba(0,0,0,.3), 0 6px 8px rgba(0,0,0,.2); }
+  .car.drag { transition: none; cursor: grabbing; z-index: 5;
+              box-shadow: 0 0 0 3px var(--amber), 0 4px 0 rgba(0,0,0,.25), 0 9px 14px rgba(0,0,0,.35); }
+  .car i { position: absolute; display: block; }
+  .car .gl { background: rgba(255,255,255,.32); border-radius: 3px; display: flex; align-items: center; justify-content: center; }
+  .car .ls { background: rgba(0,0,0,.45); border-radius: 2px; }
+  .car.h .gl { inset: 13% 21%; }  .car.v .gl { inset: 21% 13%; }
+  .car.h .ls { width: 8px; height: 44%; top: 28%; }  .car.h .ls.a { left: 9px; }  .car.h .ls.b { right: 9px; }
+  .car.v .ls { height: 8px; width: 44%; left: 28%; }  .car.v .ls.a { top: 9px; }  .car.v .ls.b { bottom: 9px; }
+  /* 빨간 차: 더 진한 빨강 + GO */
+  .car.red { z-index: 3; background-color: #e8301c; }
+  .car.red .gl { background: rgba(255,255,255,.22); }
+  .car.red .gl b { color: #fff; font-size: 14px; font-weight: 900; letter-spacing: 1px; }
+  #msg { min-height: 1.5em; font-size: 14px; color: #8a5a00; font-weight: 700; }
+  #timer { font-size: 16px; color: var(--sub); font-weight: 700; min-width: 72px; text-align: left; font-variant-numeric: tabular-nums; }
+  #btn-hint { background: var(--amber); color: var(--ink); }
   #btn-hint.empty { opacity: .45; }
   /* 힌트 표시: 움직일 차(노란 깜빡임) / 도착 자리(점선) */
   .car.hl-move { outline: 3px solid #ffc83d; outline-offset: 2px; z-index: 4; animation: blink .7s ease-in-out infinite alternate; }
-  .ghost { position: absolute; border: 3px dashed #ffc83d; border-radius: 9px; background: rgba(255,200,61,.15);
+  .ghost { position: absolute; border: 3px dashed #ffc83d; border-radius: 6px; background: rgba(255,200,61,.18);
            z-index: 6; pointer-events: none; animation: blink .7s ease-in-out infinite alternate; }
   @keyframes blink { from { opacity: 1; } to { opacity: .35; } }
-  #clear { position: absolute; inset: 0; background: rgba(22,19,46,.92); display: none; flex-direction: column;
+  #clear { position: absolute; inset: 0; background: rgba(232,236,239,.95); display: none; flex-direction: column;
            align-items: center; justify-content: center; gap: 14px; z-index: 10; padding: 24px; }
   #clear.on { display: flex; }
-  #c-big { font-size: 34px; font-weight: 800; color: #ffc83d; }
+  #c-big { font-size: 34px; font-weight: 800; color: var(--green); }
 </style>
 </head>
 <body>
@@ -96,7 +110,7 @@
   <section class="screen on" id="s-start">
     <h1 class="logo"><span class="car-l">🚗</span> rush hour <span class="car-r">🚗</span></h1>
     <p class="hello" id="hello">&nbsp;</p>
-    <p class="desc">차를 밀어서 <b style="color:#ff5a4d">빨간 차</b>를 오른쪽 출구로 빼내세요.<br>이동 횟수가 적을수록 좋은 기록이에요!<br>많이 헤매면 💡힌트가 열려요.<br>조작: 차를 끌기 (마우스/터치)</p>
+    <p class="desc">차를 밀어서 <b style="color:#d1362a">빨간 차</b>를 오른쪽 출구로 빼내세요.<br>이동 횟수가 적을수록 좋은 기록이에요!<br>많이 헤매면 💡힌트가 열려요.<br>조작: 차를 끌기 (마우스/터치)</p>
     <button class="btn" id="btn-start">시작</button>
     <button class="btn sub" id="btn-exit1">메인으로</button>
   </section>
@@ -143,7 +157,7 @@
 (() => {
   const GAME_ID = "rush-hour";
   const N = 6, CELL = 54;
-  const COLORS = ["#5d6b8f", "#4c7c84", "#76688f", "#8a7d5c", "#5f7f66", "#7d6670", "#68758a", "#867b72"];
+  const COLORS = ["#f5730f", "#10b4cc", "#1f6fe8", "#ffb800", "#8a4be8", "#10b06a", "#f03c78", "#7cc70c"];
   const $ = (id) => document.getElementById(id);
 
   let levels = [];
@@ -209,10 +223,10 @@
     let r = "";
     l.cars.forEach((c, i) => {
       const h = c[3] === "h", w = (h ? c[2] : 1) * u - 1, ht = (h ? 1 : c[2]) * u - 1;
-      const fill = i === 0 ? "#ff5a4d" : COLORS[i % COLORS.length];
-      r += `<rect x="${pad + c[0] * u + .5}" y="${pad + c[1] * u + .5}" width="${w}" height="${ht}" rx="2" fill="${fill}"${i === 0 ? ' stroke="#ffc83d" stroke-width=".8"' : ""}/>`;
+      const fill = i === 0 ? "#e8301c" : COLORS[i % COLORS.length];
+      r += `<rect x="${pad + c[0] * u + .5}" y="${pad + c[1] * u + .5}" width="${w}" height="${ht}" rx="1" fill="${fill}"${i === 0 ? '' : ""}/>`;
     });
-    return `<svg viewBox="0 0 ${size} ${size}"><rect width="${size}" height="${size}" rx="3" fill="#16132e"/>${r}</svg>`;
+    return `<svg viewBox="0 0 ${size} ${size}"><rect width="${size}" height="${size}" rx="1" fill="#353b45"/>${r}</svg>`;
   }
   function renderSelect() {
     const done = clearedCount();
@@ -366,8 +380,9 @@
     board.querySelectorAll(".car, .ghost").forEach((e) => e.remove());
     cur.cars.forEach((c, i) => {
       const d = document.createElement("div");
-      d.className = "car" + (i === 0 ? " red" : "");
-      if (i) d.style.background = COLORS[i % COLORS.length];
+      d.className = "car " + (c.h ? "h" : "v") + (i === 0 ? " red" : "");
+      if (i) d.style.backgroundColor = COLORS[i % COLORS.length];
+      d.innerHTML = `<i class="gl">${i === 0 ? "<b>GO</b>" : ""}</i><i class="ls a"></i><i class="ls b"></i>`;
       d.style.width = (c.h ? c.len * CELL : CELL) - 4 + "px";
       d.style.height = (c.h ? CELL : c.len * CELL) - 4 + "px";
       c.el = d; place(c);
@@ -379,7 +394,7 @@
 
   function updateInfo() {
     const b = best[cur.level.id];
-    $("info").innerHTML = `${cur.level.no}판 <span style="color:#ffc83d">${stars(diff(cur.level))}</span> · 이동 <b>${cur.moves}</b><br><span class="minb">최소 ${cur.level.min}번</span>${b != null ? "<br>내 최고 기록: " + b + "번(" + stagePts(cur.level, b) + "/" + diff(cur.level) * 100 + ")" : ""}`;
+    $("info").innerHTML = `${cur.level.no}판 <span style="color:#c98a00">${stars(diff(cur.level))}</span> · 이동 <b>${cur.moves}</b><br><span class="minb">최소 ${cur.level.min}번</span>${b != null ? "<br>내 최고 기록: " + b + "번(" + stagePts(cur.level, b) + "/" + diff(cur.level) * 100 + ")" : ""}`;
     refreshHud();
   }
 
@@ -469,11 +484,11 @@
       $("c-big").textContent = mv === l.min ? "✓ 최소 이동 클리어!" : "클리어!";
       const gain = stagePts(l, best[l.id]) - (prev != null ? stagePts(l, prev) : 0);   // 이 판에서 새로 늘어난 점수
       let t = `${mv}번 이동 <span class="minb">최소 ${l.min}번</span><br>${stars(diff(l))} 최대 ${diff(l) * 100}점<br>` +
-        `<b style="color:#ffc83d">${gain > 0 ? gain + "점 추가" : "점수 갱신 없음"}</b>`;
+        `<b style="color:#c98a00">${gain > 0 ? gain + "점 추가" : "점수 갱신 없음"}</b>`;
       if (prev != null && improved) t += `<br>🎉 새 기록!`;
       t += `<br>내 최고 기록: ${best[l.id]}번(${stagePts(l, best[l.id])}/${diff(l) * 100})`;
       const after = score();
-      t += `<br>총점 ${after !== before ? before + " → " : ""}<b style="color:#ffc83d">${after}</b>`;
+      t += `<br>총점 ${after !== before ? before + " → " : ""}<b style="color:#c98a00">${after}</b>`;
       $("c-text").innerHTML = t;
       $("c-next").style.display = levels.some((x) => x.no > l.no) ? "" : "none";
       $("clear").classList.add("on");
