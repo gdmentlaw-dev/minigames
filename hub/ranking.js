@@ -281,9 +281,9 @@
     player = await MiniHub.changeName();
     if (`${player.id}|${player.name}` !== before) { renderName(); refreshAll(); }
   });
-  // 화면을 보고 있을 때만 30초마다 새로고침, 게임에서 돌아오면 즉시 새로고침
-  setInterval(() => { if (!document.hidden) refreshAll(); }, 30000);
-  document.addEventListener("visibilitychange", () => { if (!document.hidden) refreshAll(); });
+  // 자동 새로고침 없음: 페이지를 열거나 새로고침할 때만 데이터를 받아온다.
+  // (뒤로가기로 돌아와 캐시된 화면이 복원될 때도 새로 받아온다)
+  window.addEventListener("pageshow", (e) => { if (e.persisted) refreshAll(); });
 
   refreshAll();
 })();
