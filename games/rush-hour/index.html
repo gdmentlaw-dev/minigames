@@ -48,7 +48,8 @@
   #summary { color: var(--sub); font-size: 14px; line-height: 1.5; }
   #summary b { color: var(--green); }
   #grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; width: 100%;
-          overflow-y: auto; max-height: 440px; padding: 2px; touch-action: pan-y; }
+          overflow-y: auto; max-height: 440px; padding: 2px; touch-action: pan-y; scrollbar-width: none; }
+  #grid::-webkit-scrollbar { display: none; }   /* PC에서 스크롤바가 보이지 않게 (마우스 휠·터치로는 그대로 스크롤됨) */
   .lv { background: var(--card); border: 2px solid var(--line); border-radius: 6px; padding: 8px 2px;
         cursor: pointer; font: inherit; color: inherit; display: flex; flex-direction: column; gap: 2px; align-items: center; }
   .lv .n { font-size: 18px; font-weight: 800; }
