@@ -469,8 +469,16 @@
   $("btn-list").onclick = renderSelect;
   $("c-list").onclick = renderSelect;
   $("c-retry").onclick = () => startLevel(cur.level.id);
-  // 다음 판: 번호가 더 큰 판 중 아직 안 깬 첫 판, 없으면 바로 다음 번호
-  const nextTarget = () => levels.find((l) => l.no > cur.level.no && best[l.id] == null) || levels.find((l) => l.no > cur.level.no);
+  // 다음 레벨 고르기 (현재 레벨 다음부터 찾는다)
+  //  1) 아직 안 깬 레벨  2) 다 깼다면 만점이 아닌 레벨 (끝까지 가도 없으면 처음부터 다시 훑는다)  3) 그것도 없으면 바로 다음 번호
+  const nextTarget = () => {
+    const no = cur.level.no, id = cur.level.id;
+    const notPerfect = (l) => l.id !== id && best[l.id] != null && best[l.id] > l.min;
+    return levels.find((l) => l.no > no && best[l.id] == null)
+        || levels.find((l) => l.no > no && notPerfect(l))
+        || levels.find((l) => notPerfect(l))
+        || levels.find((l) => l.no > no);
+  };
   $("c-next").onclick = () => {
     const next = nextTarget();
     next ? startLevel(next.id) : renderSelect();
