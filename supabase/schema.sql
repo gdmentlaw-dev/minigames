@@ -63,6 +63,20 @@ create table if not exists public.saves (
   primary key (player_id, game_id)
 );
 
+-- 최고 기록이 갱신될 때마다 한 줄씩 쌓는 기록 (어제 순위 계산용. 순위 등락 표시에 쓴다)
+create table if not exists public.score_log (
+  id           bigint generated always as identity primary key,
+  game_id      text not null references public.games (id) on delete cascade,
+  player_id    uuid not null references public.players (id) on delete cascade,
+  score        bigint not null check (score >= 0),
+  achieved_at  timestamptz not null default now()
+);
+create index if not exists score_log_game_time_idx on public.score_log (game_id, achieved_at);
+-- 이미 있는 최고 기록은 1줄씩 옮겨 담기 (여러 번 실행해도 중복 안 됨)
+insert into public.score_log (game_id, player_id, score, achieved_at)
+select b.game_id, b.player_id, b.score, b.achieved_at from public.bests b
+where not exists (select 1 from public.score_log l where l.game_id = b.game_id and l.player_id = b.player_id);
+
 -- 2) 보안 규칙 (RLS) -----------------------------------------
 --  읽기: 닉네임·게임·기록은 누구나 / PIN·기기 연결은 아무도 못 읽음
 --  쓰기: 전부 아래 함수(login, rename_player, logout, submit_score)로만. 삭제: 관리자만(SQL Editor)
@@ -73,12 +87,16 @@ alter table public.player_devices enable row level security;
 alter table public.games          enable row level security;
 alter table public.bests          enable row level security;
 alter table public.saves          enable row level security;
+alter table public.score_log      enable row level security;
 
 drop policy if exists "players read" on public.players;
 create policy "players read" on public.players for select using (true);
 
 drop policy if exists "games read" on public.games;
 create policy "games read" on public.games for select using (true);
+
+drop policy if exists "score_log read" on public.score_log;
+create policy "score_log read" on public.score_log for select using (true);
 
 drop policy if exists "bests read" on public.bests;
 create policy "bests read" on public.bests for select using (true);
@@ -250,6 +268,8 @@ begin
     values (p_game_id, v_pid, p_score, now())
     on conflict (game_id, player_id)
     do update set score = excluded.score, achieved_at = excluded.achieved_at;
+    insert into public.score_log (game_id, player_id, score, achieved_at)
+    values (p_game_id, v_pid, p_score, now());
   end if;
 
   return json_build_object(
@@ -366,6 +386,58 @@ $$;
 
 grant execute on function public.overall_ranking(text[]) to anon, authenticated;
 
+-- 6) 어제 순위 (순위 등락 표시용) -------------------------------
+--  "어제" = 오늘 0시(한국 시간) 직전까지의 기록으로 매긴 순위. 오늘 순위와 비교해 ▲▼를 보여준다.
+--  어제 기록은 score_log(기록 갱신 이력)로 계산한다. 이력이 쌓이기 시작한 날부터 정확해진다.
+
+create or replace function public.day_start() returns timestamptz
+language sql stable as $$
+  select date_trunc('day', now() at time zone 'Asia/Seoul') at time zone 'Asia/Seoul'
+$$;
+
+create or replace view public.game_ranking_prev with (security_invoker = true) as
+select
+  game_id, player_id, score, achieved_at,
+  rank()   over (partition by game_id order by k desc)        as rank,
+  count(*) over (partition by game_id)                         as players,
+  round(
+    100.0 * (rank() over (partition by game_id order by k asc))
+    / count(*) over (partition by game_id), 1
+  ) as points
+from (
+  select distinct on (l.game_id, l.player_id)
+         l.game_id, l.player_id, l.score, l.achieved_at,
+         case when g.score_order = 'asc' then -l.score else l.score end as k
+  from public.score_log l
+  join public.bests b on b.game_id = l.game_id and b.player_id = l.player_id  -- 지워진 기록 제외
+  join public.games g on g.id = l.game_id
+  where l.achieved_at < public.day_start()
+  order by l.game_id, l.player_id, k desc, l.achieved_at asc
+) t;
+
+grant select on public.game_ranking_prev to anon, authenticated;
+
+create or replace function public.overall_ranking_prev(p_games text[])
+returns table (rank bigint, player_id uuid, total numeric, games_played bigint)
+language sql
+stable
+security invoker
+set search_path = public
+as $$
+  select
+    rank() over (order by sum(r.points) desc, count(*) desc, max(r.achieved_at) asc),
+    r.player_id,
+    sum(r.points),
+    count(*)
+  from public.game_ranking_prev r
+  where r.game_id = any (p_games)
+  group by r.player_id
+  order by 1;
+$$;
+
+grant execute on function public.overall_ranking_prev(text[]) to anon, authenticated;
+grant execute on function public.day_start() to anon, authenticated;
+
 -- ============================================================
 --  관리용 SQL (필요할 때 한 줄씩 골라서 실행)
 -- ============================================================
@@ -375,8 +447,9 @@ grant execute on function public.overall_ranking(text[]) to anon, authenticated;
 --  게임의 점수 방향이나 상한선을 나중에 바꿨을 때 (game.json과 맞추기):
 --    update public.games set score_order = 'asc', score_limit = 600000 where id = '게임ID';
 --
---  특정 게임 기록 전부 초기화:
+--  특정 게임 기록 전부 초기화 (순위 이력도 같이):
 --    delete from public.bests where game_id = '게임ID';
+--    delete from public.score_log where game_id = '게임ID';
 --
 --  이상한 기록 한 개 지우기 (닉네임으로 찾기):
 --    delete from public.bests b using public.players p
@@ -398,5 +471,5 @@ grant execute on function public.overall_ranking(text[]) to anon, authenticated;
 --    delete from public.players where name = '닉네임';
 --
 --  전부 지우고 처음부터 다시 (⚠ 모든 기록 삭제. 그 다음 이 파일 전체를 다시 Run):
---    drop table if exists public.saves, public.bests, public.player_devices, public.player_secrets,
+--    drop table if exists public.saves, public.score_log, public.bests, public.player_devices, public.player_secrets,
 --                         public.players, public.games cascade;
