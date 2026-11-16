@@ -42,9 +42,22 @@
   let current = validTab(location.hash.slice(1)) ? location.hash.slice(1) : "overall";
   let myBests = {}, myEntries = {}, myOverall = null;
 
-  // ── 순위 변동: 이 브라우저에 날짜별 순위를 기억해 두고 지난 날과 비교 ──
-  // (DB에 순위 기록이 없어서 임시 방식. 서버에 하루 1번 스냅샷을 쌓으면 모든 기기에서 같은 값이 나옴)
+  // ── 순위 변동: 서버의 "어제(오늘 0시 직전) 순위"와 지금 순위를 비교 ──
+  // 서버에 어제 순위 기능이 없거나 로컬 모드이면, 이 브라우저에 날짜별 순위를 기억해 두는 임시 방식을 쓴다.
   const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const deltaOf = (prev, r) => {
+    const p = prev[r.player_id];
+    if (p == null) return { cls: "new", text: "NEW", cell: "NEW" };
+    const diff = Number(p) - r.rank;
+    if (diff > 0) return { cls: "up", text: "▲" + diff, cell: "▲" + diff };
+    if (diff < 0) return { cls: "down", text: "▼" + -diff, cell: "▼" + -diff };
+    return { cls: "flat", text: "", cell: "—" };
+  };
+  function serverDelta(prevRows) {
+    if (!prevRows.length) return { basis: "변동은 내일부터 보여요", of: () => ({ cls: "flat", text: "", cell: "" }) };
+    const prev = Object.fromEntries(prevRows.map((x) => [x.player_id, x.rank]));
+    return { basis: "변동 · 어제 대비", of: (r) => deltaOf(prev, r) };
+  }
   function snapshot(board, list) {
     const key = "minihub_rank_snap_" + board, today = ymd(new Date());
     let s = null;
@@ -59,12 +72,7 @@
       basis: !s.prev ? "변동은 내일부터 보여요" : s.prevDate === ymd(y) ? "변동 · 어제 대비" : `변동 · ${+m}/${+d} 대비`,
       of(r) {
         if (!s.prev) return { cls: "flat", text: "", cell: "" };
-        const p = s.prev[r.player_id];
-        if (p == null) return { cls: "new", text: "NEW", cell: "NEW" };
-        const diff = p - r.rank;
-        if (diff > 0) return { cls: "up", text: "▲" + diff, cell: "▲" + diff };
-        if (diff < 0) return { cls: "down", text: "▼" + -diff, cell: "▼" + -diff };
-        return { cls: "flat", text: "", cell: "—" };
+        return deltaOf(s.prev, r);
       },
     };
   }
@@ -209,7 +217,8 @@
       const [rows, me] = g
         ? await Promise.all([MiniHub.getGameRanking(g.id, 100), MiniHub.getMyGameEntry(g.id)])
         : await Promise.all([MiniHub.getOverall(ids, 100), MiniHub.getMyOverall(ids)]);
-      const dl = snapshot(current, me && !rows.some(isMe) ? rows.concat([me]) : rows);
+      const prevRows = await (g ? MiniHub.getGameRankingPrev(g.id) : MiniHub.getOverallPrev(ids)).catch(() => null);
+      const dl = Array.isArray(prevRows) ? serverDelta(prevRows) : snapshot(current, me && !rows.some(isMe) ? rows.concat([me]) : rows);
       $("basis").textContent = rows.length ? dl.basis : "";
       $("board").innerHTML = boardHtml(rows, g, dl);
       renderBar(me, rows, g, dl);
