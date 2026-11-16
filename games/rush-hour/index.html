@@ -149,7 +149,7 @@
     <div id="clear">
       <div id="c-big">클리어!</div>
       <p class="desc" id="c-text"></p>
-      <button class="btn" id="c-next">다음 판 →</button>
+      <button class="btn" id="c-next">다음 레벨 →</button>
       <button class="btn sub" id="c-retry">⟲ 다시 도전</button>
       <button class="btn sub" id="c-list">☰ stages</button>
     </div>
@@ -235,7 +235,7 @@
   function renderSelect() {
     const done = clearedCount();
     $("summary").innerHTML = allCleared()
-      ? `전부 클리어! 내 점수 <b>${score()}</b> / ${maxScore()}<span class="rk">${rankText()}</span><br>✓ 최소 이동으로 깬 판 ${levels.filter((l) => best[l.id] === l.min).length}/${levels.length}`
+      ? `전부 클리어! 내 점수 <b>${score()}</b> / ${maxScore()}<span class="rk">${rankText()}</span><br>✓ 최소 이동으로 깬 레벨 ${levels.filter((l) => best[l.id] === l.min).length}/${levels.length}`
       : `클리어 <b>${done}/${levels.length}</b> · 내 점수 <b>${score()}</b> / ${maxScore()}<span class="rk">${rankText()}</span>`;
     const g = $("grid"); g.innerHTML = "";
     for (const l of levels) {
@@ -365,8 +365,8 @@
     else if (earned < HINT_MAX) {                     // 다음 힌트까지 남은 조건 (이동 또는 시간 중 먼저 채워지는 쪽)
       const mv = cur.level.min + (movesEarned() + 1) * hintStep(cur.level) - cur.peak;
       t = `💡 다음 힌트까지 이동 ${mv}번 또는 ${fmtTime((timeEarned() + 1) * HINT_TIME - cur.elapsed)}`;
-    } else if (avail <= 0 && noHintMsg) t = "💡 이 판의 힌트를 모두 썼어요";
-    else if (earned >= HINT_MAX) t = "💡 이 판의 힌트를 모두 얻었어요";
+    } else if (avail <= 0 && noHintMsg) t = "💡 이 레벨의 힌트를 모두 썼어요";
+    else if (earned >= HINT_MAX) t = "💡 이 레벨의 힌트를 모두 얻었어요";
     $("msg").textContent = t || " ";
   }
 
@@ -398,7 +398,7 @@
 
   function updateInfo() {
     const b = best[cur.level.id];
-    $("info").innerHTML = `${cur.level.no}판 <span style="color:#c98a00">${stars(diff(cur.level))}</span> · 이동 <b>${cur.moves}</b><br><span class="minb">최소 ${cur.level.min}번</span>${b != null ? "<br>내 최고 기록: " + b + "번(" + stagePts(cur.level, b) + "/" + diff(cur.level) * 100 + ")" : ""}`;
+    $("info").innerHTML = `level ${cur.level.no} <span style="color:#c98a00">${stars(diff(cur.level))}</span> · 이동 <b>${cur.moves}</b><br><span class="minb">최소 ${cur.level.min}번</span>${b != null ? "<br>내 최고 기록: " + b + "번(" + stagePts(cur.level, b) + "/" + diff(cur.level) * 100 + ")" : ""}`;
     refreshHud();
   }
 
@@ -498,7 +498,7 @@
       $("c-text").innerHTML = t;
       const nx = nextTarget();
       $("c-next").style.display = nx ? "" : "none";
-      if (nx) $("c-next").innerHTML = `${nx.no}판 →` + (best[nx.id] == null ? '<span class="new">NEW</span>' : "");
+      if (nx) $("c-next").innerHTML = `level ${nx.no} →` + (best[nx.id] == null ? '<span class="new">NEW</span>' : "");
       $("clear").classList.add("on");
       if (improved) {                    // 점수가 바뀐 경우만 서버에 보내고, 순위는 응답이 오면 덧붙임
         const r = await submitScoreNow();
@@ -517,7 +517,7 @@
     try { levels = (await (await fetch("./levels.json")).json()).levels;
       levels.forEach((l, i) => { if (l.no == null) l.no = i + 1; });
       levels.sort((a, b) => a.no - b.no); }
-    catch { $("hello").textContent = "판 데이터를 불러오지 못했어요"; return; }
+    catch { $("hello").textContent = "레벨 데이터를 불러오지 못했어요"; return; }
     const saved = await MiniHub.load();
     best = (saved && saved.best) || {};
     if (saved && saved.best && saved.v !== 2) {          // 예전 기록(출구로 나가는 1수를 더해서 셌음)을 새 방식으로 변환
