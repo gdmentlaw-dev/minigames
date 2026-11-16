@@ -217,7 +217,10 @@
       const [rows, me] = g
         ? await Promise.all([MiniHub.getGameRanking(g.id, 100), MiniHub.getMyGameEntry(g.id)])
         : await Promise.all([MiniHub.getOverall(ids, 100), MiniHub.getMyOverall(ids)]);
-      const prevRows = await (g ? MiniHub.getGameRankingPrev(g.id) : MiniHub.getOverallPrev(ids)).catch(() => null);
+      // 어제 순위 (오래된 SDK가 캐시에 남아 있으면 함수가 없을 수 있어 안전하게 부른다)
+      const prevRows = await Promise.resolve()
+        .then(() => (g ? MiniHub.getGameRankingPrev(g.id) : MiniHub.getOverallPrev(ids)))
+        .catch(() => null);
       const dl = Array.isArray(prevRows) ? serverDelta(prevRows) : snapshot(current, me && !rows.some(isMe) ? rows.concat([me]) : rows);
       $("basis").textContent = rows.length ? dl.basis : "";
       $("board").innerHTML = boardHtml(rows, g, dl);
