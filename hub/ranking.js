@@ -51,10 +51,10 @@
     const diff = Number(p) - r.rank;
     if (diff > 0) return { cls: "up", text: "▲" + diff, cell: "▲" + diff };
     if (diff < 0) return { cls: "down", text: "▼" + -diff, cell: "▼" + -diff };
-    return { cls: "flat", text: "", cell: "—" };
+    return { cls: "flat", text: "—", cell: "—" };
   };
   function serverDelta(prevRows) {
-    if (!prevRows.length) return { basis: "아직 변동이 없어요", of: () => ({ cls: "flat", text: "", cell: "" }) };
+    if (!prevRows.length) return { basis: "아직 변동이 없어요", of: () => ({ cls: "flat", text: "—", cell: "—" }) };
     const prev = Object.fromEntries(prevRows.map((x) => [x.player_id, x.rank]));
     return { basis: "변동 · 최근 순위 변동 대비", of: (r) => deltaOf(prev, r) };
   }
