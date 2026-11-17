@@ -58,19 +58,19 @@ button { font: inherit; color: inherit; }
 .empty { padding: 48px 16px; text-align: center; color: var(--n700); }
 
 /* 1위 카드 */
-.champ { margin-top: 18px; border: 1px solid var(--accent); border-radius: 4px; padding: 18px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
-.champ-top { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: end; gap: 14px; }
-.numeral { font-family: var(--head); font-size: 88px; line-height: .8; color: transparent; -webkit-text-stroke: 1px var(--accent); font-feature-settings: "tnum"; }
+.champ { margin-top: 14px; border: 1px solid var(--accent); border-radius: 4px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.champ-top { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: end; gap: 12px; }
+.numeral { font-family: var(--head); font-size: 60px; line-height: .8; color: transparent; -webkit-text-stroke: 1px var(--accent); font-feature-settings: "tnum"; }
 .kicker { display: block; font-size: 10px; letter-spacing: .14em; color: var(--a700); }
-.champ-name { display: block; font-family: var(--head); font-size: 26px; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.champ-val { display: flex; align-items: baseline; justify-content: space-between; border-top: 1px solid var(--divider); padding-top: 9px; }
+.champ-name { display: block; font-family: var(--head); font-size: 22px; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.champ-val { display: flex; align-items: baseline; justify-content: space-between; border-top: 1px solid var(--divider); padding-top: 7px; }
 .champ-val .lbl { font-size: 12px; color: var(--n700); }
-.big { font-family: var(--head); font-size: 32px; line-height: 1; color: var(--a700); font-feature-settings: "tnum"; white-space: nowrap; }
+.big { font-family: var(--head); font-size: 26px; line-height: 1; color: var(--a700); font-feature-settings: "tnum"; white-space: nowrap; }
 .big small, .val small { font-family: var(--body); font-size: 11px; color: var(--n700); margin-left: 3px; }
 .champ-sub { font-size: 12px; color: var(--n700); }
 .cbars { display: grid; gap: 6px; }
 .cbars .col { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-.cbars .b { height: 36px; display: flex; align-items: flex-end; }
+.cbars .b { height: 24px; display: flex; align-items: flex-end; }
 .cbars .b i { display: block; width: 100%; background: var(--a200); border-top: 1px solid var(--accent); }
 .cbars .b i.z { background: var(--n300); border-color: var(--n300); }
 .cbars .col span { font-size: 9px; color: var(--n700); text-align: center; white-space: nowrap; overflow: hidden; }
@@ -160,8 +160,8 @@ button { font: inherit; color: inherit; }
   .top3 { display: grid; grid-template-columns: 1.5fr 2fr; gap: 18px; margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--divider); }
   .champ { margin-top: 0; }
   .champ-top { grid-template-columns: auto minmax(0, 1fr) auto; }
-  .numeral { font-size: 110px; line-height: .78; }
-  .champ-name { font-size: 30px; white-space: normal; overflow-wrap: anywhere; }
+  .numeral { font-size: 76px; line-height: .78; }
+  .champ-name { font-size: 26px; white-space: normal; overflow-wrap: anywhere; }
   .runners { grid-template-columns: 1fr 1fr; border-bottom: 0; padding: 0; }
   .runners .sep { display: none; }
   .run { border: 1px solid var(--divider); border-radius: 4px; padding: 18px; gap: 9px; }
