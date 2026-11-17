@@ -151,4 +151,5 @@ SDK가 하는 일:
 
 1. 팀원: `games/<내ID>/` 작업 → 커밋 → 동기화(푸시)
 2. GitHub Actions가 `games/*/game.json` 이 있는 폴더를 찾아 `games/index.json`을 자동 갱신·커밋 (예제 sample-는 맨 뒤)
-3. GitHub Pages가 1~2분 안에 자동 반영. 게임 주소: `https://<계정>.github.io/<저장소>/games/<ID>/`
+3. Cloudflare Pages가 1~2분 안에 자동 반영. 사이트 주소: `https://minigame63.pages.dev/`, 게임 주소: `https://minigame63.pages.dev/games/<ID>/`
+   (예전 GitHub Pages 주소로 들어오면 SDK가 "새 주소로 이사했어요" 안내를 띄운다. `shared/minihub-sdk.js`의 `NEW_SITE`)

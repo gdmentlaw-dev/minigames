@@ -29,6 +29,25 @@
   const SCRIPT_SRC = (document.currentScript && document.currentScript.src) || location.href;
   const ROOT = new URL("../", SCRIPT_SRC).href;
 
+  // ───────────── 이사 안내: 옛 주소(github.io)로 들어오면 새 주소로 안내 ─────────────
+  const NEW_SITE = "https://minigame63.pages.dev";
+  if (/\.github\.io$/i.test(location.hostname)) {
+    const rest = location.pathname.slice(new URL(ROOT).pathname.length);
+    const target = NEW_SITE + "/" + rest + location.search + location.hash;
+    const show = () => {
+      const d = document.createElement("div");
+      d.style.cssText = "position:fixed;inset:0;z-index:2147483647;background:#16132e;color:#f4f2ff;display:flex;align-items:center;justify-content:center;padding:24px;text-align:center;font:16px/1.6 Pretendard,system-ui,sans-serif";
+      d.innerHTML =
+        '<div style="max-width:360px"><div style="font-size:40px">📦</div>' +
+        '<h2 style="margin:8px 0">미니게임이 새 주소로 이사했어요!</h2>' +
+        '<p style="margin:0 0 20px;opacity:.85">앞으로는 새 주소에서 즐겨 주세요.<br>닉네임과 PIN을 다시 입력하면<br>기존 기록은 그대로 이어져요.</p>' +
+        '<a href="' + esc(target) + '" style="display:inline-block;background:#ffc83d;color:#16132e;font-weight:700;padding:12px 24px;border-radius:12px;text-decoration:none">새 주소로 이동</a>' +
+        '<p style="margin:16px 0 0;font-size:13px;opacity:.6">' + esc(NEW_SITE.replace("https://", "")) + "</p></div>";
+      document.body.appendChild(d);
+    };
+    if (document.body) show(); else document.addEventListener("DOMContentLoaded", show);
+  }
+
   const round1 = (x) => Math.round(x * 10) / 10;
   const esc = (s) =>
     String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
