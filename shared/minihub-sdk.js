@@ -29,6 +29,10 @@
   const SCRIPT_SRC = (document.currentScript && document.currentScript.src) || location.href;
   const ROOT = new URL("../", SCRIPT_SRC).href;
 
+  const round1 = (x) => Math.round(x * 10) / 10;
+  const esc = (s) =>
+    String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
   // ───────────── 이사 안내: 옛 주소(github.io)로 들어오면 새 주소로 안내 ─────────────
   const NEW_SITE = "https://minigame63.pages.dev";
   if (/\.github\.io$/i.test(location.hostname)) {
@@ -48,9 +52,6 @@
     if (document.body) show(); else document.addEventListener("DOMContentLoaded", show);
   }
 
-  const round1 = (x) => Math.round(x * 10) / 10;
-  const esc = (s) =>
-    String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const fmtScore = (score, unit) =>
     score === null || score === undefined ? "-" : Number(score).toLocaleString("ko-KR") + (unit || "");
 
