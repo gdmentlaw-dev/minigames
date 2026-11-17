@@ -422,7 +422,7 @@ as $$
 $$;
 
 -- 게임 하나의 직전 순위: "순위가 실제로 바뀐 가장 최근 시점의 바로 전 순위"
---  (최근 기록 갱신이 순위를 안 바꿨다면, 순위가 바뀐 갱신까지 거슬러 올라가서 비교한다. 최대 30번)
+--  (최근 기록 갱신이 순위를 안 바꿨다면, 순위가 바뀐 갱신까지 거슬러 올라가서 비교한다. 최대 10번)
 --  현재 순위표의 모든 사람을 돌려준다. rank = 그때의 순위(그때 없던 사람은 null)
 --  is_new = 오늘(한국 시간 0시 이후) 처음 기록을 낸 사람 → NEW 표시는 하루만 나온다
 --  순위가 바뀐 적이 없거나, 마지막으로 바뀐 게 오늘(한국 시간 0시) 이전이면 빈 결과 → 화면에 모두 — 로 표시
@@ -442,7 +442,7 @@ declare
 begin
   for c in
     select distinct l.achieved_at from public.score_log l
-    where l.game_id = p_game order by 1 desc limit 30
+    where l.game_id = p_game order by 1 desc limit 10
   loop
     select exists (
       select 1
@@ -502,7 +502,7 @@ declare
 begin
   for c in
     select distinct l.achieved_at from public.score_log l
-    where l.game_id = any (p_games) order by 1 desc limit 30
+    where l.game_id = any (p_games) order by 1 desc limit 10
   loop
     select exists (
       select 1
