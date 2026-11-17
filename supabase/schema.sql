@@ -388,7 +388,7 @@ grant execute on function public.overall_ranking(text[]) to anon, authenticated;
 
 -- 6) 직전 순위 (순위 등락 표시용) -------------------------------
 --  "직전" = 순위가 실제로 바뀐 가장 최근 시점의 바로 전 순위. 지금 순위와 비교해 ▲▼를 보여준다.
---  (누가 기록을 갱신해 순위가 바뀌면 그 사람은 ▲, 밀려난 사람은 ▼. 다음에 순위가 바뀔 때까지 유지)
+--  (누가 기록을 갱신해 순위가 바뀌면 그 사람은 ▲, 밀려난 사람은 ▼. 그날 하루만 보이고 다음 날부터는 —)
 --  score_log(기록 갱신 이력)로 계산하므로 따로 저장하는 순위표가 없어 용량이 늘지 않는다.
 
 drop view if exists public.game_ranking_prev;
@@ -425,7 +425,7 @@ $$;
 --  (최근 기록 갱신이 순위를 안 바꿨다면, 순위가 바뀐 갱신까지 거슬러 올라가서 비교한다. 최대 30번)
 --  현재 순위표의 모든 사람을 돌려준다. rank = 그때의 순위(그때 없던 사람은 null)
 --  is_new = 오늘(한국 시간 0시 이후) 처음 기록을 낸 사람 → NEW 표시는 하루만 나온다
---  순위가 바뀐 적이 없으면 빈 결과
+--  순위가 바뀐 적이 없거나, 마지막으로 바뀐 게 오늘(한국 시간 0시) 이전이면 빈 결과 → 화면에 모두 — 로 표시
 drop function if exists public.game_ranking_prev(text);
 create or replace function public.game_ranking_prev(p_game text)
 returns table (player_id uuid, rank bigint, is_new boolean)
@@ -452,6 +452,7 @@ begin
       where cur.rank is distinct from pv.rank
     ) into diff;
     if diff then
+      if c < v_day then return; end if;  -- 순위가 바뀐 게 오늘 이전이면 표시 안 함 (모두 —)
       return query
         select gr.player_id, pv.rank,
                coalesce((select min(l.achieved_at) from public.score_log l
@@ -510,6 +511,7 @@ begin
       where cur.rank is distinct from pv.rank
     ) into diff;
     if diff then
+      if c < v_day then return; end if;  -- 순위가 바뀐 게 오늘 이전이면 표시 안 함 (모두 —)
       return query
         select pv.rank, cur.player_id, pv.total, pv.games_played,
                coalesce((select min(l.achieved_at) from public.score_log l

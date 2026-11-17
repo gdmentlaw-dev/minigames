@@ -60,7 +60,7 @@
     return { cls: "flat", text: "—", cell: "—" };
   };
   function serverDelta(prevRows) {
-    if (!prevRows.length) return { basis: "아직 변동이 없어요", of: () => ({ cls: "flat", text: "—", cell: "—" }) };
+    if (!prevRows.length) return { basis: "오늘은 순위 변동이 없어요", of: () => ({ cls: "flat", text: "—", cell: "—" }) };
     const prev = Object.fromEntries(prevRows.map((x) => [x.player_id, x]));
     return { basis: "변동 · 최근 순위 변동 대비", of: (r) => deltaOf(prev, r) };
   }
