@@ -143,7 +143,7 @@
       return `<p class="empty">아직 기록이 없어요.${g ? ` <a href="${esc(g.url)}">첫 도전하기 →</a>` : ""}</p>`;
     const name = (r) => esc(r.name) + (isMe(r) ? " (나)" : "");
     const dSpan = (r) => { const d = dl.of(r); return d.text ? `<span class="d ${d.cls}">${d.text}</span>` : ""; };
-    const [c, r2, r3] = rows;
+    const c = rows[0];
     const cv = view(c, g);
     const champ = `<section class="champ">
       <div class="champ-top">
@@ -158,12 +158,7 @@
               return `<span class="col"><span class="b"><i class="${p ? "" : "z"}" style="height:${p ? Math.max(p, 6) : 6}%"></i></span><span>${esc(short(x.title))}</span></span>`;
             }).join("")}</div>`}
     </section>`;
-    const run = (r, n) => {
-      if (!r) return `<div class="run r${n}"></div>`;
-      const v = view(r, g);
-      return `<div class="run r${n}"><span class="rn">${r.rank}</span><span class="nm">${name(r)}</span><span class="sv">${v.value}${esc(v.unit)}${dSpan(r)}</span></div>`;
-    };
-    const rest = rows.slice(3).map((r) => {
+    const rest = rows.slice(1).map((r) => {
       const v = view(r, g), d = dl.of(r);
       return `<div class="row${isMe(r) ? " me" : ""}">
         <span class="rk">${r.rank}</span>
@@ -173,7 +168,7 @@
         <span class="dc d ${d.cls}">${d.cell}</span>
       </div>`;
     }).join("");
-    return `<div class="top3">${champ}<div class="runners">${run(r2, 2)}<span class="sep"></span>${run(r3, 3)}</div></div>
+    return `<div class="top3">${champ}</div>
       ${rest ? `<div class="list"><div class="lh"><span>순위</span><span>닉네임</span><span>${g ? "포인트" : "게임별 포인트"}</span><span class="r">${g ? "기록" : "포인트"}</span><span class="r">변동</span></div>${rest}</div>` : ""}`;
   }
 
