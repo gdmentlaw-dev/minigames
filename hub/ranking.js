@@ -160,16 +160,25 @@
     </section>`;
     const rest = rows.slice(1).map((r) => {
       const v = view(r, g), d = dl.of(r);
+      if (!g) // 종합: 이름 · 등락 · 게임별 막대를 한 줄에
+        return `<div class="row ov${isMe(r) ? " me" : ""}">
+          <span class="rk">${r.rank}</span>
+          <span class="nm"><span class="n">${name(r)}</span>${dSpan(r)}<span class="bars">${bars(r)}</span></span>
+          <span class="val">${v.value}<small>${esc(v.unit)}</small></span>
+        </div>`;
       return `<div class="row${isMe(r) ? " me" : ""}">
         <span class="rk">${r.rank}</span>
         <span class="nm">${name(r)}${dSpan(r)}</span>
-        <span class="dt">${g ? v.sub : `<span class="bars">${bars(r)}</span>`}</span>
+        <span class="dt">${v.sub}</span>
         <span class="val">${v.value}<small>${esc(v.unit)}</small></span>
         <span class="dc d ${d.cls}">${d.cell}</span>
       </div>`;
     }).join("");
+    const head = g
+      ? `<span>순위</span><span>닉네임</span><span>포인트</span><span class="r">기록</span><span class="r">변동</span>`
+      : `<span>순위</span><span>닉네임 · 변동 · 게임별 포인트</span><span class="r">포인트</span>`;
     return `<div class="top3">${champ}</div>
-      ${rest ? `<div class="list"><div class="lh"><span>순위</span><span>닉네임</span><span>${g ? "포인트" : "게임별 포인트"}</span><span class="r">${g ? "기록" : "포인트"}</span><span class="r">변동</span></div>${rest}</div>` : ""}`;
+      ${rest ? `<div class="list"><div class="lh${g ? "" : " ov"}">${head}</div>${rest}</div>` : ""}`;
   }
 
   function gapText(me, rows, g) {

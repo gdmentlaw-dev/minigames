@@ -92,6 +92,12 @@ button { font: inherit; color: inherit; }
 .dt { grid-area: dt; font-size: 11px; color: var(--n700); min-width: 0; }
 .val { grid-area: val; font-size: 14px; font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
 .dc { display: none; }
+/* 종합 순위 줄: 순위 | 이름 · 등락 · 게임별 막대 | 포인트 */
+.row.ov { grid-template-areas: "rk nm val"; min-height: 48px; }
+.ov .nm { display: flex; align-items: center; gap: 8px; overflow: visible; }
+.ov .nm .n { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.ov .nm .d { margin-left: 0; flex: none; }
+.ov .nm .bars { flex: none; margin-left: 4px; }
 .bars { display: flex; gap: 2px; height: 10px; align-items: flex-end; }
 .bars i { width: 7px; background: var(--a300); }
 .bars i.z { background: var(--n300); }
@@ -157,9 +163,12 @@ button { font: inherit; color: inherit; }
   .lh { display: grid; padding: 9px; font-size: 11px; letter-spacing: .08em; color: var(--n700); border-bottom: 1px solid var(--divider); }
   .lh .r { text-align: right; }
   .row { min-height: 50px; row-gap: 0; }
+  .lh.ov, .row.ov { grid-template-columns: 60px minmax(0, 1fr) 130px; grid-template-areas: "rk nm val"; }
+  .ov .nm { gap: 12px; }
+  .ov .nm .bars { margin-left: 14px; }
   .row:not(.me):hover { background: color-mix(in srgb, var(--text) 4%, transparent); }
   .rk { font-size: 19px; }
-  .nm .d { display: none; }
+  .row:not(.ov) .nm .d { display: none; }
   .dt { font-size: 13px; }
   .dc { display: block; grid-area: dc; text-align: right; font-size: 12px; margin: 0; }
   .bars { height: 18px; gap: 4px; }
