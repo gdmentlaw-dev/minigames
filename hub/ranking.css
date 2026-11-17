@@ -76,14 +76,15 @@ button { font: inherit; color: inherit; }
 .cbars .col span { font-size: 9px; color: var(--n700); text-align: center; white-space: nowrap; overflow: hidden; }
 
 /* 2·3위 */
-.runners { display: grid; grid-template-columns: 1fr 1px 1fr; gap: 18px; border-bottom: 1px solid var(--divider); padding: 18px 0 14px; }
+.runners { display: grid; grid-template-columns: 1fr 1px 1fr; gap: 14px; border-bottom: 1px solid var(--divider); padding: 12px 0 10px; }
 .runners .sep { background: var(--divider); }
-.run { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.run { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: baseline; column-gap: 7px; min-width: 0; }
 .run .rn { font-family: var(--head); font-size: 24px; line-height: 1; font-feature-settings: "tnum"; }
 .run.r2 .rn { color: var(--n600); }
 .run.r3 .rn { color: var(--a700); }
-.run .nm { font-family: var(--head); font-size: 19px; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.run .sv { font-size: 12px; color: var(--n700); font-variant-numeric: tabular-nums; }
+.run .nm { grid-area: auto; font-family: var(--head); font-size: 18px; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.run .sv { font-size: 12px; color: var(--n700); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.run .sv .d { margin-left: 4px; }
 
 /* 순위 변동 */
 .d { font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; margin-left: 6px; }
@@ -162,12 +163,12 @@ button { font: inherit; color: inherit; }
   .champ-top { grid-template-columns: auto minmax(0, 1fr) auto; }
   .numeral { font-size: 76px; line-height: .78; }
   .champ-name { font-size: 26px; white-space: normal; overflow-wrap: anywhere; }
-  .runners { grid-template-columns: 1fr 1fr; border-bottom: 0; padding: 0; }
+  .runners { grid-template-columns: 1fr 1fr; border-bottom: 0; padding: 0; align-self: start; }
   .runners .sep { display: none; }
-  .run { border: 1px solid var(--divider); border-radius: 4px; padding: 18px; gap: 9px; }
-  .run .rn { font-size: 40px; }
-  .run .nm { font-size: 22px; }
-  .run .sv { margin-top: auto; font-size: 16px; color: var(--text); }
+  .run { border: 1px solid var(--divider); border-radius: 4px; padding: 12px 14px; column-gap: 10px; align-items: center; }
+  .run .rn { font-size: 32px; }
+  .run .nm { font-size: 20px; }
+  .run .sv { font-size: 15px; color: var(--text); }
   .list { margin-top: 28px; padding-top: 0; }
   .lh, .row { grid-template-columns: 60px minmax(0, 1fr) 280px 130px 70px; grid-template-areas: "rk nm dt val dc"; column-gap: 9px; }
   .lh { display: grid; padding: 9px; font-size: 11px; letter-spacing: .08em; color: var(--n700); border-bottom: 1px solid var(--divider); }
