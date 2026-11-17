@@ -423,9 +423,12 @@ $$;
 
 -- 게임 하나의 직전 순위: "순위가 실제로 바뀐 가장 최근 시점의 바로 전 순위"
 --  (최근 기록 갱신이 순위를 안 바꿨다면, 순위가 바뀐 갱신까지 거슬러 올라가서 비교한다. 최대 30번)
+--  현재 순위표의 모든 사람을 돌려준다. rank = 그때의 순위(그때 없던 사람은 null)
+--  is_new = 오늘(한국 시간 0시 이후) 처음 기록을 낸 사람 → NEW 표시는 하루만 나온다
 --  순위가 바뀐 적이 없으면 빈 결과
+drop function if exists public.game_ranking_prev(text);
 create or replace function public.game_ranking_prev(p_game text)
-returns table (player_id uuid, rank bigint)
+returns table (player_id uuid, rank bigint, is_new boolean)
 language plpgsql
 stable
 security invoker
@@ -433,8 +436,9 @@ set search_path = public
 as $$
 #variable_conflict use_column
 declare
-  c    timestamptz;
-  diff boolean;
+  c     timestamptz;
+  diff  boolean;
+  v_day timestamptz := date_trunc('day', now() at time zone 'Asia/Seoul') at time zone 'Asia/Seoul';
 begin
   for c in
     select distinct l.achieved_at from public.score_log l
@@ -448,7 +452,13 @@ begin
       where cur.rank is distinct from pv.rank
     ) into diff;
     if diff then
-      return query select a.player_id, a.rank from public.ranking_asof(array[p_game], c) a;
+      return query
+        select gr.player_id, pv.rank,
+               coalesce((select min(l.achieved_at) from public.score_log l
+                         where l.game_id = p_game and l.player_id = gr.player_id) >= v_day, false)
+        from public.game_ranking gr
+        left join public.ranking_asof(array[p_game], c) pv on pv.player_id = gr.player_id
+        where gr.game_id = p_game;
       return;
     end if;
   end loop;
@@ -474,8 +484,10 @@ as $$
 $$;
 
 -- 종합 직전 순위: 게임별과 같은 방식 (종합 순위가 실제로 바뀐 가장 최근 시점의 바로 전)
+--  is_new = 오늘 처음 기록을 낸 사람 (p_games 중 어느 게임이든 처음)
+drop function if exists public.overall_ranking_prev(text[]);
 create or replace function public.overall_ranking_prev(p_games text[])
-returns table (rank bigint, player_id uuid, total numeric, games_played bigint)
+returns table (rank bigint, player_id uuid, total numeric, games_played bigint, is_new boolean)
 language plpgsql
 stable
 security invoker
@@ -483,8 +495,9 @@ set search_path = public
 as $$
 #variable_conflict use_column
 declare
-  c    timestamptz;
-  diff boolean;
+  c     timestamptz;
+  diff  boolean;
+  v_day timestamptz := date_trunc('day', now() at time zone 'Asia/Seoul') at time zone 'Asia/Seoul';
 begin
   for c in
     select distinct l.achieved_at from public.score_log l
@@ -497,7 +510,12 @@ begin
       where cur.rank is distinct from pv.rank
     ) into diff;
     if diff then
-      return query select o.rank, o.player_id, o.total, o.games_played from public.overall_ranking_asof(p_games, c) o;
+      return query
+        select pv.rank, cur.player_id, pv.total, pv.games_played,
+               coalesce((select min(l.achieved_at) from public.score_log l
+                         where l.game_id = any (p_games) and l.player_id = cur.player_id) >= v_day, false)
+        from public.overall_ranking(p_games) cur
+        left join public.overall_ranking_asof(p_games, c) pv on pv.player_id = cur.player_id;
       return;
     end if;
   end loop;
@@ -508,6 +526,8 @@ grant execute on function public.overall_ranking_asof(text[], timestamptz) to an
 grant execute on function public.ranking_asof(text[], timestamptz) to anon, authenticated;
 grant execute on function public.game_ranking_prev(text)           to anon, authenticated;
 grant execute on function public.overall_ranking_prev(text[])      to anon, authenticated;
+
+notify pgrst, 'reload schema';  -- 함수 모양이 바뀌었으니 API가 바로 알아채게
 
 -- ============================================================
 --  관리용 SQL (필요할 때 한 줄씩 골라서 실행)

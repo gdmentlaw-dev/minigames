@@ -45,9 +45,15 @@
   // ── 순위 변동: 서버의 "직전 순위(순위가 마지막으로 바뀌기 바로 전)"와 지금 순위를 비교 ──
   // 서버에 직전 순위 기능이 없거나 로컬 모드이면, 이 브라우저에 날짜별 순위를 기억해 두는 임시 방식을 쓴다.
   const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  // prev[id] = 그때 순위(숫자) 또는 { rank, is_new } (서버). 그때 없던 사람은 오늘 처음 온 경우에만 NEW (하루만 표시)
   const deltaOf = (prev, r) => {
-    const p = prev[r.player_id];
-    if (p == null) return { cls: "new", text: "NEW", cell: "NEW" };
+    const e = prev[r.player_id];
+    const obj = e !== null && typeof e === "object";
+    const p = obj ? e.rank : e;
+    if (p == null) {
+      if (obj && e.is_new === false) return { cls: "flat", text: "—", cell: "—" };
+      return { cls: "new", text: "NEW", cell: "NEW" };
+    }
     const diff = Number(p) - r.rank;
     if (diff > 0) return { cls: "up", text: "▲" + diff, cell: "▲" + diff };
     if (diff < 0) return { cls: "down", text: "▼" + -diff, cell: "▼" + -diff };
@@ -55,7 +61,7 @@
   };
   function serverDelta(prevRows) {
     if (!prevRows.length) return { basis: "아직 변동이 없어요", of: () => ({ cls: "flat", text: "—", cell: "—" }) };
-    const prev = Object.fromEntries(prevRows.map((x) => [x.player_id, x.rank]));
+    const prev = Object.fromEntries(prevRows.map((x) => [x.player_id, x]));
     return { basis: "변동 · 최근 순위 변동 대비", of: (r) => deltaOf(prev, r) };
   }
   function snapshot(board, list) {
