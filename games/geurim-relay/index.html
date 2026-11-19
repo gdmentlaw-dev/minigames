@@ -39,7 +39,11 @@
                 <button id="join-mode" type="button" aria-pressed="true" disabled>친구 방 입장</button>
               </div>
               <form id="entry-form">
-                <p class="player-greeting"><strong id="player-name">공용 계정 연결 중…</strong><span>정답 1개마다 100점 · 도전을 마칠 때 랭킹에 기록돼요.</span></p>
+                <p class="player-greeting"><strong id="player-name">공용 계정 연결 중…</strong><span id="my-total">정답마다 5점 · 모든 방의 점수를 합산해요.</span></p>
+                <button id="change-name" class="tool" type="button">계정 이름 변경</button>
+                <p id="real-name-warning" class="form-status error" role="status" hidden>공용 계정 이름을 한글 2~10자의 실명으로 바꾼 뒤 참여해 주세요.</p>
+                <div id="room-title-field" hidden><label for="new-room-title">방 제목</label><input id="new-room-title" maxlength="40" placeholder="예: 63기 그림 한 판" autocomplete="off"></div>
+                <p id="owned-room" class="invited-room" hidden></p>
                 <p id="invited-room" class="invited-room" hidden>초대받은 방이 선택됐어요.</p>
                 <section id="room-browser" class="room-browser" aria-labelledby="room-list-title">
                   <div class="room-list-heading"><h3 id="room-list-title">대기방 목록</h3><button id="refresh-rooms" class="tool" type="button">새로고침</button></div>
@@ -55,6 +59,7 @@
           </section>
         </div>
       </section>
+      <section class="leaderboard-card" aria-labelledby="leaderboard-title"><div class="ranking-heading"><h2 id="leaderboard-title">전체 아이디 순위</h2><p>정답마다 5점 · 모든 방 합산</p></div><ol id="leaderboard" class="leaderboard"></ol><p id="no-rankings">첫 정답의 주인공을 기다려요.</p></section>
       <section class="how" id="how" aria-labelledby="how-title">
         <h2 id="how-title">이렇게 놀아요</h2>
         <div class="how-grid">
@@ -70,7 +75,7 @@
         <div><a class="back-link" href="./">로비 · 나중에 이어하기</a><h1 id="room-title">우리 방 <span id="room-code"></span></h1></div>
         <button id="copy" class="button secondary" type="button">초대 링크 복사</button>
       </div>
-      <div class="challenge-bar"><div><span>이번 도전</span><strong id="challenge-score">0점</strong><small>정답 1개마다 100점</small></div><button id="finish" class="button primary" type="button" disabled>도전 마치고 기록하기</button></div>
+      <div class="challenge-bar"><div><span>내 누적 점수</span><strong id="challenge-score">0점</strong><small>모든 방 합산 · 정답마다 5점</small></div><button id="delete-room" class="button secondary danger" type="button" hidden>이 방 삭제</button></div>
       <p id="room-status" class="room-status" role="status" hidden></p>
       <div id="invite" hidden><label for="invite-url">초대 링크</label><input id="invite-url" readonly></div>
       <div class="room-grid" id="room-content" hidden>
@@ -82,10 +87,14 @@
           <div id="secret" class="secret" hidden><div><span>출제 단어</span><strong id="word"></strong></div><a id="dictionary" target="_blank" rel="noopener noreferrer">국어사전</a></div>
           <div id="tools" class="toolbar" aria-label="그리기 도구" hidden>
             <div class="colors" aria-label="펜 색">
-              <button class="color black" data-tool="black" type="button" aria-label="검정" aria-pressed="true"></button>
               <button class="color red" data-tool="red" type="button" aria-label="빨강" aria-pressed="false"></button>
-              <button class="color blue" data-tool="blue" type="button" aria-label="파랑" aria-pressed="false"></button>
+              <button class="color orange" data-tool="orange" type="button" aria-label="주황" aria-pressed="false"></button>
+              <button class="color yellow" data-tool="yellow" type="button" aria-label="노랑" aria-pressed="false"></button>
               <button class="color green" data-tool="green" type="button" aria-label="초록" aria-pressed="false"></button>
+              <button class="color blue" data-tool="blue" type="button" aria-label="파랑" aria-pressed="false"></button>
+              <button class="color indigo" data-tool="indigo" type="button" aria-label="남색" aria-pressed="false"></button>
+              <button class="color purple" data-tool="purple" type="button" aria-label="보라" aria-pressed="false"></button>
+              <button class="color black" data-tool="black" type="button" aria-label="검정" aria-pressed="true"></button>
             </div>
             <button class="tool" data-tool="eraser" type="button" aria-pressed="false">지우개</button>
             <label class="width-label" for="width">굵기 <input id="width" type="range" min="2" max="36" value="8"></label>
@@ -106,6 +115,7 @@
           <p id="board-status" class="form-status" role="status" hidden></p>
         </section>
         <aside class="room-side">
+          <section class="side-card guesses-card" aria-labelledby="guesses-title"><h2 id="guesses-title">오답 모아보기</h2><p id="no-guesses">아직 올라온 오답이 없어요.</p><ul id="guesses"></ul></section>
           <section class="side-card" aria-labelledby="players-title"><h2 id="players-title">참가자 <span id="player-count"></span></h2><ul id="players"></ul></section>
           <section class="side-card" aria-labelledby="history-title"><h2 id="history-title">지난 문제</h2><p id="no-history">정답이 나온 문제는 여기에 모여요.</p><ul id="history"></ul></section>
         </aside>
@@ -113,6 +123,5 @@
     </section>
   </main>
   <footer class="shell footer"><span>그림 릴레이 · 만든 사람 우상호</span><a href="./#how">게임 방법</a></footer>
-  <dialog id="result" aria-labelledby="result-title"><div class="result-card"><span class="ribbon">그림으로 이어 온 기록</span><h2 id="result-title">도전 완료!</h2><strong id="final-score" class="final-score">0점</strong><p id="result-status" role="status"></p><div class="result-buttons"><button id="continue" class="button primary" type="button" disabled>새 도전 이어하기</button><button id="retry-score" class="button primary" type="button" hidden>기록 저장 다시 시도</button><button id="result-exit" class="button secondary" type="button" disabled>미니게임 홈</button></div></div></dialog>
 </body>
 </html>
