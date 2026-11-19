@@ -87,6 +87,9 @@
   .mini { display: flex; gap: 3px; flex: none; width: 81px; }
   .mini .tile { width: 25px; height: 33px; font-size: 15px; border-radius: 4px; box-shadow: 0 2px 0 var(--ivory-edge); cursor: default; }
   .mini .tile small { display: none; }
+  .rule-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; font-size: 14px; color: var(--ink-dim); }
+  .rule-list b { color: var(--ink); margin-right: 6px; }
+  #rulesOv { z-index: 6; overflow-y: auto; }
   .row { display: flex; gap: 8px; flex-wrap: wrap; }
   .row .btn { flex: 1 1 120px; }
   .big { font-size: 64px; font-weight: 800; line-height: 1; color: var(--gold); font-variant-numeric: tabular-nums; }
@@ -122,7 +125,7 @@
     <section class="table" id="table" aria-label="게임판">
       <div class="hud">
         <div class="stat"><span class="lbl">점수</span><span class="val" id="score">0</span></div>
-        <div class="stat"><span class="lbl">남은 시간</span><span class="val" id="time">60.0</span></div>
+        <div class="stat"><span class="lbl">남은 시간</span><span class="val" id="time">90.0</span></div>
         <div class="stat"><span class="lbl">콤보</span><span class="val" id="combo">×1</span></div>
       </div>
       <div class="bar" aria-hidden="true"><i id="timebar"></i></div>
@@ -140,19 +143,40 @@
         <button class="btn" id="discardBtn" disabled>버리기 −15/장</button>
         <button class="btn" id="sortNum">숫자순</button>
         <button class="btn" id="sortColor">색깔순</button>
+        <button class="btn" id="rulesBtn">룰 보기</button>
       </div>
       <div class="keys">Enter 내기 · Esc 선택 취소 · 4초 안에 연달아 내면 콤보 배율이 올라가요</div>
 
       <div class="overlay" id="startOv">
         <div class="panel">
           <p class="hello" id="hello">&nbsp;</p>
-          <h2>60초 안에 숫자 조합을 최대한 많이 내세요</h2>
+          <h2>90초 안에 숫자 조합을 최대한 많이 내세요</h2>
           <ul class="rules">
             <li><span class="mini" id="exGroup"></span><span><b>그룹</b> 같은 숫자 3~4장, 색은 모두 달라야 해요</span></li>
             <li><span class="mini" id="exRun"></span><span><b>연속</b> 같은 색으로 이어지는 숫자 3장 이상</span></li>
             <li><span class="mini"></span><span>길게, 큰 숫자로, 빠르게 이어서 낼수록 점수가 커져요. 손패가 16장을 넘으면 끝나요.</span></li>
           </ul>
           <button class="btn primary" id="startBtn">시작하기</button>
+        </div>
+      </div>
+
+      <div class="overlay" id="rulesOv" hidden role="dialog" aria-modal="true" aria-labelledby="rulesTitle">
+        <div class="panel">
+          <h2 id="rulesTitle">게임 룰</h2>
+          <p class="sub" id="rulesPaused" hidden>룰을 보는 동안 시간이 멈춰요.</p>
+          <ul class="rules">
+            <li><span class="mini" id="exGroup2"></span><span><b>그룹</b> 같은 숫자 3~4장, 색은 모두 달라야 해요</span></li>
+            <li><span class="mini" id="exRun2"></span><span><b>연속</b> 같은 색으로 이어지는 숫자 3장 이상</span></li>
+          </ul>
+          <ul class="rule-list">
+            <li><b>점수</b> 타일 숫자 합 × 10. 4장이면 1.5배, 5장이면 2배, 1장 늘 때마다 0.5배씩 더</li>
+            <li><b>콤보</b> 4초 안에 이어서 내면 ×1.25, ×1.5 … 최대 ×2</li>
+            <li><b>보너스</b> 손패를 다 비우면 +300점, 새 타일 4장</li>
+            <li><b>감점</b> 조합이 아닌 걸 내면 −30점, 버리기는 장당 −15점 (콤보 끊김)</li>
+            <li><b>게임 오버</b> 90초가 끝나거나 손패가 16장을 넘으면</li>
+            <li><b>오늘의 패</b> 하루 동안 모두 같은 순서로 타일이 나와요</li>
+          </ul>
+          <button class="btn primary" id="rulesClose">닫기</button>
         </div>
       </div>
 
@@ -185,7 +209,7 @@
   const GAME_ID = "number-combo";
   const COLORS = { r: { name: "빨강", mark: "●" }, b: { name: "파랑", mark: "▲" }, o: { name: "주황", mark: "■" }, k: { name: "검정", mark: "◆" } };
   const CK = Object.keys(COLORS);
-  const DURATION = 60000, HAND_MAX = 16, START_HAND = 8;
+  const DURATION = 90000, HAND_MAX = 16, START_HAND = 8;
   const $ = id => document.getElementById(id);
 
   // ── 허브 연결 ──
@@ -222,8 +246,10 @@
     const s = document.createElement("small"); s.textContent = COLORS[t.c].mark; b.appendChild(s);
     return b;
   }
-  [{ n: 7, c: "r" }, { n: 7, c: "b" }, { n: 7, c: "k" }].forEach(t => { const e = tileEl(t); e.tabIndex = -1; $("exGroup").appendChild(e); });
-  [{ n: 4, c: "o" }, { n: 5, c: "o" }, { n: 6, c: "o" }].forEach(t => { const e = tileEl(t); e.tabIndex = -1; $("exRun").appendChild(e); });
+  for (const [box, ex] of [["exGroup", "g"], ["exGroup2", "g"], ["exRun", "r"], ["exRun2", "r"]]) {
+    const ts = ex === "g" ? [{ n: 7, c: "r" }, { n: 7, c: "b" }, { n: 7, c: "k" }] : [{ n: 4, c: "o" }, { n: 5, c: "o" }, { n: 6, c: "o" }];
+    ts.forEach(t => { const e = tileEl(t); e.tabIndex = -1; $(box).appendChild(e); });
+  }
 
   // ── 게임 상태 ──
   let deck = [], deckPos = 0, hand = [], sel = new Set(), score = 0, combo = 0, lastPlay = -1e9;
@@ -369,16 +395,26 @@
     }
   }
 
-  // ── 탭이 숨겨지면 일시정지 ──
-  document.addEventListener("visibilitychange", () => {
-    if (!running) return;
-    if (document.hidden) { paused = true; pausedAt = performance.now(); }
-    else if (paused) {
-      const gap = performance.now() - pausedAt;
-      t0 += gap; lastPlay += gap; paused = false;
-      requestAnimationFrame(loop);
-    }
-  });
+  // ── 일시정지: 탭을 벗어나거나 룰을 볼 때 ──
+  let rulesOpen = false;
+  function pauseGame() { if (!running || paused) return; paused = true; pausedAt = performance.now(); }
+  function resumeGame() {
+    if (!running || !paused || rulesOpen || document.hidden) return;
+    const gap = performance.now() - pausedAt;
+    t0 += gap; lastPlay += gap; paused = false;
+    requestAnimationFrame(loop);
+  }
+  document.addEventListener("visibilitychange", () => { document.hidden ? pauseGame() : resumeGame(); });
+  function openRules() {
+    rulesOpen = true; pauseGame();
+    $("rulesPaused").hidden = !running;
+    $("rulesOv").hidden = false; $("rulesClose").focus();
+  }
+  function closeRules() {
+    rulesOpen = false; $("rulesOv").hidden = true;
+    $("rulesBtn").focus(); resumeGame();
+  }
+  $("rulesBtn").onclick = openRules; $("rulesClose").onclick = closeRules;
 
   // ── 버튼·키 ──
   playBtn.onclick = play; discardBtn.onclick = discard;
@@ -388,6 +424,7 @@
   $("startBtn").onclick = start; $("againBtn").onclick = start;
   $("exitTop").onclick = () => MiniHub.exit(); $("exitEnd").onclick = () => MiniHub.exit();
   document.addEventListener("keydown", e => {
+    if (rulesOpen) { if (e.key === "Escape") { e.preventDefault(); closeRules(); } return; }
     if (!running) return;
     if (e.key === "Enter") { e.preventDefault(); play(); }
     else if (e.key === "Escape") { sel.clear(); render(); }
