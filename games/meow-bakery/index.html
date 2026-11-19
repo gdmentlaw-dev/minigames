@@ -38,9 +38,6 @@
     </nav>
 
     <section class="screen start-screen" id="start-screen" aria-labelledby="game-title">
-      <button type="button" class="stage-return-button intro-return" aria-label="매장으로 돌아가기">
-        <span class="paw-print" aria-hidden="true"><i></i><i></i><i></i><i></i><b></b></span><span>매장</span>
-      </button>
       <div class="pixel-cat cat-on-start" aria-hidden="true">
         <span class="cat-hat"></span><span class="cat-ear left"></span><span class="cat-ear right"></span>
         <span class="cat-face"></span><span class="cat-eye left"></span><span class="cat-eye right"></span>
@@ -60,9 +57,6 @@
 
     <section class="screen play-screen" id="play-screen" aria-label="재료 받기">
       <div class="play-topbar">
-        <button type="button" class="stage-return-button" aria-label="매장으로 돌아가기">
-          <span class="paw-print" aria-hidden="true"><i></i><i></i><i></i><i></i><b></b></span><span>매장</span>
-        </button>
         <div class="step-badge"><span>1</span> 재료 받기</div>
         <div class="timer-box"><span class="timer-label">남은 시간</span><strong id="timer">30</strong><span>초</span></div>
         <button class="button button-primary play-take-away" id="take-away-button" type="button">재료 가져가기</button>
@@ -95,16 +89,10 @@
     </section>
 
     <section class="screen stage2-screen" id="stage2-screen" aria-label="재료 사기">
-      <button type="button" class="stage-return-button stage2-return" aria-label="매장으로 돌아가기">
-        <span class="paw-print" aria-hidden="true"><i></i><i></i><i></i><i></i><b></b></span><span>매장</span>
-      </button>
       <div id="stage2-root"></div>
     </section>
 
     <section class="screen stage3-screen" id="stage3-screen" aria-label="굽기">
-      <button type="button" class="stage-return-button stage3-return" aria-label="매장으로 돌아가기">
-        <span class="paw-print" aria-hidden="true"><i></i><i></i><i></i><i></i><b></b></span><span>매장</span>
-      </button>
       <div id="stage3-root"></div>
     </section>
 
@@ -583,10 +571,6 @@
           startStage(button.dataset.stage);
         }
       });
-    });
-
-    document.querySelectorAll(".stage-return-button").forEach(button => {
-      button.addEventListener("click", () => startStage("store"));
     });
 
     document.querySelectorAll(".move-button").forEach(button => {

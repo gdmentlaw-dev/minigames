@@ -255,10 +255,6 @@
     style.textContent = [
       "#ingredient-list .ingredient-row, #result-list .ingredient-row { grid-template-columns: 35px minmax(0, 1fr) auto; gap: 5px; min-height: 39px; }",
       "#ingredient-list .ingredient-swatch, #result-list .ingredient-swatch { display: block; width: 34px; height: 34px; border: 0; background: var(--ingredient-icon) center / contain no-repeat !important; image-rendering: pixelated; }",
-      ".ingredient-swatch.food-png-icon { width: 32px !important; height: 32px !important; background-size: 32px 32px !important; }",
-      "#ingredient-list .ingredient-row.food-png-row, #result-list .ingredient-row.food-png-row { grid-template-columns: 35px minmax(0, 1fr) auto; }",
-      ".stage2-ingredient-list .ingredient-row.food-png-row { grid-template-columns: 32px minmax(0, 1fr) auto; min-height: 32px; }",
-      ".stage3-ingredient-list .ingredient-row.food-png-row { grid-template-columns: 32px minmax(0, 1fr) auto; min-height: 32px; }",
       ".pantry-count-headings { display: grid; grid-template-columns: 35px minmax(0, 1fr) 32px 38px; gap: 5px; margin: 8px 0 -3px; color: #977e6c; font-size: 9px; font-weight: 900; text-align: center; }",
       ".pantry-count-headings span:first-child { grid-column: 2; text-align: left; }",
       "#ingredient-list .pantry-inventory-row { grid-template-columns: 35px minmax(0, 1fr) 32px 38px; gap: 5px; min-height: 39px; }",
@@ -266,9 +262,8 @@
       "#ingredient-list .pantry-inventory-row .ingredient-name { overflow: hidden; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }",
       "#result-list .ingredient-row { grid-template-columns: 25px minmax(0, 1fr) auto; gap: 3px; }",
       "#result-list .ingredient-swatch { width: 24px; height: 24px; }",
-      "@media (max-width: 760px) { #ingredient-list .ingredient-row { grid-template-columns: 25px minmax(0, 1fr) auto; gap: 3px; min-height: 27px; } #ingredient-list .pantry-inventory-row { grid-template-columns: 25px minmax(0, 1fr) 34px 42px; gap: 3px; min-height: 29px; } #ingredient-list .ingredient-swatch { width: 24px; height: 24px; } .pantry-count-headings { grid-template-columns: 25px minmax(0, 1fr) 34px 42px; gap: 3px; } #ingredient-list .pantry-inventory-row .ingredient-name { font-size: 10px; } #ingredient-list .pantry-inventory-row.food-png-row { grid-template-columns: 35px minmax(0, 1fr) 34px 42px; min-height: 36px; } .stage2-ingredient-list .ingredient-row.food-png-row { grid-template-columns: 32px minmax(0, 1fr) auto; min-height: 32px; } }",
-      "@media (max-width: 760px) { .stage3-ingredient-list .ingredient-row.food-png-row { grid-template-columns: 32px minmax(0, 1fr) auto; min-height: 32px; } }",
-      "@media (max-width: 430px) { #result-list .ingredient-row { grid-template-columns: 20px minmax(0, 1fr) auto; gap: 2px; } #result-list .ingredient-swatch { width: 19px; height: 19px; } #result-list .ingredient-row.food-png-row { grid-template-columns: 35px minmax(0, 1fr) auto; } }"
+      "@media (max-width: 760px) { #ingredient-list .ingredient-row { grid-template-columns: 25px minmax(0, 1fr) auto; gap: 3px; min-height: 27px; } #ingredient-list .pantry-inventory-row { grid-template-columns: 25px minmax(0, 1fr) 34px 42px; gap: 3px; min-height: 29px; } #ingredient-list .ingredient-swatch { width: 24px; height: 24px; } .pantry-count-headings { grid-template-columns: 25px minmax(0, 1fr) 34px 42px; gap: 3px; } #ingredient-list .pantry-inventory-row .ingredient-name { font-size: 10px; } }",
+      "@media (max-width: 430px) { #result-list .ingredient-row { grid-template-columns: 20px minmax(0, 1fr) auto; gap: 2px; } #result-list .ingredient-swatch { width: 19px; height: 19px; } }"
     ].join("\n");
     document.head.append(style);
 
@@ -293,8 +288,6 @@
         const id = INGREDIENT_IDS.find(ingredientId => INGREDIENT_NAMES[ingredientId] === name.textContent);
         if (id) {
           swatch.style.setProperty("--ingredient-icon", iconUrls[id]);
-          swatch.classList.toggle("food-png-icon", id === "chocolate");
-          row.classList.toggle("food-png-row", id === "chocolate");
         }
       });
     }
