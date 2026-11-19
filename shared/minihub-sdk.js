@@ -551,9 +551,9 @@
   }
 
   // 내 정보 메뉴: 닉네임 바꾸기 / 다른 닉네임으로 접속
-  function accountMenu(current) {
+  function accountMenu(who) {
     return dialog(
-      `<h2>👤 ${esc(current)}</h2>
+      `<h2 style="display:flex;align-items:center;gap:10px">${avatarSvg(who, 44)}<span style="min-width:0;overflow-wrap:anywhere">${esc(who.name)}</span></h2>
        <p>다른 기기에서도 이 닉네임과 PIN을 넣으면 같은 기록으로 이어져요</p>
        <button type="button" class="ghost wide" data-act="avatar">🙂 얼굴 바꾸기</button>
        <button type="button" class="ghost wide" data-act="rename">✏️ 닉네임 바꾸기</button>
@@ -706,7 +706,7 @@
     async changeName() {
       try { await init(gameId); } catch { return player; }
       if (!player.id) { const p = await afterLogin(await askLogin({ cancel: true })); if (p) player = p; return player; }
-      const act = await accountMenu(player.name);
+      const act = await accountMenu(player);
       if (act === "avatar") {
         const a = await askAvatar(avatarIndex(player), { cancel: true });
         if (Number.isInteger(a)) { player = { ...player, avatar: a }; toast("얼굴을 바꿨어요. 랭킹에도 바로 반영돼요"); }
