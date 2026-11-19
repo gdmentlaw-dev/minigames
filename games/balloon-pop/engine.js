@@ -13,6 +13,16 @@ const BALLOON_RULES = Object.freeze({
   bomb: Object.freeze({ name: "회색 폭탄", light: "#8a859e", dark: "#4c4965", points: 0, speed: 1.1, speedLabel: "조금 빠름" }),
 });
 
+function getBalloonSize(points, small = false) {
+  const baseWidth = small ? 62 : 76;
+  const baseHeight = small ? 77 : 94;
+  // 풍선에 적힌 기본 점수로 크기를 정한다. 10점은 원래 크기, 60점은 약 70%.
+  // 콤보나 누적 점수로는 크기를 바꾸지 않고, 터치 너비는 최소 44px을 유지한다.
+  const pointScale = 1 - Math.min(50, Math.max(0, points - 10)) * 0.006;
+  const scale = Math.max(44 / baseWidth, pointScale);
+  return { width: baseWidth * scale, height: baseHeight * scale, scale };
+}
+
 // 화면과 분리한 한 판의 규칙. 점수 저장은 game.js에서 공용 SDK로만 한다.
 class BalloonRound {
   constructor({ random = Math.random, onEvent = () => {} } = {}) {

@@ -76,3 +76,14 @@
   .milestone-banner { animation: none !important; opacity: 1; transform: translate(-50%, -50%); background: #211537ed; }
   .score-stat.celebrating { animation: none !important; border-color: #ffdb80; }
 }
+
+/* 점수가 높은 작은 풍선에서도 숫자·매듭·줄의 비율을 유지한다. */
+.balloon { --balloon-scale: 1; --point-font: 23px; --special-point-font: 15px; --string-height: 69px; }
+.balloon-points { font-size: max(12px, calc(var(--point-font) * var(--balloon-scale))); }
+.balloon.gold .balloon-points, .balloon.clock .balloon-points { font-size: max(11px, calc(var(--special-point-font) * var(--balloon-scale))); }
+.balloon .balloon-shape:after { left: calc(50% - 6px * var(--balloon-scale)); bottom: calc(-7px * var(--balloon-scale)); width: calc(12px * var(--balloon-scale)); height: calc(10px * var(--balloon-scale)); }
+.balloon:after { top: calc(100% + 6px * var(--balloon-scale)); left: calc(50% - 6px * var(--balloon-scale)); width: calc(18px * var(--balloon-scale)); height: calc(var(--string-height) * var(--balloon-scale)); }
+.balloon.bomb:before { left: 50%; }
+@media (max-width: 600px) {
+  .balloon { --point-font: 20px; --special-point-font: 13px; --string-height: 50px; }
+}
