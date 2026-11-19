@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>카드 짝 맞추기</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #16132e; color: #f4f2ff; font-family: system-ui, sans-serif; }
+    main { width: min(100% - 32px, 520px); margin: clamp(20px, 6vh, 60px) auto; }
+    h1 { margin: 0 0 18px; font-size: clamp(1.8rem, 6vw, 2.7rem); }
+    p { line-height: 1.5; }
+    .hud { display: flex; justify-content: space-between; gap: 8px; font-weight: 700; }
+    #time { color: #ffc83d; font-variant-numeric: tabular-nums; }
+    #board { display: grid; gap: clamp(5px, 1.5vw, 10px); margin: 10px auto 0; width: min(100%, var(--board-width)); }
+    #board[hidden] { display: none; }
+    button, a { touch-action: manipulation; }
+    button { font: inherit; cursor: pointer; }
+    button:disabled { cursor: default; }
+    :focus-visible { outline: 3px solid #ffc83d; outline-offset: 2px; }
+    #start { border: 0; border-radius: 12px; padding: 10px 18px; background: #ffc83d; color: #16132e; font-weight: 800; }
+    #start:disabled { opacity: .6; }
+    .card, .empty { aspect-ratio: 1; }
+    .card { padding: 0; border: 2px solid #7c6cf0; border-radius: 12px; background: #231f45; color: #f4f2ff; font-size: clamp(1.2rem, 5vw, 2.1rem); }
+    .card.revealed { background: #f4f2ff; }
+    .card.matched { background: #d1efd1; border-color: #86b691; }
+    #status { min-height: 3em; }
+    a { display: inline-block; margin-left: 12px; color: #ddd5ff; }
+  </style>
+  <script defer src="../../shared/minihub-sdk.js"></script>
+  <script defer src="./game.js"></script>
+</head>
+<body>
+  <main>
+    <h1>카드 짝 맞추기</h1>
+    <div class="hud">
+      <span>스테이지 <strong id="stage">1</strong></span>
+      <span>남은 시간 <strong id="time" role="timer">30초</strong></span>
+      <span>점수 <strong id="score">0점</strong></span>
+    </div>
+    <div id="board" aria-label="게임판" hidden></div>
+    <p id="status" role="status">스테이지마다 30초 안에 모든 짝을 맞히세요. 한 쌍에 10점입니다.</p>
+    <button id="start" type="button" disabled>게임 시작</button>
+    <a id="home" href="../../">메인으로</a>
+  </main>
+</body>
+</html>
