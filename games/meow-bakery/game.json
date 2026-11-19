@@ -1,0 +1,11 @@
+{
+  "id": "meow-bakery",
+  "title": "Meow Bakery",
+  "author": "C조",
+  "description": "파티시에 고양이와 60초 동안 베이킹 재료를 모으세요",
+  "controls": "마우스·터치 이동 / 방향키",
+  "scoreOrder": "desc",
+  "scoreUnit": "개",
+  "scoreLimit": 10000,
+  "thumbnail": "thumbnail.svg"
+}

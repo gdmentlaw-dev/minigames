@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f5e8ca">
+  <title>Meow Bakery</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <main class="game-shell">
+    <header class="bakery-sign">
+      <div class="sign-roof" aria-hidden="true"></div>
+      <p class="sign-kicker">MEOW BAKERY</p>
+      <h1>Butter Late Than Never</h1>
+      <div class="sign-lights" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+    </header>
+
+    <nav class="stage-nav" aria-label="단계 이동">
+      <button type="button" class="stage-nav-button" data-stage="stage1"><span>1</span> 재료 받기</button>
+      <button type="button" class="stage-nav-button" data-stage="stage2"><span>2</span> 굽기</button>
+      <button type="button" class="stage-nav-button" data-stage="stage3"><span>3</span> 판매</button>
+    </nav>
+
+    <section class="screen start-screen is-visible" id="start-screen" aria-labelledby="game-title">
+      <div class="pixel-cat cat-on-start" aria-hidden="true">
+        <span class="cat-hat"></span><span class="cat-ear left"></span><span class="cat-ear right"></span>
+        <span class="cat-face"></span><span class="cat-eye left"></span><span class="cat-eye right"></span>
+        <span class="cat-nose"></span><span class="cat-whiskers"></span><span class="cat-apron"></span>
+      </div>
+      <p class="eyebrow">오늘의 첫 주문</p>
+      <h2 id="game-title">재료를 모아 주세요</h2>
+      <p class="intro">60초 동안 바구니를 움직여 베이킹 재료를 받아요.<br>떨어지는 방해물을 조심하세요.</p>
+      <div class="ingredient-preview" aria-label="우유, 달걀, 버터, 설탕, 소금, 초코파우더, 딸기, 초코칩, 생크림">
+        <span>우유</span><span>달걀</span><span>버터</span><span>설탕</span><span>소금</span>
+        <span>초코파우더</span><span>딸기</span><span>초코칩</span><span>생크림</span>
+      </div>
+      <p class="controls-hint">마우스 · 터치로 바구니 이동 / 키보드 방향키</p>
+      <button class="button button-primary" id="start-button" type="button">가게 열기</button>
+    </section>
+
+    <section class="screen play-screen" id="play-screen" aria-label="재료 받기">
+      <div class="play-topbar">
+        <div class="step-badge"><span>1</span> 재료 받기</div>
+        <div class="timer-box"><span class="timer-label">남은 시간</span><strong id="timer">60</strong><span>초</span></div>
+        <button class="button button-primary play-retry" id="play-retry-button" type="button">다시 시도</button>
+      </div>
+      <div class="play-layout">
+        <div class="canvas-wrap">
+          <canvas id="bakery-canvas" width="640" height="420" aria-label="하늘에서 떨어지는 재료를 바구니로 받는 게임"></canvas>
+          <div class="touch-controls" aria-label="바구니 이동">
+            <button type="button" class="move-button" data-direction="-1" aria-label="왼쪽으로 이동">왼쪽</button>
+            <span>바구니 이동</span>
+            <button type="button" class="move-button" data-direction="1" aria-label="오른쪽으로 이동">오른쪽</button>
+          </div>
+        </div>
+        <aside class="pantry" aria-labelledby="pantry-title">
+          <div class="pantry-heading">
+            <span class="pantry-icon" aria-hidden="true"></span>
+            <div><p class="eyebrow">오늘의 준비</p><h2 id="pantry-title">재료 바구니</h2></div>
+          </div>
+          <ul class="ingredient-list" id="ingredient-list"></ul>
+          <p class="pantry-total">모은 재료 <strong id="total-count">0</strong></p>
+          <p class="hazard-note"><span aria-hidden="true">!</span> 똥을 받으면 재료가 하나 줄어요</p>
+        </aside>
+      </div>
+    </section>
+
+    <section class="screen stage2-screen" id="stage2-screen" aria-label="굽기">
+      <div id="stage2-root"></div>
+    </section>
+
+    <section class="screen preparing-screen" id="stage3-screen" aria-label="판매 준비 중">
+      <div class="preparing-card">
+        <div class="preparing-badge" aria-hidden="true">3</div>
+        <p class="eyebrow">다음 단계</p>
+        <h2>판매 준비 중</h2>
+        <p>손님과 판매 기능은 다음 단계에서 만나요.</p>
+      </div>
+    </section>
+
+    <section class="screen result-screen" id="result-screen" aria-labelledby="result-title">
+      <p class="eyebrow">1단계 완료</p>
+      <h2 id="result-title">오늘 모은 재료</h2>
+      <p class="result-total"><strong id="result-total">0</strong><span>개</span></p>
+      <ul class="result-list" id="result-list"></ul>
+      <p class="score-message" id="score-message" aria-live="polite"></p>
+      <button class="button button-primary" id="retry-button" type="button">다시 모으기</button>
+    </section>
+
+    <footer class="bakery-footer"><span>FRESH FROM THE OVEN</span><span class="footer-star" aria-hidden="true">✦</span><span>MADE WITH CARE</span></footer>
+  </main>
+
+  <script src="../../shared/minihub-sdk.js"></script>
+  <script src="./stages/stage1.js"></script>
+  <script src="./stages/stage2.js"></script>
+  <script>
+    "use strict";
+
+    const GAME_ID = "meow-bakery";
+    const STAGE_ORDER = ["stage1", "stage2", "stage3"];
+    const INGREDIENTS = [
+      { id: "milk", name: "우유", english: "Milk", color: "#b9e8ed" },
+      { id: "egg", name: "달걀", english: "Egg", color: "#f8df9b" },
+      { id: "butter", name: "버터", english: "Butter", color: "#ffd15a" },
+      { id: "sugar", name: "설탕", english: "Sugar", color: "#fff3d4" },
+      { id: "salt", name: "소금", english: "Salt", color: "#dce8f1" },
+      { id: "cocoa", name: "초코파우더", english: "Choco", color: "#8a563e" },
+      { id: "strawberry", name: "딸기", english: "Strawberry", color: "#f16d75" },
+      { id: "chocolate", name: "초코칩", english: "Chips", color: "#68433c" },
+      { id: "cream", name: "생크림", english: "Cream", color: "#fff7e7" }
+    ];
+
+    const screens = {
+      start: document.getElementById("start-screen"),
+      play: document.getElementById("play-screen"),
+      stage2: document.getElementById("stage2-screen"),
+      stage3: document.getElementById("stage3-screen"),
+      result: document.getElementById("result-screen")
+    };
+    const canvas = document.getElementById("bakery-canvas");
+    const ingredientList = document.getElementById("ingredient-list");
+    const resultList = document.getElementById("result-list");
+    let activeStage = null;
+    let currentInventory = emptyInventory();
+    let bakedGoods = emptyBakedGoods();
+    let scoreSubmitted = false;
+
+    MiniHub.init(GAME_ID);
+
+    function emptyInventory() {
+      return Object.fromEntries(INGREDIENTS.map(item => [item.id, 0]));
+    }
+
+    function emptyBakedGoods() {
+      return { butterCookie: 0, chocolateCookie: 0, madeleine: 0, strawberryCake: 0, sourdough: 0 };
+    }
+
+    function showScreen(name) {
+      Object.entries(screens).forEach(([key, screen]) => {
+        screen.classList.toggle("is-visible", key === name);
+      });
+    }
+
+    function totalIngredients(inventory) {
+      return INGREDIENTS.reduce((total, item) => total + inventory[item.id], 0);
+    }
+
+    function renderInventory(list, inventory) {
+      list.replaceChildren();
+      INGREDIENTS.forEach(item => {
+        const row = document.createElement("li");
+        const name = document.createElement("span");
+        const count = document.createElement("strong");
+        const swatch = document.createElement("i");
+        row.className = "ingredient-row";
+        name.className = "ingredient-name";
+        name.textContent = `${item.name} · ${item.english}`;
+        swatch.className = "ingredient-swatch";
+        swatch.style.setProperty("--ingredient-color", item.color);
+        swatch.setAttribute("aria-hidden", "true");
+        count.textContent = String(inventory[item.id]);
+        row.append(swatch, name, count);
+        list.append(row);
+      });
+    }
+
+    function updatePantry(inventory, secondsLeft) {
+      currentInventory = { ...inventory };
+      renderInventory(ingredientList, currentInventory);
+      document.getElementById("total-count").textContent = String(totalIngredients(currentInventory));
+      document.getElementById("timer").textContent = String(Math.ceil(secondsLeft));
+    }
+
+    function finishRound(inventory) {
+      currentInventory = { ...inventory };
+      document.getElementById("result-total").textContent = String(totalIngredients(currentInventory));
+      renderInventory(resultList, currentInventory);
+      showScreen("result");
+      document.getElementById("score-message").textContent = "기록을 저장하고 있어요.";
+      if (!scoreSubmitted) {
+        scoreSubmitted = true;
+        saveScore(totalIngredients(currentInventory));
+      }
+    }
+
+    async function saveScore(score) {
+      const message = document.getElementById("score-message");
+      try {
+        const result = await MiniHub.submitScore(score);
+        if (!result) {
+          message.textContent = "기록을 저장하지 못했어요. 재료 목록은 확인할 수 있어요.";
+        } else if (result.improved && result.previous !== null) {
+          message.textContent = `새 기록이에요. 이전 기록 ${result.previous}개 · ${result.rank}위`;
+        } else if (result.improved) {
+          message.textContent = `첫 기록 저장 완료 · ${result.rank}위`;
+        } else {
+          message.textContent = `최고 기록 ${result.best}개 · ${result.rank}위`;
+        }
+      } catch (error) {
+        console.error("Meow Bakery 점수를 저장하지 못했습니다.", error);
+        message.textContent = "기록을 저장하지 못했어요. 재료 목록은 확인할 수 있어요.";
+      }
+    }
+
+    function setActiveNav(stageId) {
+      document.querySelectorAll(".stage-nav-button").forEach(button => {
+        button.classList.toggle("is-active", button.dataset.stage === stageId);
+      });
+    }
+
+    function startStage(stageId) {
+      if (activeStage) {
+        activeStage.stop();
+        activeStage = null;
+      }
+
+      setActiveNav(stageId);
+      const stage = window.MeowStages[stageId];
+
+      if (stageId === "stage1") {
+        showScreen("play");
+        scoreSubmitted = false;
+        activeStage = stage.start({
+          canvas,
+          inventory: currentInventory,
+          onInventoryChange: inventory => {
+            currentInventory = { ...inventory };
+          },
+          onUpdate: updatePantry,
+          onComplete: inventory => {
+            activeStage = null;
+            currentInventory = { ...inventory };
+            finishRound(currentInventory);
+          }
+        });
+        return;
+      }
+
+      if (stageId === "stage2") {
+        showScreen("stage2");
+        activeStage = stage.start({
+          root: document.getElementById("stage2-root"),
+          inventory: currentInventory,
+          bakedGoods,
+          onInventoryChange: inventory => {
+            currentInventory = { ...inventory };
+          },
+          onBakedGoodsChange: goods => {
+            bakedGoods = { ...goods };
+          }
+        });
+        return;
+      }
+
+      if (stageId === "stage3") {
+        showScreen("stage3");
+        return;
+      }
+
+      finishRound(currentInventory);
+    }
+
+    function enterStageOne({ resetInventory = false } = {}) {
+      if (resetInventory) {
+        currentInventory = emptyInventory();
+        scoreSubmitted = false;
+      }
+      startStage("stage1");
+    }
+
+    function restartStageOne() {
+      enterStageOne({ resetInventory: true });
+      updatePantry(currentInventory, 60);
+    }
+
+    document.getElementById("start-button").addEventListener("click", restartStageOne);
+    document.getElementById("retry-button").addEventListener("click", restartStageOne);
+    document.getElementById("play-retry-button").addEventListener("click", restartStageOne);
+
+    document.querySelectorAll(".stage-nav-button").forEach(button => {
+      button.addEventListener("click", () => {
+        if (button.dataset.stage === "stage1") {
+          enterStageOne();
+        } else {
+          startStage(button.dataset.stage);
+        }
+      });
+    });
+
+    document.querySelectorAll(".move-button").forEach(button => {
+      const direction = Number(button.dataset.direction);
+      button.addEventListener("pointerdown", event => {
+        event.preventDefault();
+        if (activeStage) activeStage.setDirection(direction);
+        button.setPointerCapture(event.pointerId);
+      });
+      ["pointerup", "pointercancel", "lostpointercapture"].forEach(eventName => {
+        button.addEventListener(eventName, () => {
+          if (activeStage) activeStage.setDirection(0);
+        });
+      });
+    });
+  </script>
+</body>
+</html>
