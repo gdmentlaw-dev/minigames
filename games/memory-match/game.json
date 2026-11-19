@@ -1,0 +1,10 @@
+{
+  "id": "memory-match",
+  "title": "카드 짝 맞추기",
+  "author": "kitaejoo",
+  "description": "스테이지마다 30초 안에 과일 카드의 짝을 맞히세요.",
+  "scoreOrder": "desc",
+  "scoreUnit": "점",
+  "scoreLimit": 1000000,
+  "thumbnail": "thumbnail.svg"
+}
