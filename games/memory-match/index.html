@@ -1,47 +1,123 @@
 <!doctype html>
-<html lang="ko">
+<html lang="ko" data-minihub-theme="light">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>카드 짝 맞추기</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>타일 톡톡</title>
+  <link rel="icon" href="./thumbnail.svg" type="image/svg+xml">
+  <link rel="preload" href="./card-art.png" as="image">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&amp;family=Dongle:wght@400;700&amp;display=swap">
   <style>
+    :root {
+      --text: #4a3d6e;
+      --sub: #6b5c8b;
+      --accent: #6849aa;
+      --lavender: #f3ecff;
+      --line: #e6dbf8;
+      --shadow: rgba(143, 111, 224, .2);
+      --heading-font: "Dongle", "Gowun Dodum", sans-serif;
+      --body-font: "Gowun Dodum", "Noto Sans KR", system-ui, sans-serif;
+    }
     * { box-sizing: border-box; }
-    body { margin: 0; background: #16132e; color: #f4f2ff; font-family: system-ui, sans-serif; }
-    main { width: min(100% - 32px, 520px); margin: clamp(20px, 6vh, 60px) auto; }
-    h1 { margin: 0 0 18px; font-size: clamp(1.8rem, 6vw, 2.7rem); }
-    p { line-height: 1.5; }
-    .hud { display: flex; justify-content: space-between; gap: 8px; font-weight: 700; }
-    #time { color: #ffc83d; font-variant-numeric: tabular-nums; }
-    #board { display: grid; gap: clamp(5px, 1.5vw, 10px); margin: 10px auto 0; width: min(100%, var(--board-width)); }
-    #board[hidden] { display: none; }
+    [hidden] { display: none !important; }
+    body { margin: 0; background: #ebe4ff; color: var(--text); font-family: var(--body-font); word-break: keep-all; }
+    body::before { content: ""; position: fixed; inset: 0; z-index: -1; background: linear-gradient(170deg, #ffe3f0, #ebe4ff 55%, #dcf1ff); }
+    main {
+      --tile-width: clamp(23px, min(9.2vw, 5.7svh), 49px);
+      display: flex; flex-direction: column;
+      width: min(100%, 540px); min-height: 100svh; margin: auto;
+      padding: max(10px, env(safe-area-inset-top)) clamp(10px, 3vw, 18px) max(14px, env(safe-area-inset-bottom));
+    }
+    header { text-align: center; }
+    .navigation { display: flex; justify-content: flex-start; }
+    .home { padding: 6px 11px; border-radius: 999px; background: #ffffffdf; box-shadow: 0 3px 10px var(--shadow); font-size: .78rem; text-decoration: none; }
+    .home:hover { background: #fff; }
+    h1 { margin: 0; font-family: var(--heading-font); font-size: clamp(2.5rem, 10vw, 3.5rem); font-weight: 700; line-height: .9; }
+    .hud { display: flex; justify-content: center; flex-wrap: wrap; gap: 6px; margin-top: 8px; font-size: .8rem; }
+    .hud span { padding: 4px 11px; border-radius: 999px; background: #ffffffd9; box-shadow: 0 2px 5px var(--shadow); }
+    .hud .level { color: var(--accent); background: var(--lavender); }
+    #score { color: var(--accent); font-variant-numeric: tabular-nums; }
+    #status { min-height: 2.8em; margin: 10px 0 3px; text-align: center; color: var(--sub); font-size: .88rem; line-height: 1.4; }
+    #board { position: relative; flex: none; width: min(100%, calc(var(--tile-width) * var(--board-width) / 100)); aspect-ratio: var(--board-width) / var(--board-height); margin: auto; isolation: isolate; }
     button, a { touch-action: manipulation; }
-    button { font: inherit; cursor: pointer; }
+    button { font: inherit; color: inherit; cursor: pointer; }
     button:disabled { cursor: default; }
-    :focus-visible { outline: 3px solid #ffc83d; outline-offset: 2px; }
-    #start { border: 0; border-radius: 12px; padding: 10px 18px; background: #ffc83d; color: #16132e; font-weight: 800; }
-    #start:disabled { opacity: .6; }
-    .card, .empty { aspect-ratio: 1; }
-    .card { padding: 0; border: 2px solid #7c6cf0; border-radius: 12px; background: #231f45; color: #f4f2ff; font-size: clamp(1.2rem, 5vw, 2.1rem); }
-    .card.revealed { background: #f4f2ff; }
-    .card.matched { background: #d1efd1; border-color: #86b691; }
-    #status { min-height: 3em; }
-    a { display: inline-block; margin-left: 12px; color: #ddd5ff; }
+    :focus-visible { outline: 3px solid #8f6fe0; outline-offset: 2px; }
+    .card {
+      position: absolute;
+      display: grid; place-items: center; width: var(--card-width); aspect-ratio: 5 / 6;
+      padding: 0; border: 1px solid var(--line); border-radius: clamp(5px, 1.55vw, 10px);
+      background: #fff;
+      box-shadow: inset 0 -4px #ded0f6, 0 3px 6px var(--shadow);
+      scroll-margin-bottom: 140px; -webkit-tap-highlight-color: transparent;
+    }
+    .card.covered { background: #cfc5e2; border-color: #bdb0d3; box-shadow: inset 0 -4px #aa9abd; filter: saturate(.5) brightness(.87); }
+    #dock {
+      position: sticky; bottom: max(8px, env(safe-area-inset-bottom)); z-index: 2;
+      margin-top: 8px; padding: 9px 10px 10px; border: 1px solid var(--line);
+      border-radius: 22px; background: #fff; box-shadow: 0 8px 24px var(--shadow);
+    }
+    .tray-label { display: flex; justify-content: space-between; align-items: center; gap: 6px; min-height: 22px; font-size: .8rem; font-weight: 700; }
+    #tray-count { color: var(--accent); font-variant-numeric: tabular-nums; }
+    #finish { min-height: 32px; border: 0; background: none; color: var(--sub); padding: 2px 6px; text-decoration: underline; text-underline-offset: 2px; }
+    #tray, #items { display: grid; gap: 4px; }
+    #tray { grid-template-columns: repeat(7, minmax(0, 1fr)); padding: 0; list-style: none; margin: 4px 0 8px; }
+    .tray-slot { display: grid; place-items: center; width: 100%; height: clamp(31px, 8.5vw, 44px); border-radius: 9px; border: 1px solid var(--line); background: var(--lavender); }
+    .tray-slot.filled { background: #fff; box-shadow: inset 0 -3px #e6dbf8; }
+    .card::after, .tray-slot.filled::after {
+      content: ""; display: block; aspect-ratio: 1; pointer-events: none;
+      background: url("./card-art.png") var(--picture-position) / 400% 300% no-repeat;
+    }
+    .card::after { width: 94%; }
+    .tray-slot.filled::after { width: min(94%, clamp(27px, 8.5vw - 4px, 40px)); }
+    #items { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    #items button { min-height: 38px; padding: 4px; border: 0; border-radius: 14px; background: var(--lavender); font-size: clamp(.69rem, 2.65vw, .85rem); font-weight: 700; box-shadow: inset 0 -3px #e1d5f6; }
+    #items button:hover:enabled { background: #eae0fb; }
+    #items button:disabled { background: #f7f5fb; color: #817594; box-shadow: none; }
+    #start {
+      min-height: 44px; padding: 7px 24px; border: 0; border-radius: 999px;
+      background: linear-gradient(135deg, #ff9cc2, #b69cff);
+      color: #402b66; font: 700 1.8rem/1 var(--heading-font); box-shadow: 0 4px #9a80e0;
+    }
+    #start:active:enabled { transform: translateY(2px); box-shadow: 0 2px #9a80e0; }
+    #start:disabled { opacity: .55; box-shadow: none; }
+    .footer { display: flex; align-items: center; justify-content: center; padding-top: 10px; font-size: .85rem; }
+    a { color: var(--accent); text-underline-offset: 2px; }
   </style>
   <script defer src="../../shared/minihub-sdk.js"></script>
+  <script defer src="./layouts.js"></script>
   <script defer src="./game.js"></script>
 </head>
 <body>
   <main>
-    <h1>카드 짝 맞추기</h1>
-    <div class="hud">
-      <span>스테이지 <strong id="stage">1</strong></span>
-      <span>남은 시간 <strong id="time" role="timer">30초</strong></span>
-      <span>점수 <strong id="score">0점</strong></span>
+    <header>
+      <nav class="navigation" aria-label="미니게임"><a class="home" href="../../">‹ 메인으로</a></nav>
+      <h1>타일 톡톡</h1>
+      <div class="hud">
+        <span class="level">스테이지 <strong id="stage">1</strong></span>
+        <span>남은 카드 <strong id="count">51장</strong></span>
+        <span>점수 <strong id="score">0점</strong></span>
+      </div>
+    </header>
+    <p id="status" role="status">같은 그림 3장을 모으세요. 보관함 7칸이 차면 게임이 끝나요.</p>
+    <div id="board" aria-label="겹쳐진 카드 게임판" hidden></div>
+    <section id="dock" aria-label="카드 보관함과 아이템" hidden>
+      <div class="tray-label">
+        <span>보관함</span><span id="tray-count">0 / 7</span>
+      </div>
+      <ul id="tray" aria-label="카드 보관함 7칸"></ul>
+      <div id="items" aria-label="아이템">
+        <button id="shuffle" type="button">판 섞기</button>
+        <button id="undo" type="button">한 장 되돌리기</button>
+        <button id="return" type="button">보관함 비우기</button>
+      </div>
+    </section>
+    <div class="footer">
+      <button id="start" type="button" disabled>게임 시작</button>
+      <button id="finish" type="button" hidden>게임 포기</button>
     </div>
-    <div id="board" aria-label="게임판" hidden></div>
-    <p id="status" role="status">스테이지마다 30초 안에 모든 짝을 맞히세요. 한 쌍에 10점입니다.</p>
-    <button id="start" type="button" disabled>게임 시작</button>
-    <a id="home" href="../../">메인으로</a>
   </main>
 </body>
 </html>
