@@ -90,16 +90,22 @@
     function drawOven(context, width, height, isBaking, time) {
       rect(context, 14, 12, width - 28, height - 22, "#181c1e");
       rect(context, 20, 8, width - 40, height - 24, "#373d40");
+      rect(context, 27, 11, width - 54, 4, "#596164");
+      rect(context, 27, height - 19, width - 54, 4, "#101415");
       rect(context, 28, 16, width - 56, height - 40, "#454c4f");
+      rect(context, 32, 19, width - 64, 3, "#687174");
+      rect(context, 32, height - 28, width - 64, 3, "#272d2f");
       rect(context, 36, 22, width - 72, 60, "#292f32");
       rect(context, 43, 28, width - 86, 47, "#22282b");
 
       rect(context, 54, 35, 67, 31, "#10191a");
+      rect(context, 57, 37, 61, 2, "#455457");
       rect(context, 58, 39, 59, 23, "#162a27");
       drawDigitalDigit(context, 64, 41, 1);
       drawDigitalDigit(context, 82, 41, 8);
       drawDigitalDigit(context, 100, 41, 0);
       rect(context, 126, 46, 3, 10, "#9ce5c0");
+      rect(context, 59, 62, 57, 2, "#0b1112");
 
       [178, 246, 314, 382].forEach((x, index) => {
         circle(context, x + 2, 57, 14, "#1a1e20", "#111516");
@@ -116,9 +122,14 @@
         context.lineWidth = 2;
         context.stroke();
         circle(context, x, 55, 2, "#333a3c");
+        rect(context, x - 1, 37, 2, 3, "#c2c7c3");
+        rect(context, x - 1, 71, 2, 3, "#c2c7c3");
+        rect(context, x - 20, 54, 3, 2, "#c2c7c3");
+        rect(context, x + 17, 54, 3, 2, "#c2c7c3");
       });
 
       rect(context, 42, 87, width - 84, 131, "#1d2224");
+      rect(context, 45, 89, width - 90, 3, "#737a7b");
       rect(context, 48, 93, width - 96, 119, "#707779");
       rect(context, 56, 100, width - 112, 103, "#11191c");
       const glow = context.createRadialGradient(width / 2, 152, 8, width / 2, 152, 185);
@@ -130,11 +141,19 @@
       context.fillRect(56, 100, width - 112, 103);
       rect(context, 60, 106, 3, 90, "rgba(255,255,255,.15)");
       rect(context, width - 63, 106, 3, 90, "rgba(255,255,255,.1)");
+      rect(context, 67, 108, 6, 47, "rgba(255,255,255,.09)");
+      rect(context, 74, 108, 2, 27, "rgba(255,255,255,.1)");
+      rect(context, width - 76, 158, 5, 37, "rgba(255,255,255,.06)");
       rect(context, 83, 190, width - 166, 3, "#747b7c");
 
       if (isBaking && selectedRecipe) {
         const shimmer = Math.sin(time / 70) > 0 ? "#f1b85d" : "#d98a45";
-        drawBread(context, selectedRecipe.id, 223, 125, 2);
+        const flame = Math.sin(time / 95) > 0 ? "#f8a14e" : "#e67c3c";
+        rect(context, 125, 165, 5, 17, flame);
+        rect(context, 137, 171, 4, 12, "#ffd27a");
+        rect(context, width - 144, 169, 5, 14, flame);
+        drawBread(context, selectedRecipe.id, 223, 125, 1);
+        rect(context, 233, 121, 24, 2, "rgba(255,255,255,.35)");
         rect(context, 211, 183, 98, 3, shimmer);
       }
 
@@ -146,7 +165,10 @@
       rect(context, 143, 217, 234, 5, "#1b2022");
       rect(context, 133, 214, 254, 5, handle);
       rect(context, 147, 219, 226, 3, "#d0d2cc");
+      rect(context, 141, 215, 8, 3, "#f5f2e7");
+      rect(context, 371, 215, 8, 3, "#f5f2e7");
       rect(context, 102, 222, width - 204, 2, "#24292b");
+      rect(context, 29, 278, width - 58, 4, "#131718");
 
       rect(context, 84, 250, width - 168, 19, "#202527");
       rect(context, 89, 254, width - 178, 11, "#803b34");
@@ -161,56 +183,120 @@
       const block = (left, top, width, height, color) => {
         rect(context, x + left * px, y + top * px, width * px, height * px, color);
       };
-      if (recipeId === "butterCookie" || recipeId === "chocolateCookie") {
-        if (recipeId === "butterCookie") {
-          block(7, 11, 26, 17, "#9b643d");
-          block(10, 8, 20, 21, "#eab95f");
-          block(13, 10, 14, 16, "#f5d485");
-          block(13, 8, 14, 3, "#ffebaa");
-          block(11, 26, 18, 3, "#d7974d");
-        } else {
-          block(9, 8, 22, 3, "#9b643d");
-          block(6, 11, 28, 12, "#9b643d");
-          block(9, 23, 22, 5, "#9b643d");
-          block(11, 8, 18, 18, "#c77b3f");
-          block(8, 11, 24, 12, "#d9904c");
-          block(13, 10, 10, 3, "#efb269");
-          block(11, 13, 4, 4, "#51342b");
-          block(23, 12, 4, 4, "#51342b");
-          block(18, 20, 4, 4, "#51342b");
-          block(27, 18, 3, 3, "#51342b");
-        }
+      if (recipeId === "butterCookie") {
+        block(24, 9, 32, 4, "#9b643d");
+        block(16, 13, 48, 4, "#9b643d");
+        block(12, 17, 56, 32, "#9b643d");
+        block(16, 49, 48, 4, "#9b643d");
+        block(24, 53, 32, 3, "#9b643d");
+        block(16, 17, 48, 29, "#efc96f");
+        block(20, 13, 40, 4, "#f6d884");
+        block(20, 21, 40, 4, "#fff0b0");
+        block(16, 25, 4, 17, "#dfa64e");
+        block(60, 21, 4, 25, "#d99b48");
+        block(24, 17, 28, 2, "#fff0b0");
+        block(23, 35, 3, 3, "#e2ad58");
+        block(52, 29, 3, 3, "#ffe8a0");
+        block(42, 42, 4, 2, "#e9b65c");
+        block(22, 27, 3, 2, "#f9df92");
+        block(32, 23, 2, 2, "#e8b65b");
+        block(47, 35, 3, 2, "#f7dc8c");
+        block(35, 40, 2, 2, "#fff0b0");
+        block(54, 22, 2, 2, "#f9e49f");
+      } else if (recipeId === "chocolateCookie") {
+        block(28, 8, 24, 4, "#69402f");
+        block(20, 12, 40, 4, "#69402f");
+        block(16, 16, 48, 4, "#69402f");
+        block(12, 20, 56, 24, "#69402f");
+        block(16, 44, 48, 4, "#69402f");
+        block(20, 48, 40, 4, "#69402f");
+        block(28, 52, 24, 3, "#69402f");
+        block(20, 17, 40, 29, "#c98143");
+        block(16, 21, 48, 21, "#d9934e");
+        block(24, 14, 28, 3, "#edb269");
+        block(20, 22, 3, 3, "#55372d");
+        block(34, 18, 5, 4, "#55372d");
+        block(48, 23, 4, 4, "#55372d");
+        block(29, 33, 5, 4, "#55372d");
+        block(48, 38, 4, 3, "#55372d");
+        block(19, 38, 3, 3, "#55372d");
+        block(36, 27, 2, 2, "#f0bf7a");
+        block(24, 18, 8, 2, "#e5a564");
+        block(54, 31, 4, 2, "#bf743e");
+        block(25, 30, 2, 2, "#f0bf7a");
+        block(43, 42, 5, 2, "#e5a564");
+        block(35, 22, 2, 2, "#8c5736");
       } else if (recipeId === "madeleine") {
-        block(12, 9, 16, 3, "#9b643d");
-        block(8, 12, 24, 10, "#9b643d");
-        block(12, 22, 16, 6, "#9b643d");
-        block(11, 8, 18, 3, "#f0bf61");
-        block(9, 11, 22, 10, "#f5cf78");
-        block(13, 21, 14, 5, "#e9ae51");
-        for (let index = 0; index < 4; index += 1) {
-          block(12 + index * 5, 12, 2, 9, "#d99b4e");
-        }
-        block(14, 9, 12, 2, "#ffe49a");
+        block(28, 10, 24, 4, "#885333");
+        block(20, 14, 40, 4, "#885333");
+        block(16, 18, 48, 24, "#885333");
+        block(20, 42, 40, 7, "#885333");
+        block(28, 49, 24, 4, "#885333");
+        block(28, 13, 24, 4, "#f2c469");
+        block(20, 17, 40, 4, "#f7d47b");
+        block(16, 21, 48, 19, "#f7d47b");
+        block(20, 40, 40, 6, "#e9ae51");
+        block(24, 14, 30, 3, "#ffe7a0");
+        block(21, 22, 4, 16, "#d79b4e");
+        block(29, 20, 4, 19, "#e0a653");
+        block(38, 20, 4, 19, "#d99b4e");
+        block(47, 20, 4, 19, "#e0a653");
+        block(56, 22, 4, 16, "#d79b4e");
+        block(28, 38, 28, 3, "#f4c96e");
+        block(25, 19, 3, 2, "#ffe7a0");
+        block(31, 23, 2, 13, "#ffe7a0");
+        block(40, 22, 2, 13, "#ffe7a0");
+        block(49, 23, 2, 12, "#ffe7a0");
+        block(58, 25, 2, 10, "#e7b45b");
+        block(34, 43, 20, 2, "#f6d78e");
       } else if (recipeId === "strawberryCake") {
-        block(6, 16, 28, 14, "#9b643d");
-        block(9, 18, 22, 8, "#e9b875");
-        block(6, 13, 28, 5, "#fff4dc");
-        block(9, 10, 22, 4, "#fffaf0");
-        block(12, 6, 6, 6, "#df4f60");
-        block(21, 5, 7, 7, "#e64e5c");
-        block(13, 4, 4, 3, "#78a85a");
-        block(23, 3, 4, 3, "#78a85a");
-        block(18, 18, 4, 8, "#fff4dc");
+        block(14, 32, 50, 4, "#774832");
+        block(18, 36, 46, 12, "#774832");
+        block(24, 48, 34, 5, "#774832");
+        block(19, 37, 42, 8, "#e9b778");
+        block(17, 32, 46, 4, "#fff4df");
+        block(22, 27, 37, 5, "#fffaf0");
+        block(30, 22, 24, 5, "#fffaf0");
+        block(19, 34, 42, 3, "#d94e5f");
+        block(25, 29, 30, 3, "#e65d69");
+        block(35, 18, 9, 9, "#d94959");
+        block(48, 17, 10, 10, "#e05260");
+        block(37, 14, 5, 5, "#729b4f");
+        block(45, 16, 5, 4, "#8bb562");
+        block(51, 13, 5, 5, "#729b4f");
+        block(21, 41, 5, 3, "#f4d293");
+        block(47, 39, 4, 3, "#f4d293");
+        block(28, 29, 3, 3, "#fffdf4");
+        block(36, 19, 2, 3, "#f17c7c");
+        block(50, 18, 2, 3, "#f58a83");
+        block(38, 15, 3, 2, "#b2cb72");
+        block(53, 14, 2, 2, "#b2cb72");
+        block(23, 38, 17, 2, "#fff0d4");
+        block(45, 43, 10, 2, "#d89d63");
+        block(29, 32, 3, 2, "#fffdf4");
       } else {
-        block(8, 15, 24, 13, "#70432f");
-        block(11, 10, 18, 18, "#70432f");
-        block(14, 8, 12, 4, "#70432f");
-        block(10, 15, 20, 10, "#a9683e");
-        block(13, 11, 16, 13, "#c58a4d");
-        block(16, 10, 10, 3, "#e0aa66");
-        block(17, 15, 3, 8, "#77452f");
-        block(20, 15, 4, 3, "#77452f");
-        block(23, 18, 3, 5, "#77452f");
+        block(28, 9, 24, 4, "#633d2c");
+        block(20, 13, 40, 4, "#633d2c");
+        block(16, 17, 48, 4, "#633d2c");
+        block(12, 21, 56, 24, "#633d2c");
+        block(16, 45, 48, 4, "#633d2c");
+        block(20, 49, 40, 4, "#633d2c");
+        block(28, 53, 24, 3, "#633d2c");
+        block(20, 19, 40, 28, "#a96c3e");
+        block(16, 23, 48, 19, "#c2874a");
+        block(24, 16, 32, 4, "#d7a364");
+        block(25, 21, 28, 3, "#e7bb78");
+        block(34, 23, 4, 14, "#75452f");
+        block(38, 23, 4, 4, "#75452f");
+        block(42, 23, 4, 4, "#75452f");
+        block(46, 23, 4, 12, "#75452f");
+        block(22, 37, 3, 4, "#e6b778");
+        block(24, 19, 7, 2, "#e2b273");
+        block(52, 22, 4, 2, "#d69d5c");
+        block(24, 34, 2, 5, "#8f5936");
+        block(36, 28, 2, 8, "#8f5936");
+        block(48, 27, 2, 6, "#8f5936");
+        block(31, 42, 13, 2, "#ddb077");
       }
     }
 
@@ -282,8 +368,8 @@
 
       root.querySelectorAll(".recipe-art").forEach(art => {
         const canvas = document.createElement("canvas");
-        canvas.width = 40;
-        canvas.height = 32;
+        canvas.width = 80;
+        canvas.height = 64;
         drawBread(canvas.getContext("2d"), art.dataset.recipe, 0, 0, 1);
         art.append(canvas);
       });

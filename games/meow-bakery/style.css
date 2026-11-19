@@ -583,7 +583,7 @@ button { font: inherit; }
   gap: 12px;
 }
 .stage2-side-panels { display: flex; flex-direction: column; gap: 10px; }
-.stage2-pantry { padding: 10px 8px; }
+.stage2-pantry { padding: 10px 8px; border-radius: 11px; box-shadow: inset 1px 1px 0 #fff, 0 3px 0 rgba(116, 76, 60, .12); }
 .stage2-pantry .pantry-heading { gap: 7px; padding-bottom: 7px; }
 .stage2-pantry .pantry-heading h3 { margin: 4px 0 0; color: #603e32; font-size: 15px; }
 .stage2-pantry .pantry-heading .eyebrow { font-size: 8px; }
@@ -609,7 +609,9 @@ button { font: inherit; }
   min-width: 0;
   padding: 8px;
   border: 3px solid #744c3c;
-  background: #fffdf6;
+  border-radius: 12px;
+  background: linear-gradient(145deg, #fffefa, #fff6e6);
+  box-shadow: inset 1px 1px 0 #fff, 0 4px 0 rgba(116, 76, 60, .16);
   text-align: center;
 }
 #oven-canvas {
@@ -617,7 +619,8 @@ button { font: inherit; }
   width: 100%;
   max-height: 280px;
   border: 2px solid #b88967;
-  background: #d7b48a;
+  border-radius: 8px;
+  background: linear-gradient(145deg, #e1c49b, #b88862);
   image-rendering: pixelated;
   touch-action: none;
 }
@@ -643,7 +646,9 @@ button { font: inherit; }
 .bread-stock {
   padding: 12px;
   border: 3px solid #b88967;
-  background: #fffdf6;
+  border-radius: 11px;
+  background: linear-gradient(145deg, #fffefa, #fff7e7);
+  box-shadow: inset 1px 1px 0 #fff, 0 3px 0 rgba(116, 76, 60, .12);
 }
 .bread-stock h3 { margin: 0 0 8px; color: #603e32; font-size: 16px; }
 .bread-stock ul { margin: 0; padding: 0; list-style: none; }
@@ -667,17 +672,19 @@ button { font: inherit; }
   min-width: 0;
   padding: 8px;
   border: 3px solid #b88967;
-  background: #fffdf6;
+  border-radius: 10px;
+  background: linear-gradient(145deg, #fffefa, #fff6e5);
+  box-shadow: inset 1px 1px 0 #fff, 0 3px 0 rgba(116, 76, 60, .12);
   text-align: center;
 }
-.baking-recipe.is-unavailable { background: #efe7da; }
+.baking-recipe.is-unavailable { background: linear-gradient(145deg, #f3eee6, #e9e0d4); }
 .baking-recipe h3 { min-height: 38px; margin: 4px 0 5px; color: #603e32; font-size: 14px; }
 .recipe-art {
   display: grid;
-  height: 36px;
+  height: 46px;
   place-items: center;
 }
-.recipe-art canvas { image-rendering: pixelated; }
+.recipe-art canvas { width: 52px; height: 42px; image-rendering: pixelated; }
 .baking-recipe ul { min-height: 74px; margin: 0; padding: 0; list-style: none; }
 .baking-recipe li {
   display: flex;
@@ -948,8 +955,44 @@ button { font: inherit; }
   min-height: 286px;
   overflow: hidden;
   border: 3px solid #744c3c;
+  border-radius: 14px;
   background:
+    radial-gradient(ellipse at 50% 17%, rgba(255,255,255,.62), transparent 56%),
     linear-gradient(#c8e3df 0 67%, #eddcb9 67% 100%);
+  box-shadow: inset 0 0 0 4px rgba(255, 247, 225, .5), 0 4px 0 #d9b990;
+}
+.store-scene::before {
+  position: absolute;
+  z-index: 0;
+  top: 98px;
+  right: 7%;
+  left: 7%;
+  height: 72px;
+  border: 3px solid #80543c;
+  border-radius: 5px;
+  background:
+    linear-gradient(#8d5c40, #8d5c40) 0 31px / 100% 5px,
+    linear-gradient(#8d5c40, #8d5c40) 0 64px / 100% 5px,
+    linear-gradient(#d9b67f, #f3d9a8) 12% 7px / 22px 20px,
+    linear-gradient(#d18a67, #efb27b) 31% 10px / 18px 17px,
+    linear-gradient(#b7c8a7, #e1d6ac) 54% 5px / 20px 24px,
+    linear-gradient(#d5a96f, #f0d7a2) 78% 8px / 23px 20px,
+    linear-gradient(#e9c78e, #f6e2b9);
+  background-repeat: no-repeat;
+  box-shadow: inset 0 0 0 3px rgba(255, 240, 207, .35), 0 3px 0 rgba(87, 53, 38, .2);
+  content: "";
+}
+.store-scene::after {
+  position: absolute;
+  right: 0;
+  bottom: 29px;
+  left: 0;
+  height: 57px;
+  background:
+    repeating-linear-gradient(90deg, transparent 0 56px, rgba(153, 99, 67, .11) 56px 58px),
+    linear-gradient(180deg, rgba(255, 246, 221, .24), transparent);
+  content: "";
+  pointer-events: none;
 }
 .store-window {
   position: absolute;
@@ -962,10 +1005,15 @@ button { font: inherit; }
   gap: 5px;
   padding: 7px;
   border: 4px solid #744c3c;
+  border-radius: 8px;
   background: #fff7e7;
+  box-shadow: 0 4px 0 rgba(100, 64, 46, .22), inset 0 0 0 3px rgba(255,255,255,.5);
   transform: translateX(-50%);
 }
-.store-window i { background: #82b8b2; }
+.store-window i {
+  background: linear-gradient(135deg, #a9d8d1 0 22%, #82b8b2 23% 72%, #6f9f9b 73%);
+  box-shadow: inset 2px 2px 0 rgba(255,255,255,.45);
+}
 .store-seat-grid {
   position: absolute;
   z-index: 1;
@@ -984,7 +1032,8 @@ button { font: inherit; }
   justify-content: flex-start;
   padding: 3px;
   border: 2px solid transparent;
-  background: rgba(255, 247, 231, .28);
+  border-radius: 9px;
+  background: rgba(255, 247, 231, .3);
   color: #603e32;
   cursor: pointer;
   touch-action: manipulation;
@@ -999,7 +1048,9 @@ button { font: inherit; }
   justify-content: space-between;
   padding: 4px;
   border: 2px solid #744c3c;
-  background: #fffdf6;
+  border-radius: 9px;
+  background: linear-gradient(145deg, #fffefa, #fff7e7);
+  box-shadow: 0 3px 0 rgba(116, 76, 60, .18), inset 1px 1px 0 #fff;
 }
 .store-customer-seat.is-urgent .store-seat-bubble { border-color: #c64f43; }
 .store-bubble-items { display: flex; justify-content: center; gap: 2px; }
@@ -1017,17 +1068,21 @@ button { font: inherit; }
 .is-urgent .store-seat-gauge i, .order-slip-row.is-urgent .order-slip-gauge i { background: #d45e4e; }
 .store-seat-time { color: #775849; font-size: 8px; text-align: right; }
 .store-customer-seat.is-urgent .store-seat-time, .order-slip-row.is-urgent .order-slip-time { color: #bd4038; font-weight: 900; }
-.store-cat-art { display: block; width: 82px; height: 74px; margin: auto auto 0; image-rendering: pixelated; }
+.store-cat-art { display: block; width: 82px; height: 74px; margin: auto auto 0; object-fit: contain; image-rendering: pixelated; filter: drop-shadow(2px 3px 0 rgba(96, 62, 50, .23)); }
 .store-empty-seat {
   display: grid;
   align-self: stretch;
   place-items: center;
   padding: 8px;
   border: 2px dashed rgba(116, 76, 60, .35);
+  border-radius: 10px;
   color: #977e6c;
   font-size: 10px;
   text-align: center;
 }
+.store-empty-seat.has-departure { display: flex; flex-direction: column; justify-content: center; gap: 0; border-style: solid; background: rgba(255, 247, 231, .38); }
+.store-empty-seat.has-departure .store-cat-art { width: 52px; height: 47px; margin: 0 auto -2px; }
+.store-empty-seat.has-departure span { color: #775849; font-size: 9px; font-weight: 900; }
 .store-counter-front {
   position: absolute;
   z-index: 2;
@@ -1036,6 +1091,7 @@ button { font: inherit; }
   left: 0;
   height: 28px;
   border-top: 5px solid #f2cb82;
+  border-radius: 4px 4px 0 0;
   background: #95654a;
   pointer-events: none;
 }
@@ -1059,7 +1115,9 @@ button { font: inherit; }
   margin-top: 9px;
   padding: 10px;
   border: 3px solid #b88967;
-  background: #fffdf6;
+  border-radius: 11px;
+  background: linear-gradient(145deg, #fffefa, #fff8e9);
+  box-shadow: 0 4px 0 #e4c9a5;
 }
 .store-stock-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 5px; margin-bottom: 7px; }
 .store-stock-heading h3 { margin: 0; color: #603e32; font-size: 15px; }
@@ -1073,7 +1131,9 @@ button { font: inherit; }
   min-width: 0;
   padding: 4px;
   border: 2px solid #b88967;
-  background: #fff9e9;
+  border-radius: 7px;
+  background: linear-gradient(145deg, #fffdf5, #fff3d8);
+  box-shadow: inset 1px 1px 0 #fff;
   color: #603e32;
   text-align: left;
   cursor: pointer;
@@ -1093,7 +1153,8 @@ button { font: inherit; }
   gap: 8px;
   padding: 10px;
   border: 2px dashed #d7ad82;
-  background: #fff7e7;
+  border-radius: 9px;
+  background: linear-gradient(145deg, #fffaf0, #fff1d7);
 }
 .store-empty-stock p { margin: 0; color: #a45b47; font-size: 12px; font-weight: 900; }
 .store-empty-stock > div { display: flex; gap: 6px; }
@@ -1113,7 +1174,9 @@ button { font: inherit; }
   min-width: 0;
   padding: 10px;
   border: 3px solid #b88967;
-  background: #fffdf6;
+  border-radius: 12px;
+  background: linear-gradient(145deg, #fffefa, #fff7e8);
+  box-shadow: 0 4px 0 #e4c9a5;
 }
 .store-order-slip-heading { display: flex; align-items: center; justify-content: space-between; padding-bottom: 7px; border-bottom: 2px dashed #e6ceb0; }
 .store-order-slip-heading .eyebrow { font-size: 9px; }
@@ -1128,7 +1191,8 @@ button { font: inherit; }
   width: 100%;
   padding: 6px;
   border: 2px solid #e6ceb0;
-  background: #fff9e9;
+  border-radius: 8px;
+  background: linear-gradient(145deg, #fffdf6, #fff3df);
   color: #603e32;
   text-align: left;
   cursor: pointer;
@@ -1136,7 +1200,7 @@ button { font: inherit; }
 }
 .order-slip-row.is-selected { border-color: #d45e4e; background: #fff1df; }
 .order-slip-row.is-urgent { border-color: #c64f43; background: #fff0ec; }
-.order-slip-cat { width: 38px; height: 35px; image-rendering: pixelated; }
+.order-slip-cat { width: 38px; height: 35px; object-fit: contain; image-rendering: pixelated; }
 .order-slip-content { display: flex; min-width: 0; flex-direction: column; gap: 3px; }
 .order-slip-seat { color: #826a5a; font-size: 9px; font-weight: 900; }
 .order-slip-items { display: flex; flex-direction: column; gap: 1px; }
@@ -1191,6 +1255,7 @@ button { font: inherit; }
   .store-seat-number { font-size: 8px; }
   .store-seat-time { font-size: 7px; }
   .store-cat-art { width: 68px; height: 62px; }
+  .store-empty-seat.has-departure .store-cat-art { width: 43px; height: 39px; }
   .order-slip-list { grid-template-columns: 1fr; }
   .store-empty-stock > div { justify-content: center; }
 }

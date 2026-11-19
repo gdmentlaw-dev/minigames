@@ -1,7 +1,7 @@
 {
   "id": "meow-bakery",
   "title": "Meow Bakery",
-  "author": "C조",
+  "author": "이현주",
   "description": "파티시에 고양이와 30초 동안 베이킹 재료를 모으세요",
   "controls": "마우스·터치 이동 / 방향키",
   "scoreOrder": "desc",
