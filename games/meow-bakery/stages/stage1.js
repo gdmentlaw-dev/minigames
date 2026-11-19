@@ -3,10 +3,16 @@
 
   const WIDTH = 640;
   const HEIGHT = 420;
-  const DURATION = 60;
+  const DURATION = 30;
   const ITEM_SIZE = 60;
+  const BUNDLE_WIDTH = 104;
   const INGREDIENT_IDS = ["milk", "egg", "butter", "sugar", "salt", "cocoa", "strawberry", "chocolate", "cream"];
   const ITEM_TYPES = [...INGREDIENT_IDS, "trouble"];
+  const FALL_SPEEDS = {
+    milk: [70, 96], butter: [70, 96], cream: [70, 96],
+    sugar: [108, 138], salt: [108, 138], cocoa: [108, 138],
+    egg: [155, 190], strawberry: [155, 190], chocolate: [155, 190]
+  };
   const INGREDIENT_NAMES = {
     milk: "우유 · Milk", egg: "달걀 · Egg", butter: "버터 · Butter",
     sugar: "설탕 · Sugar", salt: "소금 · Salt", cocoa: "초코파우더 · Choco",
@@ -207,9 +213,14 @@
     style.textContent = [
       "#ingredient-list .ingredient-row, #result-list .ingredient-row { grid-template-columns: 35px minmax(0, 1fr) auto; gap: 5px; min-height: 39px; }",
       "#ingredient-list .ingredient-swatch, #result-list .ingredient-swatch { display: block; width: 34px; height: 34px; border: 0; background: var(--ingredient-icon) center / contain no-repeat !important; image-rendering: pixelated; }",
+      ".pantry-count-headings { display: grid; grid-template-columns: 35px minmax(0, 1fr) 32px 38px; gap: 5px; margin: 8px 0 -3px; color: #977e6c; font-size: 9px; font-weight: 900; text-align: center; }",
+      ".pantry-count-headings span:first-child { grid-column: 2; text-align: left; }",
+      "#ingredient-list .pantry-inventory-row { grid-template-columns: 35px minmax(0, 1fr) 32px 38px; gap: 5px; min-height: 39px; }",
+      "#ingredient-list .pantry-inventory-row .shared-count, #ingredient-list .pantry-inventory-row .round-count { text-align: center; }",
+      "#ingredient-list .pantry-inventory-row .ingredient-name { overflow: hidden; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }",
       "#result-list .ingredient-row { grid-template-columns: 25px minmax(0, 1fr) auto; gap: 3px; }",
       "#result-list .ingredient-swatch { width: 24px; height: 24px; }",
-      "@media (max-width: 760px) { #ingredient-list .ingredient-row { grid-template-columns: 25px minmax(0, 1fr) auto; gap: 3px; min-height: 27px; } #ingredient-list .ingredient-swatch { width: 24px; height: 24px; } }",
+      "@media (max-width: 760px) { #ingredient-list .ingredient-row { grid-template-columns: 25px minmax(0, 1fr) auto; gap: 3px; min-height: 27px; } #ingredient-list .pantry-inventory-row { grid-template-columns: 25px minmax(0, 1fr) 34px 42px; gap: 3px; min-height: 29px; } #ingredient-list .ingredient-swatch { width: 24px; height: 24px; } .pantry-count-headings { grid-template-columns: 25px minmax(0, 1fr) 34px 42px; gap: 3px; } #ingredient-list .pantry-inventory-row .ingredient-name { font-size: 10px; } }",
       "@media (max-width: 430px) { #result-list .ingredient-row { grid-template-columns: 20px minmax(0, 1fr) auto; gap: 2px; } #result-list .ingredient-swatch { width: 19px; height: 19px; } }"
     ].join("\n");
     document.head.append(style);
@@ -320,7 +331,7 @@
     rectangle(context, x + 6, y + 27, 55, 5, "#684536");
   }
 
-  function drawScene(context, objects, basketX, timeLeft) {
+  function drawScene(context, objects, basketX, timeLeft, impactTime) {
     drawBackground(context);
     drawCat(context, 275, 217);
     rectangle(context, 0, 407, WIDTH, 13, "#8d5943");
@@ -333,14 +344,24 @@
     rectangle(context, 134, 377, 16, 5, "#648b55");
 
     objects.forEach(object => {
-      rectangle(context, object.x + 8, object.y + ITEM_SIZE - 4, ITEM_SIZE - 16, 4, "rgba(91, 67, 55, .16)");
-      drawItem(context, object.type, object.x, object.y, true);
+      const objectWidth = object.width || ITEM_SIZE;
+      rectangle(context, object.x + 8, object.y + ITEM_SIZE - 4, objectWidth - 16, 4, "rgba(91, 67, 55, .16)");
+      if (object.type === "bundle") {
+        drawItem(context, object.ingredient, object.x, object.y, true);
+        drawItem(context, "trouble", object.x + 44, object.y + 5, false);
+      } else {
+        drawItem(context, object.type, object.x, object.y, true);
+      }
     });
 
     drawBasket(context, basketX - 33, 330);
     if (timeLeft <= 10 && Math.floor(timeLeft * 6) % 2 === 0) {
       rectangle(context, 12, 12, 7, 7, "#f5c76d");
       rectangle(context, 24, 21, 4, 4, "#fff6df");
+    }
+    if (impactTime > 0) {
+      context.fillStyle = `rgba(211, 76, 65, ${Math.min(.3, impactTime * .75)})`;
+      context.fillRect(0, 0, WIDTH, HEIGHT);
     }
   }
 
@@ -353,12 +374,16 @@
     let direction = 0;
     let pointerActive = false;
     let objects = [];
-    let inventory = {};
+    let sharedInventory = {};
+    let roundInventory = {};
     let animationId = 0;
     let canvas;
     let context;
     let callbacks;
     let lastSpawnedType = "";
+    let feedback = "";
+    let feedbackTime = 0;
+    let impactTime = 0;
 
     function moveBasketTo(event) {
       if (!running) return;
@@ -429,37 +454,59 @@
     }
 
     function spawnObject() {
-      let type = ITEM_TYPES[Math.floor(Math.random() * ITEM_TYPES.length)];
-      if (type === lastSpawnedType && Math.random() < 0.65) {
-        type = ITEM_TYPES[(ITEM_TYPES.indexOf(type) + 1 + Math.floor(Math.random() * (ITEM_TYPES.length - 1))) % ITEM_TYPES.length];
+      const isBundle = Math.random() < .25;
+      let type;
+      let ingredient = null;
+      if (isBundle) {
+        type = "bundle";
+        ingredient = INGREDIENT_IDS[Math.floor(Math.random() * INGREDIENT_IDS.length)];
+      } else {
+        type = ITEM_TYPES[Math.floor(Math.random() * ITEM_TYPES.length)];
+        if (type === lastSpawnedType && Math.random() < 0.65) {
+          type = ITEM_TYPES[(ITEM_TYPES.indexOf(type) + 1 + Math.floor(Math.random() * (ITEM_TYPES.length - 1))) % ITEM_TYPES.length];
+        }
       }
       lastSpawnedType = type;
+      const width = isBundle ? BUNDLE_WIDTH : ITEM_SIZE;
+      const speed = isBundle
+        ? 205 + Math.random() * 30 + elapsed * .7
+        : type === "trouble"
+          ? 175 + Math.random() * 20 + elapsed * .7
+          : FALL_SPEEDS[type][0] + Math.random() * (FALL_SPEEDS[type][1] - FALL_SPEEDS[type][0]) + elapsed * .7;
       objects.push({
         type,
-        x: 10 + Math.random() * (WIDTH - ITEM_SIZE - 10),
+        ingredient,
+        width,
+        x: 10 + Math.random() * (WIDTH - width - 10),
         y: -ITEM_SIZE - 5,
-        speed: 105 + Math.random() * 65 + elapsed * 1.1
+        speed
       });
     }
 
     function catchObject(object) {
-      if (object.type === "trouble") {
-        for (let index = INGREDIENT_IDS.length - 1; index >= 0; index--) {
-          const id = INGREDIENT_IDS[index];
-          if (inventory[id] > 0) {
-            inventory[id] -= 1;
-            break;
-          }
-        }
+      if (object.type === "bundle") {
+        roundInventory[object.ingredient] += 1;
+        resetRoundForDung();
+      } else if (object.type === "trouble") {
+        resetRoundForDung();
       } else {
-        inventory[object.type] += 1;
+        roundInventory[object.type] += 1;
       }
-      if (callbacks.onInventoryChange) callbacks.onInventoryChange({ ...inventory });
+    }
+
+    function resetRoundForDung() {
+      roundInventory = Object.fromEntries(INGREDIENT_IDS.map(id => [id, 0]));
+      feedback = "앗, 똥! 이번 판 재료가 초기화됐어요.";
+      feedbackTime = 1.1;
+      impactTime = .28;
     }
 
     function update(delta) {
       elapsed += delta;
       const timeLeft = Math.max(0, DURATION - elapsed);
+      feedbackTime = Math.max(0, feedbackTime - delta);
+      impactTime = Math.max(0, impactTime - delta);
+      if (feedbackTime === 0) feedback = "";
       basketX = Math.max(38, Math.min(WIDTH - 38, basketX + direction * delta * 330));
       spawnIn -= delta;
       if (spawnIn <= 0) {
@@ -469,14 +516,15 @@
 
       objects.forEach(object => {
         object.y += object.speed * delta;
+        const objectWidth = object.width || ITEM_SIZE;
         if (object.y + ITEM_SIZE - 5 >= 330 && object.y + ITEM_SIZE - 13 <= 362 &&
-          object.x + ITEM_SIZE - 6 >= basketX - 29 && object.x + 6 <= basketX + 29) {
+          object.x + objectWidth - 6 >= basketX - 29 && object.x + 6 <= basketX + 29) {
           object.caught = true;
           catchObject(object);
         }
       });
       objects = objects.filter(object => !object.caught && object.y < HEIGHT + 10);
-      callbacks.onUpdate(inventory, timeLeft);
+      callbacks.onUpdate(sharedInventory, roundInventory, timeLeft, feedback);
       return timeLeft;
     }
 
@@ -486,14 +534,27 @@
       const delta = Math.min((timestamp - lastTimestamp) / 1000, 0.05);
       lastTimestamp = timestamp;
       const timeLeft = update(delta);
-      drawScene(context, objects, basketX, timeLeft);
+      drawScene(context, objects, basketX, timeLeft, impactTime);
       if (timeLeft <= 0) {
-        running = false;
-        unbind();
-        callbacks.onComplete({ ...inventory });
+        finishRound("timeout");
         return;
       }
       animationId = requestAnimationFrame(loop);
+    }
+
+    function finishRound(reason) {
+      if (!running) return;
+      running = false;
+      cancelAnimationFrame(animationId);
+      unbind();
+      const transferred = { ...roundInventory };
+      INGREDIENT_IDS.forEach(id => {
+        sharedInventory[id] = (sharedInventory[id] || 0) + transferred[id];
+      });
+      roundInventory = Object.fromEntries(INGREDIENT_IDS.map(id => [id, 0]));
+      if (callbacks.onInventoryChange) callbacks.onInventoryChange({ ...sharedInventory });
+      callbacks.onUpdate(sharedInventory, roundInventory, Math.max(0, DURATION - elapsed), "");
+      callbacks.onComplete({ ...sharedInventory }, transferred, reason);
     }
 
     function start(options) {
@@ -501,7 +562,8 @@
       context = canvas.getContext("2d");
       context.imageSmoothingEnabled = false;
       callbacks = options;
-      inventory = { ...options.inventory };
+      sharedInventory = { ...options.inventory };
+      roundInventory = Object.fromEntries(INGREDIENT_IDS.map(id => [id, 0]));
       objects = [];
       elapsed = 0;
       spawnIn = 0.25;
@@ -510,20 +572,29 @@
       pointerActive = false;
       lastTimestamp = 0;
       lastSpawnedType = "";
+      feedback = "";
+      feedbackTime = 0;
+      impactTime = 0;
       running = true;
       bind();
-      callbacks.onUpdate(inventory, DURATION);
+      callbacks.onUpdate(sharedInventory, roundInventory, DURATION, "");
       animationId = requestAnimationFrame(loop);
 
       return {
         setDirection(value) {
           direction = Math.max(-1, Math.min(1, value));
         },
-        stop() {
+        takeAway() {
+          finishRound("take-away");
+        },
+        discard() {
           if (!running) return;
           running = false;
           cancelAnimationFrame(animationId);
           unbind();
+        },
+        stop() {
+          finishRound("navigate");
         }
       };
     }

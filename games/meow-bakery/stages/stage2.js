@@ -158,27 +158,59 @@
 
     function drawBread(context, recipeId, x, y, scale) {
       const px = scale;
+      const block = (left, top, width, height, color) => {
+        rect(context, x + left * px, y + top * px, width * px, height * px, color);
+      };
       if (recipeId === "butterCookie" || recipeId === "chocolateCookie") {
-        rect(context, x + 8 * px, y + 13 * px, 24 * px, 12 * px, "#6d4935");
-        rect(context, x + 12 * px, y + 9 * px, 16 * px, 16 * px, recipeId === "chocolateCookie" ? "#d48a45" : "#edbd67");
-        rect(context, x + 15 * px, y + 12 * px, 10 * px, 10 * px, "#f3cf82");
-        if (recipeId === "chocolateCookie") {
-          rect(context, x + 17 * px, y + 14 * px, 3 * px, 3 * px, "#52372e");
-          rect(context, x + 23 * px, y + 17 * px, 3 * px, 3 * px, "#52372e");
+        if (recipeId === "butterCookie") {
+          block(7, 11, 26, 17, "#9b643d");
+          block(10, 8, 20, 21, "#eab95f");
+          block(13, 10, 14, 16, "#f5d485");
+          block(13, 8, 14, 3, "#ffebaa");
+          block(11, 26, 18, 3, "#d7974d");
+        } else {
+          block(9, 8, 22, 3, "#9b643d");
+          block(6, 11, 28, 12, "#9b643d");
+          block(9, 23, 22, 5, "#9b643d");
+          block(11, 8, 18, 18, "#c77b3f");
+          block(8, 11, 24, 12, "#d9904c");
+          block(13, 10, 10, 3, "#efb269");
+          block(11, 13, 4, 4, "#51342b");
+          block(23, 12, 4, 4, "#51342b");
+          block(18, 20, 4, 4, "#51342b");
+          block(27, 18, 3, 3, "#51342b");
         }
       } else if (recipeId === "madeleine") {
-        rect(context, x + 9 * px, y + 11 * px, 23 * px, 16 * px, "#8a5c3d");
-        rect(context, x + 12 * px, y + 8 * px, 17 * px, 17 * px, "#f1c66d");
-        for (let i = 0; i < 3; i++) rect(context, x + (13 + i * 5) * px, y + 11 * px, 2 * px, 11 * px, "#c88e48");
+        block(12, 9, 16, 3, "#9b643d");
+        block(8, 12, 24, 10, "#9b643d");
+        block(12, 22, 16, 6, "#9b643d");
+        block(11, 8, 18, 3, "#f0bf61");
+        block(9, 11, 22, 10, "#f5cf78");
+        block(13, 21, 14, 5, "#e9ae51");
+        for (let index = 0; index < 4; index += 1) {
+          block(12 + index * 5, 12, 2, 9, "#d99b4e");
+        }
+        block(14, 9, 12, 2, "#ffe49a");
       } else if (recipeId === "strawberryCake") {
-        rect(context, x + 7 * px, y + 17 * px, 27 * px, 14 * px, "#dba061");
-        rect(context, x + 7 * px, y + 13 * px, 27 * px, 6 * px, "#fff4dc");
-        rect(context, x + 12 * px, y + 7 * px, 17 * px, 7 * px, "#f08a94");
-        rect(context, x + 17 * px, y + 4 * px, 7 * px, 5 * px, "#78a85a");
+        block(6, 16, 28, 14, "#9b643d");
+        block(9, 18, 22, 8, "#e9b875");
+        block(6, 13, 28, 5, "#fff4dc");
+        block(9, 10, 22, 4, "#fffaf0");
+        block(12, 6, 6, 6, "#df4f60");
+        block(21, 5, 7, 7, "#e64e5c");
+        block(13, 4, 4, 3, "#78a85a");
+        block(23, 3, 4, 3, "#78a85a");
+        block(18, 18, 4, 8, "#fff4dc");
       } else {
-        rect(context, x + 7 * px, y + 14 * px, 27 * px, 16 * px, "#71452f");
-        rect(context, x + 10 * px, y + 10 * px, 21 * px, 16 * px, "#c98e50");
-        rect(context, x + 14 * px, y + 12 * px, 13 * px, 3 * px, "#edc179");
+        block(8, 15, 24, 13, "#70432f");
+        block(11, 10, 18, 18, "#70432f");
+        block(14, 8, 12, 4, "#70432f");
+        block(10, 15, 20, 10, "#a9683e");
+        block(13, 11, 16, 13, "#c58a4d");
+        block(16, 10, 10, 3, "#e0aa66");
+        block(17, 15, 3, 8, "#77452f");
+        block(20, 15, 4, 3, "#77452f");
+        block(23, 18, 3, 5, "#77452f");
       }
     }
 
