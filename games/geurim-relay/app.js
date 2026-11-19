@@ -155,8 +155,8 @@ function selectMode(value) {
   byId("room-browser").hidden = !joining;
   byId("invited-room").hidden = !joining || !code;
   byId("enter").hidden = joining && !code;
-  byId("room-title-field").hidden = joining || !!profile?.owned;
-  byId("new-room-title").required = !joining && !profile?.owned;
+  byId("room-title-field").hidden = joining || !!profile?.owned?.title;
+  byId("new-room-title").required = !joining && !profile?.owned?.title;
   byId("owned-room").hidden = joining || !profile?.owned;
   byId("owned-room").textContent = profile?.owned ? "이미 만든 방이 있어요. 이어서 참여해 주세요." : "";
   byId("enter").firstElementChild.textContent = joining ? "방 입장하기" : profile?.owned ? "내 방 이어하기" : "게임 시작";
@@ -540,6 +540,7 @@ async function refresh() {
     return true;
   } catch (error) {
     if (error.status === 401 || error.status === 404) {
+      if (error.status === 404 && profile?.owned?.code === code) profile.owned = null;
       progress.rooms = progress.rooms.filter((room) => room.code !== code);
       await saveProgress();
       token = "";
