@@ -60,12 +60,20 @@ const PILES = {
   islands: [
     [0, 0, 0], [24, 162, 0], [0, 315, 0],
   ],
+  canopy: [
+    [35, 29, 0], [149, 37, 0], [267, 28, 0],
+    [71, 157, 0], [185, 165, 0], [299, 156, 0],
+    [100, 287, 0], [214, 293, 0], [328, 284, 0],
+  ],
+  pocket: [
+    [0, 6, 0], [110, 0, 0], [220, 7, 0], [55, 134, 0], [168, 137, 0],
+    [2, 48, 1], [114, 58, 1], [231, 54, 1], [151, 190, 1],
+  ],
 };
 
 // Each entry is [pile, offset x, offset y]. The first six stages grow from 51 to 96 cards.
 const STAGE_LAYOUTS = [
-  [['shallow', -470, 8], ['shallow', 42, 48], ['shallow', -228, 394],
-    ['islands', -455, 340], ['islands', 367, 390]],
+  [['stair', -470, 0], ['terrace', 31, 98], ['pocket', -161, 642]],
   [['cross', 90, 0], ['terrace', -467, 14], ['shallow', -444, 439]],
   [['stair', -480, 0], ['stair', 20, 112], ['terrace', -452, 632], ['islands', 260, 741]],
   [['core', -232, 0], ['stair', 19, 590], ['shallow', -477, 648]],
@@ -74,25 +82,38 @@ const STAGE_LAYOUTS = [
     ['islands', -466, 724], ['islands', -205, 684], ['islands', 70, 736], ['islands', 339, 650]],
 ];
 
+// Stages 7–20 add nine-card layers to the major piles of the denser maps.
+// Each entry is [base stage, added layers per major pile, from left to right in the definition].
+const STACK_PLANS = [
+  [4, [1, 1, 1]], [5, [1, 1, 1]], [5, [2, 1, 1]], [6, [2, 2]],
+  [4, [3, 2, 2]], [5, [3, 2, 2]], [5, [3, 3, 2]], [6, [4, 4]],
+  [4, [5, 3, 3]], [5, [4, 4, 3]], [5, [5, 3, 4]], [4, [6, 4, 4]],
+  [5, [6, 4, 4]], [6, [7, 7]],
+];
+const MAX_STAGE = STAGE_LAYOUTS.length + STACK_PLANS.length;
+
 function createStageLayout(stage) {
-  const index = (stage - 1) % STAGE_LAYOUTS.length;
-  const repeats = Math.floor((stage - 1) / STAGE_LAYOUTS.length);
+  const [baseStage, stacks] = STACK_PLANS[stage - STAGE_LAYOUTS.length - 1] ?? [stage];
+  const layout = STAGE_LAYOUTS[baseStage - 1];
   const positions = [];
 
-  function addPile(name, offsetX, offsetY) {
+  function addPile(name, offsetX, offsetY, layerOffset = 0) {
     for (const [x, y, layer] of PILES[name]) {
-      positions.push({ id: positions.length, x: x + offsetX, y: y + offsetY, layer });
+      positions.push({ id: positions.length, x: x + offsetX, y: y + offsetY, layer: layer + layerOffset });
     }
   }
 
-  for (const [name, x, y] of STAGE_LAYOUTS[index]) addPile(name, x, y);
-  if (repeats > 0) {
-    const extensionY = Math.max(...positions.map(card => card.y + CARD_HEIGHT)) + 84;
-    for (let pile = 0; pile < repeats * 3; pile++) {
-      const x = pile % 2 === 0 ? -459 : 38;
-      const y = extensionY + Math.floor(pile / 2) * 452 + (pile % 2) * 22;
-      addPile('terrace', x, y);
-    }
+  for (const [name, x, y] of layout) addPile(name, x, y);
+  if (stacks) {
+    const firstNewLayer = Math.max(...positions.map(card => card.layer)) + 1;
+    const majorPiles = layout.filter(([name]) => name !== 'crown' && name !== 'islands');
+    majorPiles.forEach(([, x, y], index) => {
+      for (let depth = 0; depth < stacks[index]; depth++) {
+        const offsetX = depth % 2 === 0 ? -16 : 16;
+        const offsetY = depth % 3 * 22;
+        addPile('canopy', x + offsetX, y + offsetY, firstNewLayer + depth);
+      }
+    });
   }
 
   const left = Math.min(...positions.map(card => card.x)) - BOARD_MARGIN;
