@@ -2,7 +2,10 @@
   <rect width="256" height="256" rx="34" fill="#16132e"/>
   <g transform="rotate(-13 88 125)">
     <rect x="36" y="56" width="104" height="138" rx="16" fill="#231f45" stroke="#7c6cf0" stroke-width="6"/>
-    <path d="M65 105a23 23 0 0 1 46 0c0 15-23 18-23 31m0 17v2" fill="none" stroke="#ffc83d" stroke-width="9" stroke-linecap="round"/>
+    <g transform="translate(-81 -3)">
+      <path d="M169 114c-23-16-39 3-27 27 8 17 19 21 27 14 8 7 19 3 27-14 12-24-4-43-27-27" fill="#df506a"/>
+      <path d="M168 114c-3-15 6-23 17-22-1 12-8 17-17 17" fill="#83bc7a"/>
+    </g>
   </g>
   <g transform="rotate(13 170 128)">
     <rect x="118" y="59" width="104" height="138" rx="16" fill="#f4f2ff"/>

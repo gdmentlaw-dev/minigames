@@ -1,8 +1,8 @@
 {
   "id": "memory-match",
-  "title": "카드 짝 맞추기",
+  "title": "타일 톡톡",
   "author": "kitaejoo",
-  "description": "스테이지마다 30초 안에 과일 카드의 짝을 맞히세요.",
+  "description": "7칸 보관함에 같은 그림 카드 3장을 모아 게임판을 비우세요.",
   "scoreOrder": "desc",
   "scoreUnit": "점",
   "scoreLimit": 1000000,

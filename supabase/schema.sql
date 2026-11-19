@@ -17,6 +17,11 @@ create table if not exists public.players (
 );
 create unique index if not exists players_name_key on public.players (lower(name));
 
+-- 얼굴 아이콘 번호(0~11). 처음 접속할 때 본인이 고른다. 이미 있던 플레이어는 아래에서 무작위로 채운다
+alter table public.players add column if not exists avatar smallint check (avatar between 0 and 11);
+update public.players set avatar = floor(random() * 12)::smallint where avatar is null
+  and exists (select 1 from public.player_secrets s where s.player_id = players.id);  -- 이미 가입한 사람만 (여러 번 실행해도 번호가 바뀌지 않음)
+
 -- PIN (암호화해서 저장. 사이트에서는 아무도 못 읽음)
 create table if not exists public.player_secrets (
   player_id     uuid primary key references public.players (id) on delete cascade,
@@ -116,7 +121,7 @@ as $$
   select player_id from public.player_devices where auth_uid = auth.uid();
 $$;
 
--- 내 정보: { id, name } 또는 null
+-- 내 정보: { id, name, avatar } 또는 null
 create or replace function public.me()
 returns json
 language sql
@@ -124,7 +129,7 @@ stable
 security definer
 set search_path = public
 as $$
-  select json_build_object('id', p.id, 'name', p.name)
+  select json_build_object('id', p.id, 'name', p.name, 'avatar', p.avatar)
   from public.players p
   where p.id = public.current_player_id();
 $$;
@@ -163,7 +168,7 @@ begin
     values (v_player.id, extensions.crypt(p_pin, extensions.gen_salt('bf')));
     insert into public.player_devices (auth_uid, player_id) values (v_uid, v_player.id)
     on conflict (auth_uid) do update set player_id = excluded.player_id, linked_at = now();
-    return json_build_object('status', 'created', 'id', v_player.id, 'name', v_player.name);
+    return json_build_object('status', 'created', 'id', v_player.id, 'name', v_player.name, 'avatar', v_player.avatar);
   end if;
 
   select * into v_sec from public.player_secrets where player_id = v_player.id for update;
@@ -177,7 +182,7 @@ begin
     update public.player_secrets set failed = 0, locked_until = null where player_id = v_player.id;
     insert into public.player_devices (auth_uid, player_id) values (v_uid, v_player.id)
     on conflict (auth_uid) do update set player_id = excluded.player_id, linked_at = now();
-    return json_build_object('status', 'login', 'id', v_player.id, 'name', v_player.name);
+    return json_build_object('status', 'login', 'id', v_player.id, 'name', v_player.name, 'avatar', v_player.avatar);
   end if;
 
   if v_sec.failed + 1 >= 5 then
@@ -209,6 +214,23 @@ begin
     return json_build_object('status', 'taken');
   end;
   return json_build_object('status', 'ok', 'name', v_name);
+end;
+$$;
+
+-- 얼굴 아이콘 바꾸기 (0~11)  →  { status: 'ok' | 'bad_avatar', avatar }
+create or replace function public.set_avatar(p_avatar int)
+returns json
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_pid uuid := public.current_player_id();
+begin
+  if v_pid is null then raise exception 'log in first'; end if;
+  if p_avatar is null or p_avatar not between 0 and 11 then return json_build_object('status', 'bad_avatar'); end if;
+  update public.players set avatar = p_avatar, updated_at = now() where id = v_pid;
+  return json_build_object('status', 'ok', 'avatar', p_avatar);
 end;
 $$;
 
@@ -325,6 +347,8 @@ revoke all on function public.me()                                     from publ
 revoke all on function public.login(text, text)                        from public, anon;
 revoke all on function public.rename_player(text)                      from public, anon;
 revoke all on function public.logout()                                 from public, anon;
+revoke all on function public.set_avatar(int)                          from public, anon;
+grant execute on function public.set_avatar(int)                          to authenticated;
 revoke all on function public.submit_score(text, bigint, text, bigint) from public, anon;
 grant execute on function public.current_player_id()                      to authenticated;
 grant execute on function public.me()                                     to authenticated;
@@ -344,9 +368,10 @@ select
   round(
     100.0 * (rank() over (partition by game_id order by k asc))
     / count(*) over (partition by game_id), 1
-  ) as points
+  ) as points,
+  avatar
 from (
-  select b.game_id, b.player_id, p.name, b.score, b.achieved_at,
+  select b.game_id, b.player_id, p.name, p.avatar, b.score, b.achieved_at,
          case when g.score_order = 'asc' then -b.score else b.score end as k
   from public.bests b
   join public.players p on p.id = b.player_id
@@ -360,10 +385,11 @@ grant select on public.game_ranking to anon, authenticated;
 --  p_games: 사이트에 보이는 게임 ID 목록 (예제 게임 제외용)
 --  동점: 참여 게임 수 많은 순 → 마지막 기록을 먼저 세운 순
 
+drop function if exists public.overall_ranking(text[]);  -- 돌려주는 열(avatar)이 늘어서 새로 만든다
 create or replace function public.overall_ranking(p_games text[])
 returns table (
   rank bigint, player_id uuid, name text, total numeric,
-  games_played bigint, last_at timestamptz, per_game jsonb
+  games_played bigint, last_at timestamptz, per_game jsonb, avatar smallint
 )
 language sql
 stable
@@ -377,7 +403,8 @@ as $$
     sum(r.points),
     count(*),
     max(r.achieved_at),
-    jsonb_object_agg(r.game_id, r.points)
+    jsonb_object_agg(r.game_id, r.points),
+    min(r.avatar)
   from public.game_ranking r
   where r.game_id = any (p_games)
   group by r.player_id
