@@ -117,7 +117,7 @@
     let label = `${profile.name} 풍선, 기본 ${profile.points}점, ${profile.speedLabel}`, symbol = "";
     if (balloon.type === "gold") symbol = '<svg class="balloon-symbol" aria-hidden="true"><use href="#i-star"/></svg>';
     if (balloon.type === "clock") { label += ", 3초 추가"; symbol = '<svg class="balloon-symbol" aria-hidden="true"><use href="#i-clock"/></svg>'; }
-    if (balloon.type === "bomb") { label = `감점 폭탄, 누르면 ${profile.penalty}점과 3초 감소, 좌우 이동`; symbol = '<svg class="balloon-symbol" aria-hidden="true" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg>'; }
+    if (balloon.type === "bomb") { label = `감점 폭탄, 누르면 ${profile.penalty}점과 3초 감소, 수직 상승`; symbol = '<svg class="balloon-symbol" aria-hidden="true" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg>'; }
     else if (balloon.sideways) label += ", 좌우 이동";
     element.style.setProperty("--balloon", profile.light);
     element.style.setProperty("--balloon-dark", profile.dark);
@@ -224,6 +224,12 @@
     const celebration = document.createElement("div"); celebration.className = `milestone-party party-${dance.id}`;
     celebration.style.setProperty("--party-hue", String((last / PARTY_STEP * 47) % 360));
     celebration.style.setProperty("--dance-color", dance.color);
+    const catWidth = dimensions.width <= 580 ? 145 : 180;
+    const catHeight = dimensions.width <= 580 ? 175 : 215;
+    const catCenter = dimensions.height * 0.55;
+    celebration.style.setProperty("--travel-x", `${Math.max(0, (dimensions.width - catWidth) / 2 - 40)}px`);
+    celebration.style.setProperty("--travel-up", `${Math.max(0, catCenter - catHeight / 2 - 48)}px`);
+    celebration.style.setProperty("--travel-down", `${Math.max(0, dimensions.height - catCenter - catHeight / 2 - 48)}px`);
     const glow = document.createElement("div"); glow.className = "party-glow";
     const rays = document.createElement("div"); rays.className = "party-rays";
     celebration.append(glow, rays);

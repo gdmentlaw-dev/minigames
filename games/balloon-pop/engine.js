@@ -13,7 +13,7 @@ const BALLOON_RULES = Object.freeze({
   ]),
   gold: Object.freeze({ name: "노랑 별", light: "#ffe394", dark: "#edb441", points: 60, speed: 1.85, speedLabel: "가장 빠름" }),
   clock: Object.freeze({ name: "민트 시간", light: "#9ae9c8", dark: "#4eb89b", points: 15, speed: 0.9, speedLabel: "조금 느림" }),
-  bomb: Object.freeze({ name: "감점 폭탄", light: "#93879f", dark: "#51455f", points: 0, penalty: 100, speed: 1.1, speedLabel: "좌우 이동" }),
+  bomb: Object.freeze({ name: "감점 폭탄", light: "#9ae9c8", dark: "#4eb89b", points: 0, penalty: 100, speed: 1.1, speedLabel: "수직 상승" }),
 });
 
 function getBalloonSize(points, small = false) {
@@ -37,13 +37,13 @@ function getBalloonPosition(balloon, dimensions, reducedMotion = false) {
     const reflected = 1 - Math.abs(((travel % 2 + 2) % 2) - 1);
     x = 5 + reflected * available;
   } else {
-    const sway = reducedMotion ? 0 : Math.sin(balloon.age / 650 + balloon.sway) * 9;
+    const sway = reducedMotion || balloon.type === "bomb" ? 0 : Math.sin(balloon.age / 650 + balloon.sway) * 9;
     x = Math.max(5, Math.min(dimensions.width - width - 5, balloon.x * dimensions.width - width / 2 + sway));
   }
   return {
     x, y: dimensions.height + 10 - progress * (dimensions.height + height + 30),
     width, height, scale,
-    rotation: reducedMotion ? 0 : Math.sin(balloon.age / 850 + balloon.sway) * 7,
+    rotation: reducedMotion || balloon.type === "bomb" ? 0 : Math.sin(balloon.age / 850 + balloon.sway) * 7,
   };
 }
 
@@ -106,9 +106,9 @@ class BalloonRound {
       id: this.nextId++, type, x, age,
       baseLifetime, lifetime: Math.max(650, baseLifetime / speedBoost),
       color, profile, sway: this.random() * Math.PI * 2,
-      sideways: type === "bomb" || profile.points >= 40,
-      waveWidth: type === "bomb" ? 0.34 : 0.27,
-      wavePeriod: (type === "bomb" ? 1500 : 1850) / speedBoost,
+      sideways: type !== "bomb" && profile.points >= 40,
+      waveWidth: profile.points >= 40 ? 0.27 : 0,
+      wavePeriod: 1850,
     };
     this.balloons.set(balloon.id, balloon);
     return balloon;
@@ -170,11 +170,8 @@ class BalloonRound {
       for (const active of this.balloons.values()) {
         if (active.type !== "bomb") continue;
         const progress = active.age / active.lifetime;
-        const wavePhase = active.age / active.wavePeriod * Math.PI * 2 + active.sway;
         active.lifetime = Math.max(650, active.baseLifetime / this.bombSpeedBoost);
         active.age = progress * active.lifetime;
-        active.wavePeriod = 1500 / this.bombSpeedBoost;
-        active.sway = wavePhase - active.age / active.wavePeriod * Math.PI * 2;
       }
     }
     const event = { type: "pop", balloon, points, combo: this.combo, milestones, previousScore };

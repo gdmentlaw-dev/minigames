@@ -59,14 +59,16 @@ button:focus-visible, a:focus-visible { outline-color: #9364ac; }
 .result-stats span { color: #997b5b; }
 .result-stats strong { color: #745132; }
 .balloon { filter: drop-shadow(2px 6px 4px #a3752a25); }
-.balloon.bomb .balloon-symbol { width: 29%; height: 29%; left: 35.5%; top: 24%; }
-.balloon.bomb .balloon-points { top: 61%; font-size: max(11px, calc(var(--special-point-font) * var(--balloon-scale))); color: #fff3e9; text-shadow: none; }
+.balloon.bomb .balloon-shape { border-color: #378d7255; background: radial-gradient(ellipse at 28% 20%, #ffffff3b, transparent 40%), radial-gradient(ellipse at 37% 28%, var(--balloon) 30%, var(--balloon-dark) 100%); }
+.balloon.bomb .balloon-shape:after { background: var(--balloon-dark); }
+.balloon.bomb .balloon-symbol { width: 29%; height: 29%; left: 35.5%; top: 24%; stroke: #176255; }
+.balloon.bomb .balloon-points { top: 61%; font-size: max(11px, calc(var(--special-point-font) * var(--balloon-scale))); color: #176255; text-shadow: none; }
 .score-float { text-shadow: 0 2px 0 #fffcef, 0 0 10px #fff7da; }
 .live-message { color: #986522; text-shadow: 0 1px 5px #fffef4, 0 0 14px #fffef4; }
 .legend .legend-item { background: #fffdf0a8; border-color: #d9bd8580; }
 .legend-copy, .legend b { color: #896746; }
 .legend-copy small, .game-footer > p { color: #9f8363; }
-.legend .bomb-mini { background: #7a647b; }
+.legend .bomb-mini { background: var(--guide-color); color: #176255; }
 
 /* 500점 축하: 그림은 벡터이고 팔다리는 CSS로 따로 움직인다. */
 .milestone-party { animation: party-lifetime 3.25s ease-out forwards; }
@@ -79,7 +81,13 @@ button:focus-visible, a:focus-visible { outline-color: #9364ac; }
 .milestone-reached { color: #9c7551; text-shadow: none; }
 .score-stat.celebrating { animation-duration: 3.1s; }
 .cat-show { position: absolute; inset: 0; }
-.cat-dance-stage { position: absolute; top: 66%; left: 50%; width: 180px; height: 215px; margin-left: -90px; transform: translateY(-46%); animation: cat-arrive 3.15s ease-out both; }
+.cat-travel { position: absolute; inset: 0; animation: cat-roam-disco 3.15s linear both; }
+.travel-spin { animation-name: cat-roam-spin; }
+.travel-hop { animation-name: cat-roam-hop; }
+.travel-moonwalk { animation-name: cat-roam-moonwalk; }
+.travel-breakdance { animation-name: cat-roam-break; }
+.travel-wiggle { animation-name: cat-roam-wiggle; }
+.cat-dance-stage { position: absolute; top: 55%; left: 50%; width: 180px; height: 215px; margin-left: -90px; transform: translateY(-50%); animation: cat-arrive 3.15s ease-out both; }
 .dancing-cat { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 5px 3px #9b722e25); }
 .cat-rig, .cat-head, .cat-tail, .cat-arm-left, .cat-arm-right, .cat-leg-left, .cat-leg-right { transform-box: view-box; }
 .cat-rig { transform-origin: 100px 175px; }
@@ -140,11 +148,17 @@ button:focus-visible, a:focus-visible { outline-color: #9364ac; }
 @keyframes cat-windmill { from { transform: rotate(-45deg); } to { transform: rotate(45deg); } }
 @keyframes cat-wiggle { from { transform: translateX(-8px) rotate(-12deg); } to { transform: translateX(8px) rotate(12deg); } }
 @keyframes cat-head-wiggle { from { transform: rotate(-8deg); } to { transform: rotate(8deg); } }
+@keyframes cat-roam-disco { 0%, 100% { translate: calc(var(--travel-x, 0px) * -.85) 0; } 25% { translate: 0 calc(var(--travel-up, 0px) * -.8); } 50% { translate: var(--travel-x, 0px) 0; } 75% { translate: 0 var(--travel-down, 0px); } }
+@keyframes cat-roam-spin { 0%, 100% { translate: var(--travel-x, 0px) 0; } 25% { translate: 0 var(--travel-down, 0px); } 50% { translate: calc(var(--travel-x, 0px) * -1) 0; } 75% { translate: 0 calc(var(--travel-up, 0px) * -1); } }
+@keyframes cat-roam-hop { 0%, 100% { translate: calc(var(--travel-x, 0px) * -1) var(--travel-down, 0px); } 25% { translate: calc(var(--travel-x, 0px) * -.4) calc(var(--travel-up, 0px) * -1); } 50% { translate: calc(var(--travel-x, 0px) * .4) var(--travel-down, 0px); } 75% { translate: var(--travel-x, 0px) calc(var(--travel-up, 0px) * -.7); } }
+@keyframes cat-roam-moonwalk { 0% { translate: var(--travel-x, 0px) var(--travel-down, 0px); } 45% { translate: calc(var(--travel-x, 0px) * -1) var(--travel-down, 0px); } 65% { translate: calc(var(--travel-x, 0px) * -.7) calc(var(--travel-up, 0px) * -.7); } 100% { translate: var(--travel-x, 0px) 0; } }
+@keyframes cat-roam-break { 0%, 100% { translate: 0 var(--travel-down, 0px); } 30% { translate: calc(var(--travel-x, 0px) * -1) calc(var(--travel-up, 0px) * -.6); } 65% { translate: var(--travel-x, 0px) calc(var(--travel-up, 0px) * -1); } }
+@keyframes cat-roam-wiggle { 0%, 100% { translate: calc(var(--travel-x, 0px) * -1) 0; } 20% { translate: calc(var(--travel-x, 0px) * -.4) var(--travel-down, 0px); } 45% { translate: var(--travel-x, 0px) 0; } 70% { translate: calc(var(--travel-x, 0px) * .4) calc(var(--travel-up, 0px) * -1); } }
 @media (max-width: 600px) {
   .arena-top { font-size: 9px; letter-spacing: .4px; }
   .milestone-banner { top: 24%; padding: 12px 15px; }
   .milestone-banner strong { font-size: 32px; }
-  .cat-dance-stage { width: 145px; height: 175px; margin-left: -72.5px; top: 66%; }
+  .cat-dance-stage { width: 145px; height: 175px; margin-left: -72.5px; top: 55%; }
   .dance-floor { width: 155px; height: 34px; }
   .cat-dance-name { font-size: 11px; bottom: -14px; }
   .dance-note { font-size: 22px; }
@@ -153,11 +167,31 @@ button:focus-visible, a:focus-visible { outline-color: #9364ac; }
   .milestone-party { animation: none !important; opacity: 1; }
   .milestone-banner { background: #fff8e7f2; }
   .cat-dance-stage { animation: none !important; opacity: 1; scale: 1; }
+  .cat-travel { animation: none !important; translate: 0 0; }
   .cat-rig, .cat-head, .cat-tail, .cat-arm-left, .cat-arm-right, .cat-leg-left, .cat-leg-right, .dance-floor { animation: none !important; }
   .dance-note { display: none; }
 }
 
-/* 메인페이지의 모드 선택을 따라가는 따뜻한 버터·코코아 색상. */
+/* 라이트 모드는 아주 연한 노랑, 다크 모드는 기존의 코코아 색감을 유지한다. */
+
+:root[data-theme="light"] { color-scheme: light; --bg: #fffef2; --card: #fffffb; --ink: #5d4934; --muted: #9c876d; }
+:root[data-theme="light"] body { background: radial-gradient(ellipse at 50% -15%, #ffffff 0, transparent 65%), #fffef2; }
+:root[data-theme="light"] .quiet-button, :root[data-theme="light"] .icon-button { background: #fffffbe0; border-color: #e8dfc4; }
+:root[data-theme="light"] .quiet-button:hover, :root[data-theme="light"] .icon-button:hover { background: #fffdf2; }
+:root[data-theme="light"] .stat { background: linear-gradient(125deg, #fffffe, #fffdf1); border-color: #e9dfc2; box-shadow: 0 5px 18px #bda8680a; }
+:root[data-theme="light"] .time-stat { background: linear-gradient(125deg, #fffdf0, #fff8df); border-color: #ead39e; }
+:root[data-theme="light"] .arena { background: radial-gradient(ellipse at 75% 75%, #fff4cb38, transparent 65%), radial-gradient(circle, #c9b98826 1px, transparent 1.5px) 0 0/23px 23px, #fffdf2; border-color: #e8dabb; box-shadow: 0 10px 30px #bda8680d; }
+:root[data-theme="light"] .arena:after { border-color: #ded2ad70; }
+:root[data-theme="light"] .start-screen { background: radial-gradient(ellipse at 80% 50%, #fff5d530, transparent 65%), #fffef6b8; }
+:root[data-theme="light"] .primary-button { background: #fff0ba; border-color: #efd799; box-shadow: 0 4px 0 #d7b77a, 0 8px 25px #decc991c; }
+:root[data-theme="light"] .primary-button:hover { background: #fff5d2; }
+:root[data-theme="light"] .primary-button:active { box-shadow: 0 1px 0 #d7b77a; }
+:root[data-theme="light"] .welcome-note { border-top-color: #e8dfc4; }
+:root[data-theme="light"] .center-screen { background: #fffef6f8; }
+:root[data-theme="light"] .result-stats, :root[data-theme="light"] .legend .legend-item { background: #fffffbd9; border-color: #e9dfc5; }
+:root[data-theme="light"] .milestone-banner { background: radial-gradient(ellipse, #fffff7f2, #fffbedb8 68%, #fffbe830); border-color: #ead8ae; }
+:root[data-theme="light"] .cat-dance-name { background: #fffff9f2; }
+
 :root[data-theme="dark"] { color-scheme: dark; --bg: #2c241d; --card: #3b3025; --ink: #fff0cc; --muted: #c9b08a; }
 :root[data-theme="dark"] body { background: radial-gradient(ellipse at 50% -15%, #62482b55, transparent 65%), #2c241d; }
 :root[data-theme="dark"] .quiet-button, :root[data-theme="dark"] .icon-button { color: #e4c99b; border-color: #c39b5d45; background: #5c453530; }

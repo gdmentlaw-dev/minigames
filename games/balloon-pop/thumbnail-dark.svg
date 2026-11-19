@@ -1,20 +1,21 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600" viewBox="0 0 600 600" role="img" aria-labelledby="title desc">
-  <title id="title">풍선 팡팡</title><desc id="desc">따뜻한 코코아색 배경에 떠 있는 분홍색, 파란색, 노란색 풍선</desc>
-  <defs>
-    <radialGradient id="bg"><stop stop-color="#5c4532"/><stop offset="1" stop-color="#2d241d"/></radialGradient>
-    <radialGradient id="pink" cx=".3" cy=".25" r=".8"><stop stop-color="#ffbad2"/><stop offset=".55" stop-color="#ff8db7"/><stop offset="1" stop-color="#d84c80"/></radialGradient>
-    <radialGradient id="blue" cx=".3" cy=".25" r=".8"><stop stop-color="#b8e0ff"/><stop offset=".55" stop-color="#7cc3f9"/><stop offset="1" stop-color="#478bda"/></radialGradient>
-    <radialGradient id="gold" cx=".3" cy=".25" r=".8"><stop stop-color="#fff0b7"/><stop offset=".55" stop-color="#ffdc7b"/><stop offset="1" stop-color="#e6a52e"/></radialGradient>
-    <pattern id="dots" width="26" height="26" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.2" fill="#ad8b4d" opacity=".2"/></pattern>
-  </defs>
-  <rect width="600" height="600" rx="48" fill="url(#bg)"/><rect width="600" height="600" rx="48" fill="url(#dots)"/>
-  <circle cx="305" cy="243" r="181" fill="none" stroke="#bd9650" stroke-dasharray="5 8" opacity=".35"/>
-  <g fill="none" stroke="#b9966b" stroke-width="2" opacity=".6"><path d="M183 304c-45 37 35 72 8 117"/><path d="M294 273c30 63-35 74-6 133"/><path d="M414 344c-32 33 15 59-7 93"/></g>
-  <g transform="rotate(-20 180 237)"><ellipse cx="180" cy="225" rx="66" ry="83" fill="url(#blue)"/><path d="m180 304-8 12h16Z" fill="#478bda"/><ellipse cx="155" cy="187" rx="9" ry="22" fill="#fff" opacity=".65" transform="rotate(24 155 187)"/></g>
-  <g transform="rotate(-5 292 188)"><ellipse cx="292" cy="183" rx="83" ry="103" fill="url(#pink)"/><path d="m292 282-9 14h18Z" fill="#d84c80"/><ellipse cx="258" cy="139" rx="12" ry="29" fill="#fff" opacity=".7" transform="rotate(24 258 139)"/><g fill="#7d3553"><ellipse cx="272" cy="202" rx="4" ry="6"/><ellipse cx="310" cy="202" rx="4" ry="6"/></g><path d="M283 218q9 12 18 0" fill="none" stroke="#7d3553" stroke-width="4" stroke-linecap="round"/></g>
-  <g transform="rotate(17 406 267)"><ellipse cx="406" cy="259" rx="71" ry="90" fill="url(#gold)"/><path d="m406 346-8 13h16Z" fill="#e6a52e"/><ellipse cx="379" cy="219" rx="10" ry="24" fill="#fff" opacity=".7" transform="rotate(24 379 219)"/><path d="m406 237 8 16 18 3-13 13 3 18-16-9-16 9 3-18-13-13 18-3Z" fill="#b47a2c"/></g>
-  <g fill="#ffce65"><path d="m129 83 5 14 14 5-14 5-5 14-5-14-14-5 14-5Z"/><path d="m472 127 4 11 11 4-11 4-4 11-4-11-11-4 11-4Z"/><path d="m94 326 4 10 10 4-10 4-4 10-4-10-10-4 10-4Z"/></g>
-  <g fill="#bd99f0"><rect x="433" y="70" width="8" height="13" rx="2" transform="rotate(30 433 70)"/><rect x="492" y="326" width="7" height="12" rx="2" transform="rotate(-20 492 326)"/><circle cx="111" cy="218" r="4"/></g>
-  <text x="300" y="491" text-anchor="middle" font-family="Pretendard,'Malgun Gothic',sans-serif" font-size="70" font-weight="900" letter-spacing="-4" fill="#f0cf83">풍선 팡팡</text>
-  <text x="300" y="539" text-anchor="middle" font-family="Pretendard,'Malgun Gothic',sans-serif" font-size="21" font-weight="600" fill="#d6b98b">500점마다 고양이 댄스 타임!</text>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600" viewBox="0 0 600 600" role="img" aria-labelledby="title desc"><title id="title">풍선을 든 춤추는 턱시도 고양이</title><desc id="desc">흰 가슴과 양말을 가진 검은 고양이가 분홍 풍선 하나를 들고 발을 들어 춤추는 모습</desc><defs><radialGradient id="bg"><stop stop-color="#5c4532"/><stop offset="1" stop-color="#2d241d"/></radialGradient><radialGradient id="pink" cx=".3" cy=".25" r=".85"><stop stop-color="#ffcadf"/><stop offset=".5" stop-color="#f7a0c3"/><stop offset="1" stop-color="#dd75a4"/></radialGradient></defs><rect width="600" height="600" rx="80" fill="url(#bg)"/><circle cx="284" cy="305" r="216" fill="#fff0cfa8"/><ellipse cx="283" cy="516" rx="157" ry="25" fill="#bc9c6333"/><path d="M445 221c17 38-31 50-47 82" fill="none" stroke="#ab8a68" stroke-width="4" stroke-linecap="round"/><g transform="translate(75 110) scale(1.95)"><g transform="rotate(-6 100 150)"><g class="cat-rig tuxedo-cat" stroke="#282830" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <g class="cat-tail"><path d="M125 170c52 15 57-30 37-38-14-6-20 7-13 13" fill="none" stroke="#282830" stroke-width="15"/><path d="M158 132c-12-3-16 7-10 13" fill="none" stroke="#fffdf8" stroke-width="11"/></g>
+    <g class="cat-leg-left" transform="rotate(25 85 183)"><path d="M85 181v27c-4 6-20 9-25 3-3-6 6-12 13-12v-20" fill="#282830"/><path d="M74 198c-7 0-17 8-14 13 5 6 19 3 25-2v-11Z" fill="#fffdf8"/></g>
+    <g class="cat-leg-right"><path d="M113 181v27c4 6 20 9 25 3 3-6-6-12-13-12v-20" fill="#282830"/><path d="M124 198c7 0 17 8 14 13-5 6-19 3-25-2v-11Z" fill="#fffdf8"/></g>
+    <g class="cat-arm-left"><path d="M76 132c-13-3-21-17-30-26-9-10-20-5-17 5 5 17 24 39 42 41" fill="#282830"/><ellipse cx="36" cy="109" rx="10" ry="12" fill="#fffdf8" transform="rotate(-25 36 109)"/><path d="m32 105 3 5m3-10 3 5" stroke="#9d9290" stroke-width="2" fill="none"/></g>
+    <g class="cat-arm-right"><path d="M124 132c13-3 21-17 30-26 9-10 20-5 17 5-5 17-24 39-42 41" fill="#282830"/><ellipse cx="164" cy="109" rx="10" ry="12" fill="#fffdf8" transform="rotate(25 164 109)"/><path d="m168 105-3 5m-3-10-3 5" stroke="#9d9290" stroke-width="2" fill="none"/></g>
+    <ellipse cx="100" cy="157" rx="34" ry="41" fill="#282830"/>
+    <path d="m89 121 11 9 11-9 5 30q5 29-16 41-21-12-16-41Z" fill="#fffdf8" stroke="none"/>
+    <path d="m100 130-15-7v15l15-5 15 5v-15Z" fill="#dfa3ba" stroke-width="2"/><circle cx="100" cy="131" r="4" fill="#dfa3ba" stroke-width="2"/>
+    <g class="cat-head">
+      <path d="m53 64 3-38 33 22m58 16-3-38-33 22" fill="#282830"/>
+      <path d="m61 48 1-11 14 13m63-2-1-11-14 13" fill="#d5a1a6" stroke="none"/>
+      <ellipse cx="100" cy="80" rx="49" ry="39" fill="#282830"/>
+      <path d="M100 45C94 61 92 76 83 86Q76 103 100 111q24-8 17-25c-9-10-11-25-17-41Z" fill="#fffdf8" stroke="none"/>
+      <path d="m72 77 9-5 8 5m22 0 8-5 9 5" fill="none" stroke="#f9e9bc"/>
+      <ellipse cx="71" cy="90" rx="7" ry="4" fill="#dba3ad" stroke="none"/><ellipse cx="129" cy="90" rx="7" ry="4" fill="#dba3ad" stroke="none"/>
+      <path d="m95 86 5 4 5-4Z" fill="#c18291" stroke="none"/>
+      <path d="M90 95q5 8 10 0 5 8 10 0" fill="none" stroke-width="3"/>
+      <path d="m60 85-16-3m16 11-15 3m95-11 16-3m-16 11 15 3" fill="none" stroke="#8c8084" stroke-width="2"/>
+    </g>
+  </g></g></g><g transform="rotate(12 447 140)"><ellipse cx="447" cy="139" rx="62" ry="79" fill="url(#pink)" stroke="#c46d9538" stroke-width="2"/><path d="m447 215-9 15h18Z" fill="#dd75a4"/><ellipse cx="423" cy="104" rx="9" ry="23" fill="#ffffffa8" transform="rotate(25 423 104)"/></g><g fill="#b89ac8" stroke="#b89ac8" stroke-width="5" stroke-linecap="round"><path d="M113 195v-41l29-7v34" fill="none"/><ellipse cx="104" cy="198" rx="10" ry="7" stroke="none"/><ellipse cx="133" cy="184" rx="10" ry="7" stroke="none"/></g><g fill="#d7ac53"><path d="m338 58 5 13 13 5-13 5-5 13-5-13-13-5 13-5Z"/><path d="m502 360 4 10 10 4-10 4-4 10-4-10-10-4 10-4Z"/></g><circle cx="93" cy="375" r="5" fill="#e1b6bd"/><circle cx="495" cy="273" r="5" fill="#b6ccb8"/></svg>
