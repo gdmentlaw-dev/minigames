@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f8f5ec">
+  <meta name="description" content="그림을 남기고, 나중에 온 친구가 맞히는 그림 퀴즈 릴레이.">
+  <title>그림 릴레이</title>
+  <link rel="stylesheet" href="./style.css">
+  <script src="../../shared/minihub-sdk.js"></script>
+  <script type="module" src="./app.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="shell topbar-inner">
+      <a class="brand" href="./" aria-label="그림 릴레이 홈"><span class="brand-mark" aria-hidden="true">✎</span> 그림 릴레이<span class="brand-dot">.</span></a>
+      <nav class="top-links"><a class="help-link" href="#how">게임 방법</a><button id="hub-exit" class="tool" type="button">미니게임 홈</button></nav>
+    </div>
+  </header>
+  <main class="shell">
+    <div id="lobby">
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="hero-copy">
+          <span class="ribbon">그림으로 주고받는 퀴즈</span>
+          <h1 id="hero-title">그림 한 장,<br> <span>다음은 너!</span></h1>
+          <p>내가 그림을 남기면, 나중에 온 친구가 맞혀요.<br>정답을 맞힌 친구가 다음 그림을 그려요.</p>
+          <div class="swatch-trail" aria-hidden="true"><i></i><i></i><i></i><i></i><span>〰</span></div>
+        </div>
+        <div class="lobby-stack">
+          <section class="join-card" aria-labelledby="join-title">
+            <div class="example">
+              <canvas id="example" width="500" height="150" aria-hidden="true"></canvas>
+              <span class="example-sticker" aria-hidden="true">?</span>
+            </div>
+            <div class="join-content">
+              <h2 id="join-title">같이 그릴까요?</h2>
+              <div class="mode-switch" aria-label="입장 방법">
+                <button id="create-mode" type="button" aria-pressed="false" disabled>새 방 만들기</button>
+                <button id="join-mode" type="button" aria-pressed="true" disabled>친구 방 입장</button>
+              </div>
+              <form id="entry-form">
+                <p class="player-greeting"><strong id="player-name">공용 계정 연결 중…</strong><span>정답 1개마다 100점 · 도전을 마칠 때 랭킹에 기록돼요.</span></p>
+                <p id="invited-room" class="invited-room" hidden>초대받은 방이 선택됐어요.</p>
+                <section id="room-browser" class="room-browser" aria-labelledby="room-list-title">
+                  <div class="room-list-heading"><h3 id="room-list-title">대기방 목록</h3><button id="refresh-rooms" class="tool" type="button">새로고침</button></div>
+                  <p id="rooms-status" class="form-status" role="status">방을 불러오는 중…</p>
+                  <ul id="room-list" class="room-list"></ul>
+                  <button id="more-rooms" class="button secondary" type="button" hidden>방 더 보기</button>
+                </section>
+                <button id="enter" class="button primary" type="submit" hidden disabled><span>게임 시작</span></button>
+                <p id="entry-status" class="form-status" role="status" hidden></p>
+              </form>
+              <div id="recent" hidden></div>
+            </div>
+          </section>
+        </div>
+      </section>
+      <section class="how" id="how" aria-labelledby="how-title">
+        <h2 id="how-title">이렇게 놀아요</h2>
+        <div class="how-grid">
+          <article><span class="step-icon yellow" aria-hidden="true">✎</span><div><h3>첫 그림을 그려요</h3><p>방을 만든 사람이 뽑힌 단어를 그림으로 남겨요.</p></div></article>
+          <article><span class="step-icon blue" aria-hidden="true">?</span><div><h3>친구가 맞혀요</h3><p>목록에서 친구 방을 골라 원하는 때에 정답을 맞혀요.</p></div></article>
+          <article><span class="step-icon green" aria-hidden="true">↪</span><div><h3>그림을 이어 그려요</h3><p>가장 먼저 맞힌 친구가 다음 문제를 내요.</p></div></article>
+        </div>
+      </section>
+    </div>
+
+    <section id="room" class="room" hidden aria-labelledby="room-title">
+      <div class="room-heading">
+        <div><a class="back-link" href="./">로비 · 나중에 이어하기</a><h1 id="room-title">우리 방 <span id="room-code"></span></h1></div>
+        <button id="copy" class="button secondary" type="button">초대 링크 복사</button>
+      </div>
+      <div class="challenge-bar"><div><span>이번 도전</span><strong id="challenge-score">0점</strong><small>정답 1개마다 100점</small></div><button id="finish" class="button primary" type="button" disabled>도전 마치고 기록하기</button></div>
+      <p id="room-status" class="room-status" role="status" hidden></p>
+      <div id="invite" hidden><label for="invite-url">초대 링크</label><input id="invite-url" readonly></div>
+      <div class="room-grid" id="room-content" hidden>
+        <section class="board" aria-labelledby="round-title">
+          <div class="board-heading">
+            <div><div class="round-meta"><span id="round-number" class="round-number"></span><span id="round-state"></span></div><h2 id="round-title" tabindex="-1"></h2><p id="round-desc"></p></div>
+            <button type="button" id="return-round" class="button secondary compact" hidden>현재 문제</button>
+          </div>
+          <div id="secret" class="secret" hidden><div><span>출제 단어</span><strong id="word"></strong></div><a id="dictionary" target="_blank" rel="noopener noreferrer">국어사전</a></div>
+          <div id="tools" class="toolbar" aria-label="그리기 도구" hidden>
+            <div class="colors" aria-label="펜 색">
+              <button class="color black" data-tool="black" type="button" aria-label="검정" aria-pressed="true"></button>
+              <button class="color red" data-tool="red" type="button" aria-label="빨강" aria-pressed="false"></button>
+              <button class="color blue" data-tool="blue" type="button" aria-label="파랑" aria-pressed="false"></button>
+              <button class="color green" data-tool="green" type="button" aria-label="초록" aria-pressed="false"></button>
+            </div>
+            <button class="tool" data-tool="eraser" type="button" aria-pressed="false">지우개</button>
+            <label class="width-label" for="width">굵기 <input id="width" type="range" min="2" max="36" value="8"></label>
+            <button id="undo" class="tool" type="button" disabled>되돌리기</button>
+            <button id="clear" class="tool" type="button" disabled>모두 지우기</button>
+          </div>
+          <div id="paper" class="paper">
+            <canvas id="drawing" width="800" height="500" aria-label="그림 퀴즈"></canvas>
+            <div id="blank" class="blank" hidden><span aria-hidden="true">✎</span><p id="blank-text"></p></div>
+          </div>
+          <div id="draw-actions" class="board-actions" hidden>
+            <small>그림으로만 표현해 주세요.</small>
+            <button class="button primary" id="publish" type="button" disabled>그림 올리기</button>
+          </div>
+          <form id="guess-form" class="guess-form" hidden>
+            <label for="guess">정답</label><div><input id="guess" required maxlength="16" autocomplete="off" enterkeyhint="go" placeholder="정답을 입력하세요"><button class="button primary" id="submit-guess" type="submit">맞혀 보기</button></div>
+          </form>
+          <p id="board-status" class="form-status" role="status" hidden></p>
+        </section>
+        <aside class="room-side">
+          <section class="side-card" aria-labelledby="players-title"><h2 id="players-title">참가자 <span id="player-count"></span></h2><ul id="players"></ul></section>
+          <section class="side-card" aria-labelledby="history-title"><h2 id="history-title">지난 문제</h2><p id="no-history">정답이 나온 문제는 여기에 모여요.</p><ul id="history"></ul></section>
+        </aside>
+      </div>
+    </section>
+  </main>
+  <footer class="shell footer"><span>그림 릴레이 · 만든 사람 우상호</span><a href="./#how">게임 방법</a></footer>
+  <dialog id="result" aria-labelledby="result-title"><div class="result-card"><span class="ribbon">그림으로 이어 온 기록</span><h2 id="result-title">도전 완료!</h2><strong id="final-score" class="final-score">0점</strong><p id="result-status" role="status"></p><div class="result-buttons"><button id="continue" class="button primary" type="button" disabled>새 도전 이어하기</button><button id="retry-score" class="button primary" type="button" hidden>기록 저장 다시 시도</button><button id="result-exit" class="button secondary" type="button" disabled>미니게임 홈</button></div></div></dialog>
+</body>
+</html>

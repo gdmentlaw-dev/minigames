@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+<rect width="512" height="512" rx="52" fill="#f8f5ec"/>
+<g stroke="#20231e" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+<rect x="65" y="56" width="382" height="342" rx="24" fill="#fffefa" transform="rotate(-4 256 227)"/>
+<path d="M169 275Q155 187 277 117Q354 190 324 275" fill="#fffefa"/>
+<path d="M169 275Q242 239 324 275Q310 357 169 275Z" fill="#e0463b"/>
+<path d="M277 117Q239 77 213 92Q233 120 277 117Q288 79 308 72" fill="none" stroke="#2b9b61"/>
+<path d="m128 164 22 17m-34 28 27-1m213 51 22-14m-16 37 26 3" fill="none" stroke="#286ee9"/>
+<path d="m223 282 2 5m32 7 2 5m26-24 2 5"/>
+<circle cx="409" cy="97" r="46" fill="#ffd762"/>
+</g>
+<text x="409" y="116" text-anchor="middle" font-family="sans-serif" font-size="56" font-weight="bold" fill="#20231e">?</text>
+<text x="256" y="455" text-anchor="middle" font-family="Malgun Gothic, sans-serif" font-size="48" font-weight="bold" fill="#20231e">그림 릴레이</text>
+</svg>
