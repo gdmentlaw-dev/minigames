@@ -5,13 +5,16 @@
   const HEIGHT = 420;
   const DURATION = 30;
   const ITEM_SIZE = 60;
+  const CHOCOLATE_ICON = new Image();
+  CHOCOLATE_ICON.src = "assets/foods/26_chocolate.png";
   const BASKET_WIDTH = 66;
   const POOP_MIN_X_DISTANCE = BASKET_WIDTH + ITEM_SIZE;
   const POOP_SEPARATION_SECONDS = 0.5;
   const MIN_SPAWN_INTERVAL = 0.4;
   const COMMON_SPEED_MULT = 1.25;
   const INGREDIENT_SPEED_BASE_MULT = 1.12;
-  const INGREDIENT_SPEED_MULT = 2;
+  const INGREDIENT_SPEED_MULT = 1.56;
+  const INGREDIENT_SPAWN_MULT = 3;
   const INGREDIENT_IDS = ["milk", "egg", "butter", "sugar", "salt", "cocoa", "strawberry", "chocolate", "cream"];
   const STANDALONE_POOP_RATE = 0.075;
   const STANDALONE_POOP_CHANCE_AFTER_OTHER_DROP = STANDALONE_POOP_RATE / (1 - STANDALONE_POOP_RATE);
@@ -213,22 +216,9 @@
       context.fillStyle = "#f77a79";
       context.fillRect(18, 29, 3, 5);
     } else if (id === "chocolate") {
-      context.fillStyle = "#684536";
-      context.fillRect(8, 24, 44, 22);
-      context.fillStyle = "#5b382d";
-      context.fillRect(12, 20, 36, 30);
-      context.fillStyle = "#7a4a38";
-      context.fillRect(15, 16, 30, 30);
-      context.fillRect(9, 27, 42, 15);
-      context.fillRect(20, 43, 24, 8);
-      context.fillStyle = "#402a24";
-      context.fillRect(16, 24, 5, 5);
-      context.fillRect(38, 26, 5, 5);
-      context.fillRect(26, 38, 5, 5);
-      context.fillStyle = "#a87558";
-      context.fillRect(17, 24, 2, 2);
-      context.fillRect(39, 26, 2, 2);
-      context.fillRect(27, 38, 2, 2);
+      if (CHOCOLATE_ICON.complete && CHOCOLATE_ICON.naturalWidth) {
+        context.drawImage(CHOCOLATE_ICON, 14, 14, 32, 32);
+      }
     } else if (id === "trouble") {
       context.fillStyle = "#5a3828";
       context.fillRect(12, 48, 36, 8);
@@ -265,6 +255,10 @@
     style.textContent = [
       "#ingredient-list .ingredient-row, #result-list .ingredient-row { grid-template-columns: 35px minmax(0, 1fr) auto; gap: 5px; min-height: 39px; }",
       "#ingredient-list .ingredient-swatch, #result-list .ingredient-swatch { display: block; width: 34px; height: 34px; border: 0; background: var(--ingredient-icon) center / contain no-repeat !important; image-rendering: pixelated; }",
+      ".ingredient-swatch.food-png-icon { width: 32px !important; height: 32px !important; background-size: 32px 32px !important; }",
+      "#ingredient-list .ingredient-row.food-png-row, #result-list .ingredient-row.food-png-row { grid-template-columns: 35px minmax(0, 1fr) auto; }",
+      ".stage2-ingredient-list .ingredient-row.food-png-row { grid-template-columns: 32px minmax(0, 1fr) auto; min-height: 32px; }",
+      ".stage3-ingredient-list .ingredient-row.food-png-row { grid-template-columns: 32px minmax(0, 1fr) auto; min-height: 32px; }",
       ".pantry-count-headings { display: grid; grid-template-columns: 35px minmax(0, 1fr) 32px 38px; gap: 5px; margin: 8px 0 -3px; color: #977e6c; font-size: 9px; font-weight: 900; text-align: center; }",
       ".pantry-count-headings span:first-child { grid-column: 2; text-align: left; }",
       "#ingredient-list .pantry-inventory-row { grid-template-columns: 35px minmax(0, 1fr) 32px 38px; gap: 5px; min-height: 39px; }",
@@ -272,13 +266,18 @@
       "#ingredient-list .pantry-inventory-row .ingredient-name { overflow: hidden; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }",
       "#result-list .ingredient-row { grid-template-columns: 25px minmax(0, 1fr) auto; gap: 3px; }",
       "#result-list .ingredient-swatch { width: 24px; height: 24px; }",
-      "@media (max-width: 760px) { #ingredient-list .ingredient-row { grid-template-columns: 25px minmax(0, 1fr) auto; gap: 3px; min-height: 27px; } #ingredient-list .pantry-inventory-row { grid-template-columns: 25px minmax(0, 1fr) 34px 42px; gap: 3px; min-height: 29px; } #ingredient-list .ingredient-swatch { width: 24px; height: 24px; } .pantry-count-headings { grid-template-columns: 25px minmax(0, 1fr) 34px 42px; gap: 3px; } #ingredient-list .pantry-inventory-row .ingredient-name { font-size: 10px; } }",
-      "@media (max-width: 430px) { #result-list .ingredient-row { grid-template-columns: 20px minmax(0, 1fr) auto; gap: 2px; } #result-list .ingredient-swatch { width: 19px; height: 19px; } }"
+      "@media (max-width: 760px) { #ingredient-list .ingredient-row { grid-template-columns: 25px minmax(0, 1fr) auto; gap: 3px; min-height: 27px; } #ingredient-list .pantry-inventory-row { grid-template-columns: 25px minmax(0, 1fr) 34px 42px; gap: 3px; min-height: 29px; } #ingredient-list .ingredient-swatch { width: 24px; height: 24px; } .pantry-count-headings { grid-template-columns: 25px minmax(0, 1fr) 34px 42px; gap: 3px; } #ingredient-list .pantry-inventory-row .ingredient-name { font-size: 10px; } #ingredient-list .pantry-inventory-row.food-png-row { grid-template-columns: 35px minmax(0, 1fr) 34px 42px; min-height: 36px; } .stage2-ingredient-list .ingredient-row.food-png-row { grid-template-columns: 32px minmax(0, 1fr) auto; min-height: 32px; } }",
+      "@media (max-width: 760px) { .stage3-ingredient-list .ingredient-row.food-png-row { grid-template-columns: 32px minmax(0, 1fr) auto; min-height: 32px; } }",
+      "@media (max-width: 430px) { #result-list .ingredient-row { grid-template-columns: 20px minmax(0, 1fr) auto; gap: 2px; } #result-list .ingredient-swatch { width: 19px; height: 19px; } #result-list .ingredient-row.food-png-row { grid-template-columns: 35px minmax(0, 1fr) auto; } }"
     ].join("\n");
     document.head.append(style);
 
     const iconUrls = {};
     INGREDIENT_IDS.forEach(id => {
+      if (id === "chocolate") {
+        iconUrls[id] = 'url("./assets/foods/26_chocolate.png")';
+        return;
+      }
       const icon = document.createElement("canvas");
       icon.width = ITEM_SIZE;
       icon.height = ITEM_SIZE;
@@ -292,7 +291,11 @@
         const swatch = row.querySelector(".ingredient-swatch");
         if (!name || !swatch) return;
         const id = INGREDIENT_IDS.find(ingredientId => INGREDIENT_NAMES[ingredientId] === name.textContent);
-        if (id) swatch.style.setProperty("--ingredient-icon", iconUrls[id]);
+        if (id) {
+          swatch.style.setProperty("--ingredient-icon", iconUrls[id]);
+          swatch.classList.toggle("food-png-icon", id === "chocolate");
+          row.classList.toggle("food-png-row", id === "chocolate");
+        }
       });
     }
 
@@ -544,9 +547,10 @@
       }
     }
 
-    function getSpawnX(type, width) {
+    function getSpawnX(type, width, speed, reservedDrops = []) {
       const minX = 10;
       const maxX = WIDTH - width - 10;
+      const newY = -ITEM_SIZE - 5;
       const needsSpacingFrom = drop => type === "trouble" || drop.type === "trouble";
       const separatedDrops = spawnHistory.filter(drop =>
         elapsed - drop.time <= POOP_SEPARATION_SECONDS &&
@@ -557,52 +561,88 @@
         !separatedDrops.includes(lastSpawn)) {
         separatedDrops.push(lastSpawn);
       }
-      if (separatedDrops.length === 0) {
-        return minX + Math.random() * (maxX - minX);
-      }
-
       const safePositions = [];
       for (let x = minX; x <= maxX; x += 1) {
         const centerX = x + width / 2;
-        if (separatedDrops.every(drop => Math.abs(centerX - drop.centerX) >= POOP_MIN_X_DISTANCE)) {
-          safePositions.push(x);
-        }
+        const keepsPoopDistance = separatedDrops.every(drop =>
+          Math.abs(centerX - drop.centerX) >= POOP_MIN_X_DISTANCE
+        );
+        if (!keepsPoopDistance) continue;
+
+        const collidesWithFallingObject = [...objects, ...reservedDrops].some(drop => {
+          if (drop.caught) return false;
+          const otherWidth = drop.width || ITEM_SIZE;
+          const otherCenterX = drop.x + otherWidth / 2;
+          if (Math.abs(centerX - otherCenterX) >= (width + otherWidth) / 2) return false;
+
+          const verticalGap = drop.y - newY;
+          if (Math.abs(verticalGap) < ITEM_SIZE) return true;
+          const closingSpeed = speed - drop.speed;
+          if (verticalGap <= ITEM_SIZE || closingSpeed <= 0) return false;
+          const newObjectLife = (HEIGHT + ITEM_SIZE - newY) / speed;
+          const otherObjectLife = (HEIGHT + ITEM_SIZE - drop.y) / drop.speed;
+          const overlapTime = Math.min(newObjectLife, otherObjectLife);
+          return verticalGap - closingSpeed * overlapTime < ITEM_SIZE;
+        });
+        if (!collidesWithFallingObject) safePositions.push(x);
       }
+      if (safePositions.length === 0) return null;
       return safePositions[Math.floor(Math.random() * safePositions.length)];
+    }
+
+    function chooseIngredientType(previousType) {
+      let type = INGREDIENT_IDS[Math.floor(Math.random() * INGREDIENT_IDS.length)];
+      if (type === previousType && Math.random() < 0.65) {
+        type = INGREDIENT_IDS[
+          (INGREDIENT_IDS.indexOf(type) + 1 + Math.floor(Math.random() * (INGREDIENT_IDS.length - 1))) % INGREDIENT_IDS.length
+        ];
+      }
+      return type;
+    }
+
+    function objectSpeed(type) {
+      const baseSpeed = type === "trouble"
+        ? 175 + Math.random() * 20 + elapsed * .7
+        : FALL_SPEEDS[type][0] + Math.random() * (FALL_SPEEDS[type][1] - FALL_SPEEDS[type][0]) + elapsed * .7;
+      return baseSpeed * COMMON_SPEED_MULT *
+        (type === "trouble" ? 1 : INGREDIENT_SPEED_BASE_MULT * INGREDIENT_SPEED_MULT);
+    }
+
+    function addObject(type, x, speed) {
+      const width = ITEM_SIZE;
+      const object = { type, width, x, y: -ITEM_SIZE - 5, speed };
+      lastSpawn = { type, centerX: x + width / 2, time: elapsed };
+      spawnHistory.push(lastSpawn);
+      objects.push(object);
     }
 
     function spawnObject() {
       const isStandalonePoop = lastSpawnedType !== "trouble" &&
         Math.random() < STANDALONE_POOP_CHANCE_AFTER_OTHER_DROP;
-      let type;
-      if (isStandalonePoop) {
-        type = "trouble";
-      } else {
-        type = INGREDIENT_IDS[Math.floor(Math.random() * INGREDIENT_IDS.length)];
-        if (type === lastSpawnedType && Math.random() < 0.65) {
-          type = INGREDIENT_IDS[
-            (INGREDIENT_IDS.indexOf(type) + 1 + Math.floor(Math.random() * (INGREDIENT_IDS.length - 1))) % INGREDIENT_IDS.length
-          ];
-        }
-      }
-      lastSpawnedType = type;
-      const width = ITEM_SIZE;
-      const baseSpeed = type === "trouble"
-        ? 175 + Math.random() * 20 + elapsed * .7
-        : FALL_SPEEDS[type][0] + Math.random() * (FALL_SPEEDS[type][1] - FALL_SPEEDS[type][0]) + elapsed * .7;
-      const speed = baseSpeed * COMMON_SPEED_MULT *
-        (type === "trouble" ? 1 : INGREDIENT_SPEED_BASE_MULT * INGREDIENT_SPEED_MULT);
       spawnHistory = spawnHistory.filter(drop => elapsed - drop.time <= POOP_SEPARATION_SECONDS);
-      const x = getSpawnX(type, width);
-      lastSpawn = { type, centerX: x + width / 2, time: elapsed };
-      spawnHistory.push(lastSpawn);
-      objects.push({
-        type,
-        width,
-        x,
-        y: -ITEM_SIZE - 5,
-        speed
-      });
+      if (isStandalonePoop) {
+        const speed = objectSpeed("trouble");
+        const x = getSpawnX("trouble", ITEM_SIZE, speed);
+        if (x === null) return false;
+        lastSpawnedType = "trouble";
+        addObject("trouble", x, speed);
+        return true;
+      }
+
+      const batch = [];
+      let previousType = lastSpawnedType;
+      for (let index = 0; index < INGREDIENT_SPAWN_MULT; index += 1) {
+        const type = chooseIngredientType(previousType);
+        const speed = objectSpeed(type);
+        const x = getSpawnX(type, ITEM_SIZE, speed, batch);
+        if (x === null) return false;
+        batch.push({ type, width: ITEM_SIZE, x, y: -ITEM_SIZE - 5, speed });
+        previousType = type;
+      }
+
+      lastSpawnedType = previousType;
+      batch.forEach(object => addObject(object.type, object.x, object.speed));
+      return true;
     }
 
     function catchObject(object) {
@@ -628,8 +668,7 @@
       if (feedbackTime === 0) feedback = "";
       basketX = Math.max(38, Math.min(WIDTH - 38, basketX + direction * delta * 330));
       spawnIn -= delta;
-      if (spawnIn <= 0) {
-        spawnObject();
+      if (spawnIn <= 0 && spawnObject()) {
         spawnIn = Math.max(MIN_SPAWN_INTERVAL, 0.78 - elapsed * 0.004) + Math.random() * 0.25;
       }
 

@@ -16,10 +16,24 @@
       <div class="sign-lights" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
     </header>
 
-    <nav class="stage-nav" aria-label="단계 이동">
-      <button type="button" class="stage-nav-button" data-stage="stage3"><span class="store-nav-mark" aria-hidden="true"></span> 매장</button>
-      <button type="button" class="stage-nav-button" data-stage="stage1"><span>1</span> 재료 받기</button>
-      <button type="button" class="stage-nav-button" data-stage="stage2"><span>2</span> 굽기</button>
+    <section class="game-toolbar" aria-label="가게 경제 정보">
+      <div class="game-balances">
+        <p>지갑 잔액 <strong id="wallet-balance">0</strong><span class="currency-name"></span></p>
+        <p>누적 매출 <strong id="lifetime-revenue">0</strong><span class="currency-name"></span></p>
+      </div>
+      <div class="game-toolbar-actions" id="game-toolbar-actions">
+        <button type="button" class="small-game-button" id="restart-game-button">처음부터 다시 시작</button>
+        <button type="button" class="small-game-button game-exit-button" id="game-exit-button">게임 종료</button>
+      </div>
+    </section>
+    <p class="stage1-recommend-notice" id="stage1-recommend-notice" hidden>츄르가 부족해요. 재료를 모으러 가요.</p>
+    <p class="game-feedback" id="game-feedback" role="status" aria-live="polite"></p>
+
+    <nav class="stage-nav" id="stage-nav" aria-label="단계 이동">
+      <button type="button" class="stage-nav-button" data-stage="store"><span class="store-nav-mark" aria-hidden="true"></span> 매장</button>
+      <button type="button" class="stage-nav-button" data-stage="stage1" aria-describedby="stage1-recommend-notice"><span>1</span> 재료 받기 <small class="stage-recommend-label" hidden>추천</small></button>
+      <button type="button" class="stage-nav-button" data-stage="stage2"><span>2</span> 재료 사기</button>
+      <button type="button" class="stage-nav-button" data-stage="stage3"><span>3</span> 굽기</button>
     </nav>
 
     <section class="screen start-screen" id="start-screen" aria-labelledby="game-title">
@@ -79,15 +93,22 @@
       </div>
     </section>
 
-    <section class="screen stage2-screen" id="stage2-screen" aria-label="굽기">
+    <section class="screen stage2-screen" id="stage2-screen" aria-label="재료 사기">
       <button type="button" class="stage-return-button stage2-return" aria-label="매장으로 돌아가기">
         <span class="paw-print" aria-hidden="true"><i></i><i></i><i></i><i></i><b></b></span><span>매장</span>
       </button>
       <div id="stage2-root"></div>
     </section>
 
-    <section class="screen stage3-screen is-visible" id="stage3-screen" aria-label="매장">
+    <section class="screen stage3-screen" id="stage3-screen" aria-label="굽기">
+      <button type="button" class="stage-return-button stage3-return" aria-label="매장으로 돌아가기">
+        <span class="paw-print" aria-hidden="true"><i></i><i></i><i></i><i></i><b></b></span><span>매장</span>
+      </button>
       <div id="stage3-root"></div>
+    </section>
+
+    <section class="screen store-screen is-visible" id="store-screen" aria-label="매장">
+      <div id="store-root"></div>
     </section>
 
     <section class="screen result-screen" id="result-screen" aria-labelledby="result-title">
@@ -99,18 +120,27 @@
       <button class="button button-primary" id="retry-button" type="button">다시 받기</button>
     </section>
 
+    <section class="screen exit-result-screen" id="exit-result-screen" aria-labelledby="exit-result-title">
+      <p class="eyebrow">게임 종료</p>
+      <h2 id="exit-result-title">누적 매출 기록</h2>
+      <p class="exit-score-result" id="exit-score-result" role="status" aria-live="polite"></p>
+      <button class="button button-primary" id="continue-game-button" type="button">이어서 하기</button>
+    </section>
+
     <footer class="bakery-footer"><span>FRESH FROM THE OVEN</span><span class="footer-star" aria-hidden="true">✦</span><span>MADE WITH CARE</span></footer>
   </main>
 
+  <script>window.MeowBakeryConfig = Object.freeze({ CURRENCY_NAME: "츄르" });</script>
   <script src="../../shared/minihub-sdk.js"></script>
   <script src="./stages/stage1.js"></script>
   <script src="./stages/stage2.js"></script>
   <script src="./stages/stage3.js"></script>
+  <script src="./stages/store.js"></script>
   <script>
     "use strict";
 
     const GAME_ID = "meow-bakery";
-    const STAGE_ORDER = ["stage3", "stage1", "stage2"];
+    const CURRENCY_NAME = window.MeowBakeryConfig.CURRENCY_NAME;
     const INGREDIENTS = [
       { id: "milk", name: "우유", english: "Milk", color: "#b9e8ed" },
       { id: "egg", name: "달걀", english: "Egg", color: "#f8df9b" },
@@ -128,15 +158,34 @@
       play: document.getElementById("play-screen"),
       stage2: document.getElementById("stage2-screen"),
       stage3: document.getElementById("stage3-screen"),
-      result: document.getElementById("result-screen")
+      store: document.getElementById("store-screen"),
+      result: document.getElementById("result-screen"),
+      exitResult: document.getElementById("exit-result-screen")
     };
     const canvas = document.getElementById("bakery-canvas");
     const ingredientList = document.getElementById("ingredient-list");
     const resultList = document.getElementById("result-list");
+    const stageNav = document.getElementById("stage-nav");
+    const toolbarActions = document.getElementById("game-toolbar-actions");
+    const stage1Tab = document.querySelector('.stage-nav-button[data-stage="stage1"]');
+    const stage1RecommendLabel = stage1Tab.querySelector(".stage-recommend-label");
+    const gameFeedback = document.getElementById("game-feedback");
+    const stage1RecommendNotice = document.getElementById("stage1-recommend-notice");
+    const exitScoreResult = document.getElementById("exit-score-result");
+    const cheapestIngredientBundle = window.MeowStages.ingredientShop.cheapestPrice;
     let activeStage = null;
+    let activeStageId = null;
     let currentInventory = emptyInventory();
     let bakedGoods = emptyBakedGoods();
-    MiniHub.init(GAME_ID);
+    let wallet = 0;
+    let lifetimeRevenue = 0;
+    let storageReady = false;
+    let appReady = false;
+    let isResetting = false;
+    let isSubmittingScore = false;
+    let cleanLegacyStageFlag = false;
+    let exitReturnStage = "store";
+    let exitReturnToStageOneIntro = false;
 
     function emptyInventory() {
       return Object.fromEntries(INGREDIENTS.map(item => [item.id, 0]));
@@ -152,6 +201,95 @@
       };
     }
 
+    function cleanCount(value) {
+      return Number.isSafeInteger(value) && value >= 0 ? value : 0;
+    }
+
+    function cleanInventory(value) {
+      return Object.fromEntries(INGREDIENTS.map(item => [
+        item.id,
+        cleanCount(value && value[item.id])
+      ]));
+    }
+
+    function cleanBakedGoods(value) {
+      const empty = emptyBakedGoods();
+      return Object.fromEntries(Object.keys(empty).map(id => {
+        const item = value && value[id];
+        if (typeof item === "number") {
+          return [id, { perfect: 0, normal: cleanCount(item) }];
+        }
+        return [id, {
+          perfect: cleanCount(item && item.perfect),
+          normal: cleanCount(item && item.normal)
+        }];
+      }));
+    }
+
+    function restoreGameState(value) {
+      if (!value || typeof value !== "object" || Array.isArray(value) || value.version !== 1) return false;
+      wallet = cleanCount(value.wallet);
+      lifetimeRevenue = cleanCount(value.lifetimeRevenue);
+      currentInventory = cleanInventory(value.inventory);
+      bakedGoods = cleanBakedGoods(value.bakedGoods);
+      return true;
+    }
+
+    function gameStateSnapshot() {
+      return {
+        version: 1,
+        wallet,
+        lifetimeRevenue,
+        inventory: cleanInventory(currentInventory),
+        bakedGoods: cleanBakedGoods(bakedGoods)
+      };
+    }
+
+    function setGameFeedback(message, isError = false) {
+      gameFeedback.textContent = message;
+      gameFeedback.classList.toggle("is-error", isError);
+    }
+
+    function formatMoney(value) {
+      return cleanCount(value).toLocaleString("ko-KR");
+    }
+
+    function formatCurrency(value) {
+      return `${formatMoney(value)} ${CURRENCY_NAME}`;
+    }
+
+    function updateEconomyUi() {
+      document.getElementById("wallet-balance").textContent = formatMoney(wallet);
+      document.getElementById("lifetime-revenue").textContent = formatMoney(lifetimeRevenue);
+      document.querySelectorAll(".currency-name").forEach(element => {
+        element.textContent = CURRENCY_NAME;
+      });
+      const recommend = wallet < cheapestIngredientBundle;
+      stage1Tab.classList.toggle("is-recommended", recommend);
+      stage1Tab.setAttribute("aria-disabled", "false");
+      stage1Tab.disabled = false;
+      stage1RecommendLabel.hidden = !recommend;
+      stage1RecommendNotice.hidden = !recommend;
+    }
+
+    async function saveGameState() {
+      if (!appReady || !storageReady || isResetting) return false;
+      try {
+        const saved = await MiniHub.save(gameStateSnapshot());
+        if (!saved) throw new Error("MiniHub.save가 저장 실패를 반환했습니다.");
+        if (gameFeedback.dataset.kind === "save-error") {
+          gameFeedback.dataset.kind = "";
+          setGameFeedback("");
+        }
+        return true;
+      } catch (error) {
+        console.error("Meow Bakery 진행 상황을 저장하지 못했습니다.", error);
+        gameFeedback.dataset.kind = "save-error";
+        setGameFeedback("진행 상황을 저장하지 못했어요. 로그인과 연결 상태를 확인해 주세요.", true);
+        return false;
+      }
+    }
+
     function showScreen(name) {
       Object.entries(screens).forEach(([key, screen]) => {
         screen.classList.toggle("is-visible", key === name);
@@ -160,6 +298,22 @@
 
     function totalIngredients(inventory) {
       return INGREDIENTS.reduce((total, item) => total + inventory[item.id], 0);
+    }
+
+    function handleInventoryChange(inventory) {
+      currentInventory = cleanInventory(inventory);
+      void saveGameState();
+    }
+
+    function handleBakedGoodsChange(goods) {
+      bakedGoods = cleanBakedGoods(goods);
+      void saveGameState();
+    }
+
+    function stopActiveStage() {
+      const stage = activeStage;
+      activeStage = null;
+      if (stage) stage.stop();
     }
 
     function renderInventory(list, inventory, roundInventory = null) {
@@ -221,7 +375,9 @@
     }
 
     function finishRound(sharedInventory, transferred, reason) {
-      currentInventory = { ...sharedInventory };
+      currentInventory = cleanInventory(sharedInventory);
+      updateEconomyUi();
+      void saveGameState();
       if (reason === "navigate") return;
       document.getElementById("result-total").textContent = String(totalIngredients(transferred));
       renderInventory(resultList, transferred);
@@ -236,24 +392,20 @@
     }
 
     function startStage(stageId) {
-      if (activeStage) {
-        activeStage.stop();
-        activeStage = null;
-      }
-
+      stopActiveStage();
+      activeStageId = stageId;
       setActiveNav(stageId);
       const stage = window.MeowStages[stageId];
       if (!stage) throw new Error(`Unknown game stage: ${stageId}`);
 
       if (stageId === "stage1") {
+        void saveGameState();
         pantryRendered = false;
         showScreen("play");
         activeStage = stage.start({
           canvas,
           inventory: currentInventory,
-          onInventoryChange: inventory => {
-            currentInventory = { ...inventory };
-          },
+          onInventoryChange: handleInventoryChange,
           onUpdate: updatePantry,
           onComplete: (inventory, transferred, reason) => {
             activeStage = null;
@@ -268,12 +420,12 @@
         activeStage = stage.start({
           root: document.getElementById("stage2-root"),
           inventory: currentInventory,
-          bakedGoods,
-          onInventoryChange: inventory => {
-            currentInventory = { ...inventory };
-          },
-          onBakedGoodsChange: goods => {
-            bakedGoods = { ...goods };
+          wallet,
+          onShopPurchase: purchase => {
+            currentInventory = cleanInventory(purchase.inventory);
+            wallet = cleanCount(purchase.wallet);
+            updateEconomyUi();
+            void saveGameState();
           }
         });
         return;
@@ -283,18 +435,36 @@
         showScreen("stage3");
         activeStage = stage.start({
           root: document.getElementById("stage3-root"),
+          inventory: currentInventory,
           bakedGoods,
-          onBakedGoodsChange: goods => {
-            bakedGoods = { ...goods };
+          onInventoryChange: handleInventoryChange,
+          onBakedGoodsChange: handleBakedGoodsChange,
+          navigate: nextStage => startStage(nextStage),
+        });
+        return;
+      }
+
+      if (stageId === "store") {
+        showScreen("store");
+        activeStage = stage.start({
+          root: document.getElementById("store-root"),
+          bakedGoods,
+          onBakedGoodsChange: handleBakedGoodsChange,
+          onRevenueEarned: amount => {
+            const earned = cleanCount(amount);
+            wallet += earned;
+            lifetimeRevenue += earned;
+            updateEconomyUi();
+            void saveGameState();
           },
+          onSaleFinished: () => { void saveGameState(); },
           navigate: nextStage => {
             if (nextStage === "stage1") {
               openStageOneIntro();
             } else {
               startStage(nextStage);
             }
-          },
-          submitScore: score => MiniHub.submitScore(score)
+          }
         });
         return;
       }
@@ -303,10 +473,8 @@
     }
 
     function openStageOneIntro() {
-      if (activeStage) {
-        activeStage.stop();
-        activeStage = null;
-      }
+      stopActiveStage();
+      activeStageId = "stage1";
       setActiveNav("stage1");
       showScreen("start");
     }
@@ -319,15 +487,95 @@
       startStage("stage1");
     }
 
+    async function handleGameExit() {
+      if (!appReady || isSubmittingScore) return;
+      if (!window.confirm("종료하고 점수를 올릴까요?")) return;
+
+      isSubmittingScore = true;
+      exitReturnStage = activeStageId || "store";
+      exitReturnToStageOneIntro = exitReturnStage === "stage1";
+      stopActiveStage();
+      showScreen("exitResult");
+      stageNav.hidden = true;
+      toolbarActions.hidden = true;
+      exitScoreResult.textContent = "누적 매출 점수를 제출하고 있어요.";
+      await saveGameState();
+
+      try {
+        const result = await MiniHub.submitScore(lifetimeRevenue);
+        if (!result) throw new Error("MiniHub.submitScore가 점수 저장 실패를 반환했습니다.");
+        exitScoreResult.textContent = `누적 매출 ${formatCurrency(lifetimeRevenue)}을 랭킹에 올렸어요.`;
+      } catch (error) {
+        console.error("Meow Bakery 누적 매출 점수를 제출하지 못했습니다.", error);
+        exitScoreResult.textContent = `누적 매출 ${formatCurrency(lifetimeRevenue)}을 랭킹에 올리지 못했어요. 연결 상태를 확인해 주세요.`;
+      } finally {
+        isSubmittingScore = false;
+      }
+    }
+
+    function continueGame() {
+      stageNav.hidden = false;
+      toolbarActions.hidden = false;
+      if (exitReturnToStageOneIntro) {
+        openStageOneIntro();
+      } else {
+        startStage(exitReturnStage || "store");
+      }
+    }
+
+    async function restartFromBeginning() {
+      if (isResetting) return;
+      if (!window.confirm("처음부터 다시 시작하면 저장된 진행 데이터가 삭제됩니다. 계속할까요?")) return;
+
+      isResetting = true;
+      const resumeStage = activeStageId || "store";
+      const resumeToStageOneIntro = resumeStage === "stage1";
+      stopActiveStage();
+
+      try {
+        if (!storageReady) throw new Error("MiniHub 저장소에 연결되어 있지 않습니다.");
+        const cleared = await MiniHub.save(null);
+        if (!cleared) throw new Error("MiniHub.save(null)이 삭제 실패를 반환했습니다.");
+
+        window.MeowStages.store.reset();
+        wallet = 0;
+        lifetimeRevenue = 0;
+        currentInventory = emptyInventory();
+        bakedGoods = emptyBakedGoods();
+        activeStageId = null;
+        gameFeedback.dataset.kind = "";
+        setGameFeedback("");
+        updateEconomyUi();
+        startStage("store");
+      } catch (error) {
+        console.error("Meow Bakery 저장 데이터를 초기화하지 못했습니다.", error);
+        gameFeedback.dataset.kind = "reset-error";
+        setGameFeedback("저장 데이터를 삭제하지 못해 처음부터 다시 시작하지 않았어요.", true);
+        if (resumeToStageOneIntro) {
+          activeStageId = "stage1";
+          setActiveNav("stage1");
+          showScreen("start");
+        } else {
+          startStage(resumeStage);
+        }
+      } finally {
+        isResetting = false;
+      }
+    }
+
     document.getElementById("start-button").addEventListener("click", () => startStage("stage1"));
     document.getElementById("retry-button").addEventListener("click", restartStageOne);
     document.getElementById("play-retry-button").addEventListener("click", restartStageOne);
     document.getElementById("take-away-button").addEventListener("click", () => {
       if (activeStage && activeStage.takeAway) activeStage.takeAway();
     });
+    document.getElementById("game-exit-button").addEventListener("click", handleGameExit);
+    document.getElementById("restart-game-button").addEventListener("click", restartFromBeginning);
+    document.getElementById("continue-game-button").addEventListener("click", continueGame);
 
     document.querySelectorAll(".stage-nav-button").forEach(button => {
       button.addEventListener("click", () => {
+        if (!appReady) return;
         if (button.dataset.stage === "stage1") {
           openStageOneIntro();
         } else {
@@ -337,10 +585,8 @@
     });
 
     document.querySelectorAll(".stage-return-button").forEach(button => {
-      button.addEventListener("click", () => startStage("stage3"));
+      button.addEventListener("click", () => startStage("store"));
     });
-
-    startStage("stage3");
 
     document.querySelectorAll(".move-button").forEach(button => {
       const direction = Number(button.dataset.direction);
@@ -355,6 +601,45 @@
         });
       });
     });
+
+    window.addEventListener("pagehide", () => {
+      stopActiveStage();
+      void saveGameState();
+    });
+
+    async function bootGame() {
+      document.getElementById("store-root").textContent = "게임을 불러오는 중이에요.";
+      stageNav.querySelectorAll("button").forEach(button => { button.disabled = true; });
+      document.getElementById("restart-game-button").disabled = true;
+      document.getElementById("game-exit-button").disabled = true;
+      try {
+        const player = await MiniHub.init(GAME_ID);
+        if (!player || !player.id || player.id === "offline") {
+          setGameFeedback("로그인 연결이 없어 진행 저장과 랭킹 제출을 사용할 수 없습니다.", true);
+        } else {
+          storageReady = true;
+          const saved = await MiniHub.load();
+          if (saved !== null && !restoreGameState(saved)) {
+            setGameFeedback("저장 데이터 형식을 읽지 못해 새 게임으로 시작합니다.", true);
+          } else if (saved && Object.prototype.hasOwnProperty.call(saved, "hasPlayedStage1")) {
+            cleanLegacyStageFlag = true;
+          }
+        }
+      } catch (error) {
+        console.error("Meow Bakery 저장 데이터를 불러오지 못했습니다.", error);
+        setGameFeedback("저장 서버에 연결하지 못해 이번 접속은 자동 저장되지 않습니다.", true);
+      }
+
+      appReady = true;
+      stageNav.querySelectorAll("button").forEach(button => { button.disabled = false; });
+      document.getElementById("restart-game-button").disabled = false;
+      document.getElementById("game-exit-button").disabled = false;
+      updateEconomyUi();
+      if (cleanLegacyStageFlag) void saveGameState();
+      startStage("store");
+    }
+
+    void bootGame();
   </script>
 </body>
 </html>

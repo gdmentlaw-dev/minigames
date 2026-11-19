@@ -8,6 +8,7 @@
 }
 
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 
 body {
   min-width: 320px;
@@ -78,7 +79,7 @@ button { font: inherit; }
   z-index: 20;
   top: 6px;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
   width: min(100%, 720px);
   margin: 20px auto 12px;
@@ -392,13 +393,14 @@ button { font: inherit; }
 .result-list .ingredient-row { min-height: 31px; font-size: 12px; }
 .score-message { min-height: 21px; margin: 6px 0 16px; color: #826a5a; font-size: 13px; }
 
-.stage2-screen, .stage3-screen, .preparing-screen {
+.stage2-screen, .stage3-screen, .store-screen, .preparing-screen {
   min-height: 520px;
   flex-direction: column;
   padding: 10px 0 18px;
 }
 .stage3-screen { min-width: 0; }
 #stage3-root { width: 100%; }
+#store-root { width: 100%; }
 .sales-heading {
   display: flex;
   align-items: center;
@@ -466,7 +468,7 @@ button { font: inherit; }
 .sales-bread-button:not(:disabled):active { transform: translateY(2px); }
 .sales-bread-button:disabled { cursor: not-allowed; }
 .sales-bread-button.is-empty { background: #e7e4df; color: #8e8982; filter: grayscale(1); }
-.sales-bread-art { grid-row: span 2; width: 44px; height: 36px; image-rendering: pixelated; }
+.sales-bread-art { grid-row: span 2; width: 32px; height: 32px; image-rendering: pixelated; }
 .sales-bread-name { overflow: hidden; font-size: 11px; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
 .sales-bread-button > strong { color: #d45e4e; font-size: 17px; text-align: right; }
 .sales-bread-button small { grid-column: 2 / 4; color: #977e6c; font-size: 9px; white-space: nowrap; }
@@ -524,7 +526,7 @@ button { font: inherit; }
 .customer-speech p { margin: 0 0 4px; color: #826a5a; font-size: 10px; }
 .customer-order-label { color: #603e32; font-size: 13px; }
 .customer-order { display: flex; gap: 4px; min-height: 37px; margin-top: 3px; }
-.order-bread-art { width: 44px; height: 36px; image-rendering: pixelated; }
+.order-bread-art { width: 32px; height: 32px; image-rendering: pixelated; }
 .patience-panel {
   display: flex;
   flex-direction: column;
@@ -569,32 +571,36 @@ button { font: inherit; }
 .sales-result-list li.sales-empty { justify-content: center; color: #977e6c; }
 .sales-score-status { min-height: 20px; margin: 2px 0 10px; color: #826a5a; font-size: 11px; }
 .sales-result .button { min-width: 190px; }
-.stage2-heading {
+.stage3-heading, .shop-heading {
   display: flex;
   align-items: end;
   justify-content: space-between;
   margin-bottom: 10px;
 }
-.stage2-heading h2 { margin: 4px 0 0; color: #603e32; font-size: 28px; }
+.stage3-heading h2, .shop-heading h2 { margin: 4px 0 0; color: #603e32; font-size: 28px; }
 .oven-tip { margin: 0; color: #826a5a; font-size: 12px; }
 .baking-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 210px;
   gap: 12px;
 }
-.stage2-side-panels { display: flex; flex-direction: column; gap: 10px; }
-.stage2-pantry { padding: 10px 8px; border-radius: 11px; box-shadow: inset 1px 1px 0 #fff, 0 3px 0 rgba(116, 76, 60, .12); }
-.stage2-pantry .pantry-heading { gap: 7px; padding-bottom: 7px; }
-.stage2-pantry .pantry-heading h3 { margin: 4px 0 0; color: #603e32; font-size: 15px; }
-.stage2-pantry .pantry-heading .eyebrow { font-size: 8px; }
-.stage2-ingredient-list { margin: 5px 0; }
-.stage2-ingredient-list .ingredient-row {
+.stage3-side-panels { display: flex; flex-direction: column; gap: 10px; }
+.stage2-pantry, .stage3-pantry {
+  padding: 10px 8px;
+  border-radius: 11px;
+  box-shadow: inset 1px 1px 0 #fff, 0 3px 0 rgba(116, 76, 60, .12);
+}
+.stage2-pantry .pantry-heading, .stage3-pantry .pantry-heading { gap: 7px; padding-bottom: 7px; }
+.stage2-pantry .pantry-heading h3, .stage3-pantry .pantry-heading h3 { margin: 4px 0 0; color: #603e32; font-size: 15px; }
+.stage2-pantry .pantry-heading .eyebrow, .stage3-pantry .pantry-heading .eyebrow { font-size: 8px; }
+.stage2-ingredient-list, .stage3-ingredient-list { margin: 5px 0; }
+.stage2-ingredient-list .ingredient-row, .stage3-ingredient-list .ingredient-row {
   grid-template-columns: 31px minmax(0, 1fr) auto;
   gap: 4px;
   min-height: 31px;
   font-size: 10px;
 }
-.stage2-ingredient-list .ingredient-swatch {
+.stage2-ingredient-list .ingredient-swatch, .stage3-ingredient-list .ingredient-swatch {
   display: block;
   width: 30px;
   height: 30px;
@@ -602,9 +608,9 @@ button { font: inherit; }
   background: var(--ingredient-icon) center / contain no-repeat;
   image-rendering: pixelated;
 }
-.stage2-ingredient-list .ingredient-row strong { font-size: 12px; }
-.stage2-pantry .pantry-total { margin: 3px 0 0; padding-top: 6px; font-size: 10px; }
-.stage2-pantry .pantry-total strong { font-size: 15px; }
+.stage2-ingredient-list .ingredient-row strong, .stage3-ingredient-list .ingredient-row strong { font-size: 12px; }
+.stage2-pantry .pantry-total, .stage3-pantry .pantry-total { margin: 3px 0 0; padding-top: 6px; font-size: 10px; }
+.stage2-pantry .pantry-total strong, .stage3-pantry .pantry-total strong { font-size: 15px; }
 .oven-panel {
   min-width: 0;
   padding: 8px;
@@ -654,13 +660,17 @@ button { font: inherit; }
 .bread-stock ul { margin: 0; padding: 0; list-style: none; }
 .bread-stock li {
   display: flex;
-  justify-content: space-between;
-  min-height: 30px;
   align-items: center;
+  justify-content: space-between;
+  gap: 5px;
+  min-height: 30px;
   border-bottom: 1px dashed #e6ceb0;
   color: #775849;
   font-size: 12px;
 }
+.bread-stock-art { display: block; flex: 0 0 32px; width: 32px; height: 32px; object-fit: contain; image-rendering: pixelated; }
+.bread-stock li > span { flex: 1; min-width: 0; }
+.bread-stock li > span small { display: block; }
 .bread-stock li strong { color: #d45e4e; }
 .recipe-grid {
   display: grid;
@@ -681,10 +691,10 @@ button { font: inherit; }
 .baking-recipe h3 { min-height: 38px; margin: 4px 0 5px; color: #603e32; font-size: 14px; }
 .recipe-art {
   display: grid;
-  height: 46px;
+  height: 64px;
   place-items: center;
 }
-.recipe-art canvas { width: 52px; height: 42px; image-rendering: pixelated; }
+.recipe-art img { display: block; width: 64px; height: 64px; object-fit: contain; image-rendering: pixelated; }
 .baking-recipe ul { min-height: 74px; margin: 0; padding: 0; list-style: none; }
 .baking-recipe li {
   display: flex;
@@ -749,9 +759,17 @@ button { font: inherit; }
 @media (max-width: 760px) {
   body { min-width: 0; min-height: 100dvh; padding: 6px; overflow-y: auto; }
   .game-shell { width: 100%; min-height: 0; height: auto; padding: 0 8px 10px; border-width: 3px; }
-  .stage-nav { gap: 4px; margin: 12px auto 7px; }
-  .stage-nav-button { min-height: 38px; padding: 5px 2px; font-size: 11px; }
-  .stage-nav-button span { width: 20px; height: 20px; margin-right: 2px; font-size: 10px; }
+  .game-toolbar { align-items: stretch; flex-direction: column; gap: 6px; padding: 6px; }
+  .game-balances { justify-content: space-around; gap: 4px 10px; }
+  .game-balances p { font-size: 10px; }
+  .game-balances strong { font-size: 13px; }
+  .game-toolbar-actions { display: grid; grid-template-columns: 1fr 1fr; }
+  .small-game-button { min-width: 0; padding: 5px 4px; font-size: 10px; }
+  .stage1-recommend-notice, .game-feedback { margin-bottom: 5px; font-size: 10px; }
+  .stage-nav { gap: 3px; margin: 12px auto 7px; }
+  .stage-nav-button { min-height: 40px; padding: 4px 1px; font-size: 10px; line-height: 1.2; }
+  .stage-nav-button span { width: 18px; height: 18px; margin-right: 1px; font-size: 9px; }
+  .stage-nav-button .stage-recommend-label:not([hidden]) { display: block; margin: 1px 0 0; font-size: 8px; line-height: 1; }
   .bakery-sign { margin-top: 10px; padding: 9px 7px 10px; }
   .bakery-sign h1 { margin-top: 3px; font-size: clamp(17px, 6vw, 27px); }
   .sign-kicker { font-size: 8px; }
@@ -789,26 +807,31 @@ button { font: inherit; }
   .touch-controls { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 0 0; color: #977e6c; font-size: 11px; }
   .move-button { min-width: 76px; padding: 9px 12px; border: 2px solid #744c3c; background: #f4c76d; color: #603e32; font-weight: 900; touch-action: none; }
   .bakery-footer { margin-top: 12px; }
-  .stage2-screen, .stage3-screen { min-height: 0; padding: 4px 0 12px; }
-  .stage2-heading { margin-bottom: 6px; }
-  .stage2-heading h2 { font-size: 20px; }
+  .stage2-screen, .stage3-screen, .store-screen { min-height: 0; padding: 4px 0 12px; }
+  .stage3-heading, .shop-heading { align-items: end; gap: 6px; margin-bottom: 6px; }
+  .stage3-heading h2, .shop-heading h2 { font-size: 20px; }
   .oven-tip { font-size: 10px; }
   .baking-layout { grid-template-columns: 1fr; gap: 6px; }
-  .stage2-side-panels { display: flex; flex-direction: column; gap: 6px; }
-  .stage2-pantry { min-width: 0; max-height: none; padding: 6px; }
-  .stage2-pantry .pantry-heading h3 { font-size: 12px; }
-  .stage2-ingredient-list { display: flex; flex-direction: column; }
-  .stage2-ingredient-list .ingredient-row { grid-template-columns: 22px minmax(0, 1fr) auto; gap: 2px; min-height: 23px; font-size: 8px; }
-  .stage2-ingredient-list .ingredient-swatch { width: 21px; height: 21px; }
-  .stage2-ingredient-list .ingredient-row strong { font-size: 10px; }
-  .stage2-pantry .pantry-total { font-size: 9px; }
+  .ingredient-shop-layout { grid-template-columns: 1fr; gap: 6px; }
+  .stage3-side-panels { display: flex; flex-direction: column; gap: 6px; }
+  .ingredient-shop { padding: 7px; }
+  .ingredient-shop h3 { font-size: 12px; }
+  .ingredient-shop-row { grid-template-columns: 22px minmax(0, 1fr) auto; font-size: 9px; }
+  .ingredient-buy-button { min-height: 25px; font-size: 9px; }
+  .stage2-pantry, .stage3-pantry { min-width: 0; max-height: none; padding: 6px; }
+  .stage2-pantry .pantry-heading h3, .stage3-pantry .pantry-heading h3 { font-size: 12px; }
+  .stage2-ingredient-list, .stage3-ingredient-list { display: flex; flex-direction: column; }
+  .stage2-ingredient-list .ingredient-row, .stage3-ingredient-list .ingredient-row { grid-template-columns: 22px minmax(0, 1fr) auto; gap: 2px; min-height: 23px; font-size: 8px; }
+  .stage2-ingredient-list .ingredient-swatch, .stage3-ingredient-list .ingredient-swatch { width: 21px; height: 21px; }
+  .stage2-ingredient-list .ingredient-row strong, .stage3-ingredient-list .ingredient-row strong { font-size: 10px; }
+  .stage2-pantry .pantry-total, .stage3-pantry .pantry-total { font-size: 9px; }
   .oven-panel { padding: 4px; }
   #oven-canvas { max-height: 210px; }
   .oven-stop { min-width: 125px; margin-top: 5px; padding: 8px 12px; font-size: 13px; }
   .oven-result { min-height: 34px; font-size: 10px; }
   .bread-stock { max-height: 260px; padding: 7px; }
   .bread-stock h3 { font-size: 12px; }
-  .bread-stock li { min-height: 26px; font-size: 9px; }
+  .bread-stock li { min-height: 36px; font-size: 9px; }
   .recipe-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; }
   .baking-recipe { padding: 6px; }
   .baking-recipe h3 { min-height: 32px; font-size: 12px; }
@@ -830,7 +853,7 @@ button { font: inherit; }
   .sales-stock h3 { margin-bottom: 5px; font-size: 13px; }
   .sales-bread-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; }
   .sales-bread-button { grid-template-columns: 36px 1fr auto; gap: 2px 4px; padding: 3px; }
-  .sales-bread-art { width: 36px; height: 32px; }
+  .sales-bread-art { width: 32px; height: 32px; }
   .sales-bread-name { font-size: 10px; }
   .sales-bread-button > strong { font-size: 14px; }
   .sales-bread-button small { font-size: 8px; }
@@ -844,7 +867,7 @@ button { font: inherit; }
   .customer-speech p { font-size: 9px; }
   .customer-order-label { font-size: 11px; }
   .customer-order { min-height: 32px; margin-top: 0; }
-  .order-bread-art { width: 38px; height: 31px; }
+  .order-bread-art { width: 32px; height: 32px; }
   .patience-panel { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 5px; padding: 6px; }
   .patience-panel .eyebrow { font-size: 8px; }
   .patience-track { height: 15px; margin: 0; }
@@ -862,6 +885,12 @@ button { font: inherit; }
 }
 
 @media (max-width: 430px) {
+  .exit-result-screen { min-height: 300px; padding: 18px 8px; }
+  .exit-result-screen h2 { font-size: 22px; }
+  .exit-score-result { font-size: 12px; }
+}
+
+@media (max-width: 430px) {
   .start-screen, .result-screen { min-height: 450px; padding-right: 2px; padding-left: 2px; }
   .intro { font-size: 13px; }
   .ingredient-preview { gap: 4px; }
@@ -872,6 +901,107 @@ button { font: inherit; }
   .customer-scene { min-height: 160px; }
   .customer-scene > canvas { height: 160px; }
 }
+
+.game-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: min(100%, 720px);
+  margin: 0 auto 8px;
+  padding: 8px 10px;
+  border: 2px solid #b88967;
+  border-radius: 9px;
+  background: #fffdf6;
+  box-shadow: 0 3px 0 rgba(116, 76, 60, .12);
+}
+.game-balances { display: flex; flex-wrap: wrap; gap: 6px 18px; }
+.game-balances p { margin: 0; color: #826a5a; font-size: 12px; }
+.game-balances strong { color: #603e32; font-size: 15px; }
+.game-balances span { margin-left: 2px; color: #826a5a; font-size: 10px; }
+.game-toolbar-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+.small-game-button {
+  min-height: 32px;
+  padding: 5px 9px;
+  border: 2px solid #744c3c;
+  background: #fff7e7;
+  color: #775849;
+  font-size: 11px;
+  font-weight: 900;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.small-game-button.game-exit-button { background: #e98d68; color: #fff8ee; }
+.small-game-button:disabled { cursor: wait; opacity: .6; }
+.stage1-recommend-notice, .game-feedback {
+  width: min(100%, 720px);
+  margin: 0 auto 7px;
+  color: #895b3e;
+  font-size: 11px;
+  line-height: 1.4;
+  text-align: center;
+}
+.stage1-recommend-notice { padding: 6px 9px; border: 1px solid #d7ad72; background: #fff1d2; }
+.game-feedback:empty { display: none; }
+.game-feedback.is-error { color: #a53d34; }
+.stage-nav-button.is-recommended {
+  border-color: #d29a4b;
+  box-shadow: 0 0 0 2px rgba(237, 199, 124, .35);
+}
+.stage-nav-button .stage-recommend-label {
+  margin-left: 3px;
+  color: #9a5c2c;
+  font-size: 9px;
+}
+.exit-result-screen {
+  min-height: 360px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 28px 12px;
+  text-align: center;
+}
+.exit-result-screen h2 { margin: 8px 0 12px; color: #603e32; font-size: 27px; }
+.exit-score-result { max-width: 420px; min-height: 46px; color: #775849; font-size: 14px; line-height: 1.6; }
+.shop-wallet { margin: 0; padding: 7px 10px; border: 2px solid #b88967; border-radius: 8px; background: #fffdf6; color: #775849; font-size: 12px; }
+.shop-wallet strong { color: #603e32; font-size: 16px; }
+.shop-wallet span { color: #826a5a; }
+.ingredient-shop-layout { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); align-items: start; gap: 12px; }
+.ingredient-shop-layout .ingredient-shop { min-width: 0; }
+.recipe-shop-shortcut { padding: 2px 6px; border: 1px solid #744c3c; border-radius: 4px; background: #fff3d4; color: #744c3c; font: inherit; font-weight: 900; cursor: pointer; }
+.ingredient-shop {
+  padding: 10px;
+  border: 3px solid #b88967;
+  border-radius: 11px;
+  background: linear-gradient(145deg, #fffefa, #fff7e7);
+  box-shadow: inset 1px 1px 0 #fff, 0 3px 0 rgba(116, 76, 60, .12);
+}
+.ingredient-shop h3 { margin: 0 0 6px; color: #603e32; font-size: 14px; }
+.ingredient-shop-list { margin: 0; padding: 0; list-style: none; }
+.ingredient-shop-row {
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  grid-template-areas: "icon name price" ". button button";
+  gap: 2px 5px;
+  min-height: 0;
+  padding: 5px 0;
+  border-bottom: 1px dashed #e6ceb0;
+  font-size: 10px;
+}
+.ingredient-shop-row .ingredient-swatch { grid-area: icon; }
+.ingredient-shop-row .ingredient-name { grid-area: name; min-width: 0; }
+.ingredient-shop-price { grid-area: price; color: #826a5a; font-size: 9px; white-space: nowrap; }
+.ingredient-buy-button {
+  grid-area: button;
+  min-height: 27px;
+  border: 2px solid #744c3c;
+  background: #edc77c;
+  color: #603e32;
+  font-size: 10px;
+  font-weight: 900;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.ingredient-buy-button:disabled { border-color: #aaa19a; background: #d7d2cb; color: #77716c; cursor: not-allowed; }
 
 .store-nav-mark {
   position: relative;
@@ -917,8 +1047,7 @@ button { font: inherit; }
 .stage-return-button:focus-visible,
 .store-stage-link:focus-visible,
 .store-customer-seat:focus-visible,
-.order-slip-row:focus-visible,
-.store-bread-button:focus-visible { outline: 3px solid #427c74; outline-offset: 2px; }
+.order-slip-row:focus-visible { outline: 3px solid #427c74; outline-offset: 2px; }
 .paw-print { position: relative; display: block; width: 27px; height: 25px; }
 .paw-print i, .paw-print b { position: absolute; display: block; background: #744c3c; }
 .paw-print i { width: 5px; height: 7px; }
@@ -930,8 +1059,9 @@ button { font: inherit; }
 .start-screen { position: relative; }
 .intro-return { position: absolute; top: 9px; left: 9px; }
 .play-topbar .stage-return-button { flex: 0 0 auto; }
-.stage2-screen > .stage-return-button { align-self: flex-start; margin: 0 0 8px; }
+.stage2-screen > .stage-return-button, .stage3-screen > .stage-return-button { align-self: flex-start; margin: 0 0 8px; }
 .stage2-screen > #stage2-root { width: 100%; }
+.stage3-screen > #stage3-root { width: 100%; }
 
 .store-heading {
   display: flex;
@@ -1055,7 +1185,7 @@ button { font: inherit; }
 .store-customer-seat.is-urgent .store-seat-bubble { border-color: #c64f43; }
 .store-bubble-items { display: flex; justify-content: center; gap: 2px; }
 .store-order-item { display: flex; min-width: 0; flex-direction: column; align-items: center; }
-.store-order-art { width: 76px; height: 66px; image-rendering: pixelated; }
+.store-order-art { display: block; width: 64px; height: 64px; image-rendering: pixelated; }
 .store-order-item b { color: #603e32; font-size: 10px; }
 .store-seat-gauge, .order-slip-gauge {
   display: block;
@@ -1080,9 +1210,27 @@ button { font: inherit; }
   font-size: 10px;
   text-align: center;
 }
-.store-empty-seat.has-departure { display: flex; flex-direction: column; justify-content: center; gap: 0; border-style: solid; background: rgba(255, 247, 231, .38); }
+.store-empty-seat.has-departure { position: relative; display: flex; flex-direction: column; justify-content: center; gap: 0; border-style: solid; background: rgba(255, 247, 231, .38); }
 .store-empty-seat.has-departure .store-cat-art { width: 52px; height: 47px; margin: 0 auto -2px; }
 .store-empty-seat.has-departure span { color: #775849; font-size: 9px; font-weight: 900; }
+.store-empty-seat.has-departure .store-money-pop {
+  position: absolute;
+  z-index: 3;
+  top: 12px;
+  left: 50%;
+  color: #d45e4e;
+  font-size: 14px;
+  font-weight: 900;
+  white-space: nowrap;
+  text-shadow: -1px -1px #fff7e7, 1px -1px #fff7e7, -1px 1px #fff7e7, 1px 1px #fff7e7;
+  transform: translateX(-50%);
+  animation: store-money-float .85s ease-out forwards;
+  pointer-events: none;
+}
+@keyframes store-money-float {
+  from { opacity: 1; transform: translate(-50%, 0); }
+  to { opacity: 0; transform: translate(-50%, -34px); }
+}
 .store-counter-front {
   position: absolute;
   z-index: 2;
@@ -1123,9 +1271,9 @@ button { font: inherit; }
 .store-stock-heading h3 { margin: 0; color: #603e32; font-size: 15px; }
 .store-stock-heading > span { color: #977e6c; font-size: 9px; }
 .store-bread-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 5px; }
-.store-bread-button {
+.store-bread-stock-item {
   display: grid;
-  grid-template-columns: 36px minmax(0, 1fr) auto;
+  grid-template-columns: 32px minmax(0, 1fr) auto;
   align-items: center;
   gap: 1px 3px;
   min-width: 0;
@@ -1136,15 +1284,12 @@ button { font: inherit; }
   box-shadow: inset 1px 1px 0 #fff;
   color: #603e32;
   text-align: left;
-  cursor: pointer;
-  touch-action: manipulation;
 }
-.store-bread-button:not(:disabled):active { transform: translateY(2px); }
-.store-bread-button.is-disabled { background: #e7e4df; color: #8e8982; filter: grayscale(1); cursor: not-allowed; }
-.store-bread-art { grid-row: span 2; width: 36px; height: 32px; image-rendering: pixelated; }
-.store-bread-name { overflow: hidden; font-size: 9px; font-weight: 900; text-overflow: ellipsis; white-space: nowrap; }
-.store-bread-button > strong { color: #d45e4e; font-size: 14px; text-align: right; }
-.store-bread-button small { grid-column: 2 / 4; color: #977e6c; font-size: 8px; white-space: nowrap; }
+.store-bread-stock-item.is-disabled { background: #e7e4df; color: #8e8982; filter: grayscale(1); }
+.store-bread-art { grid-row: span 2; width: 32px; height: 32px; object-fit: contain; image-rendering: pixelated; }
+.store-bread-name { min-width: 0; font-size: 9px; font-weight: 900; line-height: 1.15; }
+.store-bread-stock-item > strong { color: #d45e4e; font-size: 14px; text-align: right; }
+.store-bread-stock-item small { grid-column: 2 / 4; color: #977e6c; font-size: 8px; line-height: 1.2; white-space: normal; }
 .store-empty-stock {
   display: flex;
   flex-wrap: wrap;
@@ -1185,7 +1330,7 @@ button { font: inherit; }
 .order-slip-list { display: flex; flex-direction: column; gap: 6px; margin-top: 7px; }
 .order-slip-row {
   display: grid;
-  grid-template-columns: 62px minmax(0, 1fr);
+  grid-template-columns: 64px minmax(0, 1fr);
   align-items: center;
   gap: 6px;
   width: 100%;
@@ -1205,7 +1350,8 @@ button { font: inherit; }
 .order-slip-seat { color: #826a5a; font-size: 9px; font-weight: 900; }
 .order-slip-items { display: flex; flex-direction: column; gap: 1px; }
 .order-slip-item { display: flex; min-width: 0; align-items: center; gap: 4px; color: #603e32; font-size: 9px; font-weight: 800; }
-.order-slip-bread { width: 56px; height: 44px; image-rendering: pixelated; }
+.order-slip-bread { display: block; width: 64px; height: 64px; image-rendering: pixelated; }
+.sales-result-art { flex: 0 0 32px; width: 32px; height: 32px; object-fit: contain; image-rendering: pixelated; }
 .order-slip-gauge { height: 6px; }
 .order-slip-time { color: #775849; font-size: 9px; text-align: right; }
 .order-slip-empty { margin: 12px 2px; color: #977e6c; font-size: 11px; line-height: 1.5; text-align: center; }
@@ -1224,7 +1370,7 @@ button { font: inherit; }
   .store-scene { min-height: 416px; }
   .store-seat-grid { inset: 5px 6px 28px; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 4px; }
   .store-seat-bubble { min-height: 118px; max-width: 190px; align-self: center; }
-  .store-order-art { width: 68px; height: 60px; }
+  .store-order-art { width: 64px; height: 64px; }
   .store-cat-art { width: 75px; height: 68px; }
   .store-empty-seat { font-size: 9px; }
   .store-stock { margin-top: 6px; padding: 7px; }
@@ -1232,17 +1378,17 @@ button { font: inherit; }
   .store-stock-heading h3 { font-size: 13px; }
   .store-stock-heading > span { font-size: 8px; }
   .store-bread-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
-  .store-bread-button { grid-template-columns: 34px minmax(0, 1fr) auto; padding: 3px; }
-  .store-bread-art { width: 34px; height: 30px; }
+  .store-bread-stock-item { grid-template-columns: 32px minmax(0, 1fr) auto; padding: 3px; }
+  .store-bread-art { width: 32px; height: 32px; }
   .store-bread-name { font-size: 10px; }
-  .store-bread-button small { font-size: 8px; }
+  .store-bread-stock-item small { font-size: 8px; }
   .store-empty-stock { justify-content: center; padding: 8px 5px; }
   .store-empty-stock p { width: 100%; font-size: 11px; text-align: center; }
   .order-slip-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; }
-  .order-slip-row { grid-template-columns: 54px minmax(0, 1fr); gap: 4px; padding: 4px; }
+  .order-slip-row { grid-template-columns: 64px minmax(0, 1fr); gap: 4px; padding: 4px; }
   .order-slip-cat { width: 32px; height: 30px; }
   .order-slip-item { font-size: 8px; }
-  .order-slip-bread { width: 48px; height: 40px; }
+  .order-slip-bread { width: 64px; height: 64px; }
   .store-order-slip { padding: 7px; }
 }
 
@@ -1251,7 +1397,7 @@ button { font: inherit; }
   .store-seat-grid { inset: 5px 3px 28px; gap: 2px; }
   .store-customer-seat { padding: 2px; }
   .store-seat-bubble { min-height: 110px; padding: 3px; }
-  .store-order-art { width: 60px; height: 54px; }
+  .store-order-art { width: 64px; height: 64px; }
   .store-seat-number { font-size: 8px; }
   .store-seat-time { font-size: 7px; }
   .store-cat-art { width: 68px; height: 62px; }

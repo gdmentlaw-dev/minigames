@@ -1,566 +1,420 @@
 (function () {
   "use strict";
 
-  const SALES_DURATION = 90;
-  const SEAT_COUNT = 4;
   const RECIPES = [
-    { id: "butterCookie", name: "버터쿠키", price: 3 },
-    { id: "chocolateCookie", name: "초코칩 쿠키", price: 4 },
-    { id: "madeleine", name: "마들렌", price: 4 },
-    { id: "strawberryCake", name: "딸기 케이크", price: 8 },
-    { id: "sourdough", name: "사워도우", price: 5 }
+    { id: "butterCookie", name: "진저브레드 쿠키", needs: { butter: 2, sugar: 1, egg: 1 } },
+    { id: "chocolateCookie", name: "초코칩 쿠키", needs: { butter: 2, sugar: 2, egg: 1, chocolate: 3 } },
+    { id: "madeleine", name: "에그타르트", needs: { butter: 2, egg: 2, sugar: 2, milk: 1 } },
+    { id: "strawberryCake", name: "딸기 케이크", needs: { strawberry: 3, cream: 2, egg: 2, sugar: 2, milk: 1 } },
+    { id: "sourdough", name: "식빵", needs: { milk: 2, butter: 1, salt: 1 } }
   ];
-  const CAT_TYPES = ["cheese", "mackerel", "tuxedo", "white", "gray", "calico", "black", "siamese"];
 
-  function readStock(stock, id) {
-    const item = stock[id];
-    if (typeof item === "number") return { perfect: 0, normal: item };
-    return { perfect: item && item.perfect || 0, normal: item && item.normal || 0 };
+  const INGREDIENT_SHOP = window.MeowStages.ingredientShop;
+  const INGREDIENT_LABELS = INGREDIENT_SHOP.labels;
+  const INGREDIENT_ORDER = INGREDIENT_SHOP.order;
+  const BREAD_LABELS = {
+    butterCookie: "진저브레드 쿠키", chocolateCookie: "초코칩 쿠키", madeleine: "에그타르트",
+    strawberryCake: "딸기 케이크", sourdough: "식빵"
+  };
+  const FOOD_ASSETS = {
+    butterCookie: "52_gingerbreadman.png",
+    chocolateCookie: "28_cookies.png",
+    madeleine: "42_eggtart.png",
+    strawberryCake: "90_strawberrycake.png",
+    sourdough: "65_loafbread.png",
+    chocolate: "26_chocolate.png"
+  };
+  const FOOD_IMAGES = {};
+
+  function foodImagePath(id) {
+    const file = FOOD_ASSETS[id];
+    if (!file) throw new Error(`Unknown food image: ${id}`);
+    return `assets/foods/${file}`;
   }
 
-  function stockTotal(stock, id) {
-    const item = readStock(stock, id);
-    return item.perfect + item.normal;
-  }
+  Object.keys(FOOD_ASSETS).forEach(id => {
+    const image = new Image();
+    image.addEventListener("load", () => {
+      window.dispatchEvent(new Event("meow-bakery-food-assets-loaded"));
+    });
+    image.addEventListener("error", () => {
+      console.error(`Meow Bakery food image failed to load: ${foodImagePath(id)}`);
+    });
+    image.src = foodImagePath(id);
+    FOOD_IMAGES[id] = image;
+  });
 
-  function createSaleRecord() {
-    return {
-      secondsLeft: SALES_DURATION,
-      seats: Array(SEAT_COUNT).fill(null),
-      respawnTimers: Array(SEAT_COUNT).fill(null),
-      departures: Array(SEAT_COUNT).fill(null),
-      selectedCustomerId: null,
-      nextCustomerId: 1,
-      sales: Object.fromEntries(RECIPES.map(recipe => [recipe.id, { perfect: 0, normal: 0, revenue: 0 }])),
-      missed: 0,
-      satisfied: 0,
-      revenue: 0,
-      feedback: "",
-      started: true,
-      finished: false,
-      scoreSubmitted: false,
-      scoreStatus: "",
-      uiAccumulator: 0
-    };
+  function readStock(bakedGoods, recipeId) {
+    const stock = bakedGoods[recipeId];
+    if (typeof stock === "number") return { perfect: 0, normal: stock };
+    return { perfect: stock && stock.perfect || 0, normal: stock && stock.normal || 0 };
   }
 
   function createStage() {
     let root = null;
+    let inventory = {};
     let bakedGoods = {};
     let callbacks = null;
-    let sale = null;
     let running = false;
+    let baking = false;
     let animationId = 0;
-    let lastTimestamp = 0;
+    let markerPosition = 0;
+    let markerDirection = 1;
+    let lastTime = 0;
+    let selectedRecipe = null;
+    let resultText = "";
 
-    function recipeFor(id) {
-      return RECIPES.find(recipe => recipe.id === id);
+    window.addEventListener("meow-bakery-food-assets-loaded", () => {
+      if (!root) return;
+      const canvas = root.querySelector("#oven-canvas");
+      if (!canvas) return;
+      const context = canvas.getContext("2d");
+      drawOven(context, 520, 300, baking, performance.now());
+      if (baking) drawMarker(context);
+    });
+
+    function canBake(recipe) {
+      return Object.entries(recipe.needs).every(([id, amount]) => (inventory[id] || 0) >= amount);
     }
 
-    function orderDescription(customer) {
-      return customer.order
-        .filter(item => item.remaining > 0)
-        .map(item => `${recipeFor(item.id).name} ${item.remaining}개`)
-        .join(", ");
+    function consumeRecipe(recipe) {
+      const next = { ...inventory };
+      Object.entries(recipe.needs).forEach(([id, amount]) => {
+        next[id] = (next[id] || 0) - amount;
+      });
+      inventory = next;
+      callbacks.onInventoryChange(inventory);
     }
 
-    function chooseCatType() {
-      const occupied = new Set(sale.seats.filter(Boolean).map(customer => customer.type));
-      sale.departures.filter(Boolean).forEach(departure => occupied.add(departure.type));
-      const available = CAT_TYPES.filter(type => !occupied.has(type));
-      return available[Math.floor(Math.random() * available.length)];
+    function rect(context, x, y, width, height, color) {
+      context.fillStyle = color;
+      context.fillRect(Math.round(x), Math.round(y), width, height);
     }
 
-    function createCustomer(seat) {
-      const shuffled = RECIPES.map(recipe => recipe.id).sort(() => Math.random() - .5);
-      const orderCount = Math.random() < .5 ? 1 : 2;
-      return {
-        id: sale.nextCustomerId++,
-        seat,
-        type: chooseCatType(),
-        patienceMax: 38 + Math.floor(Math.random() * 17),
-        patience: 0,
-        order: shuffled.slice(0, orderCount).map(id => {
-          const quantity = 1 + Math.floor(Math.random() * 3);
-          return { id, quantity, remaining: quantity };
-        })
+    function circle(context, x, y, radius, fill, stroke) {
+      context.beginPath();
+      context.arc(x, y, radius, 0, Math.PI * 2);
+      context.fillStyle = fill;
+      context.fill();
+      if (stroke) {
+        context.strokeStyle = stroke;
+        context.lineWidth = 2;
+        context.stroke();
+      }
+    }
+
+    function drawDigitalDigit(context, x, y, digit) {
+      const segments = {
+        0: ["a", "b", "c", "d", "e", "f"],
+        1: ["b", "c"],
+        8: ["a", "b", "c", "d", "e", "f", "g"]
+      }[digit] || [];
+      const positions = {
+        a: [2, 0, 8, 2], b: [10, 2, 2, 7], c: [10, 11, 2, 7],
+        d: [2, 18, 8, 2], e: [0, 11, 2, 7], f: [0, 2, 2, 7], g: [2, 9, 8, 2]
       };
+      segments.forEach(segment => {
+        const [dx, dy, w, h] = positions[segment];
+        rect(context, x + dx, y + dy, w, h, "#9ce5c0");
+      });
     }
 
-    function fillSeat(seat) {
-      sale.seats[seat] = createCustomer(seat);
-      sale.seats[seat].patience = sale.seats[seat].patienceMax;
-      sale.respawnTimers[seat] = null;
-      sale.departures[seat] = null;
-    }
+    function drawOven(context, width, height, isBaking, time) {
+      rect(context, 14, 12, width - 28, height - 22, "#181c1e");
+      rect(context, 20, 8, width - 40, height - 24, "#373d40");
+      rect(context, 27, 11, width - 54, 4, "#596164");
+      rect(context, 27, height - 19, width - 54, 4, "#101415");
+      rect(context, 28, 16, width - 56, height - 40, "#454c4f");
+      rect(context, 32, 19, width - 64, 3, "#687174");
+      rect(context, 32, height - 28, width - 64, 3, "#272d2f");
+      rect(context, 36, 22, width - 72, 60, "#292f32");
+      rect(context, 43, 28, width - 86, 47, "#22282b");
 
-    function leaveSeat(customer, reason) {
-      if (sale.seats[customer.seat] !== customer) return;
-      sale.seats[customer.seat] = null;
-      sale.respawnTimers[customer.seat] = 5 + Math.random() * 5;
-      sale.departures[customer.seat] = {
-        type: customer.type,
-        expression: reason === "missed" ? "angry" : "happy",
-        remaining: .85
-      };
-      if (sale.selectedCustomerId === customer.id) sale.selectedCustomerId = null;
-      if (reason === "missed") {
-        sale.missed += 1;
-        sale.feedback = `${customer.seat + 1}번 손님이 화나서 떠났어요.`;
-      } else {
-        sale.satisfied += 1;
-        sale.feedback = `${customer.seat + 1}번 손님이 만족하고 떠났어요.`;
+      rect(context, 54, 35, 67, 31, "#10191a");
+      rect(context, 57, 37, 61, 2, "#455457");
+      rect(context, 58, 39, 59, 23, "#162a27");
+      drawDigitalDigit(context, 64, 41, 1);
+      drawDigitalDigit(context, 82, 41, 8);
+      drawDigitalDigit(context, 100, 41, 0);
+      rect(context, 126, 46, 3, 10, "#9ce5c0");
+      rect(context, 59, 62, 57, 2, "#0b1112");
+
+      [178, 246, 314, 382].forEach((x, index) => {
+        circle(context, x + 2, 57, 14, "#1a1e20", "#111516");
+        const metal = context.createRadialGradient(x - 4, 51, 2, x, 57, 12);
+        metal.addColorStop(0, "#e5e5dc");
+        metal.addColorStop(.38, "#a9afb0");
+        metal.addColorStop(1, "#52595b");
+        circle(context, x, 55, 10, metal, "#252a2c");
+        const angle = [-Math.PI / 3, 0, Math.PI / 3, Math.PI][index];
+        context.beginPath();
+        context.moveTo(x, 55);
+        context.lineTo(x + Math.cos(angle) * 6, 55 + Math.sin(angle) * 6);
+        context.strokeStyle = "#293033";
+        context.lineWidth = 2;
+        context.stroke();
+        circle(context, x, 55, 2, "#333a3c");
+        rect(context, x - 1, 37, 2, 3, "#c2c7c3");
+        rect(context, x - 1, 71, 2, 3, "#c2c7c3");
+        rect(context, x - 20, 54, 3, 2, "#c2c7c3");
+        rect(context, x + 17, 54, 3, 2, "#c2c7c3");
+      });
+
+      rect(context, 42, 87, width - 84, 131, "#1d2224");
+      rect(context, 45, 89, width - 90, 3, "#737a7b");
+      rect(context, 48, 93, width - 96, 119, "#707779");
+      rect(context, 56, 100, width - 112, 103, "#11191c");
+      const glow = context.createRadialGradient(width / 2, 152, 8, width / 2, 152, 185);
+      const flicker = isBaking ? .38 + (Math.sin(time / 85) + 1) * .1 : .12;
+      glow.addColorStop(0, `rgba(255, 151, 66, ${flicker})`);
+      glow.addColorStop(.55, `rgba(215, 91, 38, ${flicker * .52})`);
+      glow.addColorStop(1, "rgba(197, 67, 33, 0)");
+      context.fillStyle = glow;
+      context.fillRect(56, 100, width - 112, 103);
+      rect(context, 60, 106, 3, 90, "rgba(255,255,255,.15)");
+      rect(context, width - 63, 106, 3, 90, "rgba(255,255,255,.1)");
+      rect(context, 67, 108, 6, 47, "rgba(255,255,255,.09)");
+      rect(context, 74, 108, 2, 27, "rgba(255,255,255,.1)");
+      rect(context, width - 76, 158, 5, 37, "rgba(255,255,255,.06)");
+      rect(context, 83, 190, width - 166, 3, "#747b7c");
+
+      if (isBaking && selectedRecipe) {
+        const shimmer = Math.sin(time / 70) > 0 ? "#f1b85d" : "#d98a45";
+        const flame = Math.sin(time / 95) > 0 ? "#f8a14e" : "#e67c3c";
+        rect(context, 125, 165, 5, 17, flame);
+        rect(context, 137, 171, 4, 12, "#ffd27a");
+        rect(context, width - 144, 169, 5, 14, flame);
+        drawBread(context, selectedRecipe.id, 223, 125, 2);
+        rect(context, 233, 121, 24, 2, "rgba(255,255,255,.35)");
+        rect(context, 211, 183, 98, 3, shimmer);
       }
+
+      const handle = context.createLinearGradient(0, 220, 0, 234);
+      handle.addColorStop(0, "#eff0e9");
+      handle.addColorStop(.35, "#92999a");
+      handle.addColorStop(.72, "#555d60");
+      handle.addColorStop(1, "#262b2d");
+      rect(context, 143, 217, 234, 5, "#1b2022");
+      rect(context, 133, 214, 254, 5, handle);
+      rect(context, 147, 219, 226, 3, "#d0d2cc");
+      rect(context, 141, 215, 8, 3, "#f5f2e7");
+      rect(context, 371, 215, 8, 3, "#f5f2e7");
+      rect(context, 102, 222, width - 204, 2, "#24292b");
+      rect(context, 29, 278, width - 58, 4, "#131718");
+
+      rect(context, 84, 250, width - 168, 19, "#202527");
+      rect(context, 89, 254, width - 178, 11, "#803b34");
+      rect(context, 89 + (width - 178) * .16, 254, (width - 178) * .16, 11, "#ce7b42");
+      rect(context, 89 + (width - 178) * .32, 254, (width - 178) * .36, 11, "#74ad70");
+      rect(context, 89 + (width - 178) * .43, 254, (width - 178) * .14, 11, "#a8d88d");
+      rect(context, 89 + (width - 178) * .68, 254, (width - 178) * .16, 11, "#ce7b42");
     }
 
-    function customerExpression(customer) {
-      return customer.patience / customer.patienceMax <= .3 ? "worried" : "normal";
+    function drawBread(context, recipeId, x, y, scale) {
+      const image = FOOD_IMAGES[recipeId];
+      if (!image) throw new Error(`Unknown bread artwork: ${recipeId}`);
+      if (!image.complete || image.naturalWidth === 0) return;
+      context.imageSmoothingEnabled = false;
+      context.drawImage(image, x, y, 32 * scale, 32 * scale);
     }
 
-    function catImagePath(type, expression) {
-      return `assets/cats/cat_${type}_${expression}.png`;
-    }
-
-    function drawBread(context, id, x, y, scale) {
-      const draw = window.MeowStages && window.MeowStages.drawBread;
-      if (draw) {
-        draw(context, id, x, y, scale);
-      } else {
-        context.fillStyle = "#d99b58";
-        context.fillRect(x, y, 34 * scale, 24 * scale);
-      }
-    }
-
-    function hasAnyStock() {
-      return RECIPES.some(recipe => stockTotal(bakedGoods, recipe.id) > 0);
-    }
-
-    function customerNeeds(customer, id) {
-      return customer.order.some(item => item.id === id && item.remaining > 0);
-    }
-
-    function eligibleCustomers(id) {
-      if (!sale) return [];
-      if (sale.selectedCustomerId !== null) {
-        const selected = sale.seats.find(customer => customer && customer.id === sale.selectedCustomerId);
-        return selected && customerNeeds(selected, id) ? [selected] : [];
-      }
-      return sale.seats
-        .filter(customer => customer && customerNeeds(customer, id))
-        .sort((left, right) => left.patience - right.patience);
-    }
-
-    function renderEmptyStockNotice() {
-      return `
-        <div class="store-empty-stock">
-          <p>빵이 없어요. 재료를 받아 굽고 오세요</p>
-          <div>
-            <button type="button" class="store-stage-link" data-go-stage="stage1">재료 받기</button>
-            <button type="button" class="store-stage-link" data-go-stage="stage2">굽기</button>
-          </div>
-        </div>`;
-    }
-
-    function renderStockButtons(isActive) {
-      const stock = RECIPES.map(recipe => {
-        const amount = readStock(bakedGoods, recipe.id);
-        const total = amount.perfect + amount.normal;
-        const canServe = isActive && total > 0 && eligibleCustomers(recipe.id).length > 0;
+    function render() {
+      const cards = RECIPES.map(recipe => {
+        const available = canBake(recipe);
+        const needs = Object.entries(recipe.needs).map(([id, amount]) => {
+          const owned = inventory[id] || 0;
+          return `<li class="${owned >= amount ? "has-enough" : "needs-more"}"><span>${INGREDIENT_LABELS[id]}</span><strong>보유 ${owned} / 필요 ${amount}</strong></li>`;
+        }).join("");
         return `
-          <button type="button" class="store-bread-button ${canServe ? "" : "is-disabled"}"
-            data-bread="${recipe.id}" aria-label="${recipe.name} 건네기, 재고 ${total}"
-            ${canServe ? "" : "disabled"}>
-            <canvas class="store-bread-art" width="80" height="64" data-bread="${recipe.id}" aria-hidden="true"></canvas>
-            <span class="store-bread-name">${recipe.name}</span>
+          <article class="baking-recipe ${available ? "" : "is-unavailable"}">
+            <div class="recipe-art" aria-hidden="true">
+              <img src="${foodImagePath(recipe.id)}" width="64" height="64" alt="" decoding="async">
+            </div>
+            <h3>${recipe.name}</h3>
+            <ul>${needs}</ul>
+            <button type="button" class="bake-button" data-recipe="${recipe.id}" ${available && !baking ? "" : "disabled"}>굽기</button>
+            ${available ? "" : '<p class="recipe-shortage">재료가 부족해요 · <button type="button" class="recipe-shop-shortcut" data-go-stage="stage2">재료 사기</button></p>'}
+          </article>`;
+      }).join("");
+
+      const ingredients = INGREDIENT_ORDER.map(id => `
+        <li class="ingredient-row">
+          <i class="ingredient-swatch" aria-hidden="true"></i>
+          <span class="ingredient-name">${INGREDIENT_LABELS[id]}</span>
+          <strong>${inventory[id] || 0}</strong>
+        </li>
+      `).join("");
+      const stock = RECIPES.map(recipe => {
+        const quantity = readStock(bakedGoods, recipe.id);
+        const total = quantity.perfect + quantity.normal;
+        return `
+          <li>
+            <img class="bread-stock-art" src="${foodImagePath(recipe.id)}" width="32" height="32" alt="" decoding="async">
+            <span>${BREAD_LABELS[recipe.id]}<small>완벽 ${quantity.perfect} · 보통 ${quantity.normal}</small></span>
             <strong>${total}</strong>
-            <small>완벽 ${amount.perfect} · 보통 ${amount.normal}</small>
-          </button>`;
-      }).join("");
-      return `
-        <section class="store-stock">
-          <div class="store-stock-heading"><h3>구운 빵 재고</h3><span>빵을 눌러 1개씩 전달</span></div>
-          ${hasAnyStock() ? `<div class="store-bread-grid">${stock}</div>` : renderEmptyStockNotice()}
-          ${isActive ? `<p class="store-stock-hint">손님 선택 시 해당 손님에게, 미선택 시 가장 급한 손님에게 전달해요.${sale.selectedCustomerId !== null ? " 선택한 손님을 다시 누르면 해제돼요." : ""}</p>` : ""}
-        </section>`;
-    }
-
-    function renderSeat(customer, seat, isActive) {
-      if (!customer) {
-        const departure = sale && sale.departures[seat];
-        if (departure) {
-          const message = departure.expression === "angry" ? "화나서 떠났어요" : "기뻐하며 떠났어요";
-          return `
-            <div class="store-empty-seat has-departure" aria-label="${seat + 1}번 손님 ${message}">
-              <img class="store-cat-art" src="${catImagePath(departure.type, departure.expression)}" alt="" aria-hidden="true">
-              <span>${message}</span>
-            </div>`;
-        }
-        const wait = sale && sale.respawnTimers[seat] !== null
-          ? `${Math.ceil(sale.respawnTimers[seat])}초 후 새 손님`
-          : isActive ? "손님을 기다리는 중" : "영업 전";
-        return `<div class="store-empty-seat" aria-label="${seat + 1}번 손님 자리, ${wait}">${wait}</div>`;
-      }
-      const selected = sale.selectedCustomerId === customer.id;
-      const urgent = customer.patience / customer.patienceMax <= .3;
-      const expression = customerExpression(customer);
-      const description = orderDescription(customer);
-      return `
-        <button type="button" class="store-customer-seat ${selected ? "is-selected" : ""} ${urgent ? "is-urgent" : ""}"
-          data-customer-id="${customer.id}"
-          aria-label="${seat + 1}번 손님 선택. 주문: ${description}. 인내심 ${Math.ceil(customer.patience)}초">
-          <span class="store-seat-number">${seat + 1}번 손님</span>
-          <span class="store-seat-bubble">
-            <span class="store-bubble-items">
-              ${customer.order.filter(item => item.remaining > 0).map(item => `
-                <span class="store-order-item">
-                  <canvas class="store-order-art" width="160" height="128" data-bread="${item.id}" aria-hidden="true"></canvas>
-                  <b>×${item.remaining}</b>
-                </span>`).join("")}
-            </span>
-            <span class="store-seat-gauge"><i style="width:${customer.patience / customer.patienceMax * 100}%"></i></span>
-            <span class="store-seat-time">${Math.ceil(customer.patience)}초</span>
-          </span>
-          <img class="store-cat-art" src="${catImagePath(customer.type, expression)}" alt="" aria-hidden="true">
-        </button>`;
-    }
-
-    function renderStoreScene(isActive) {
-      return `
-        <section class="store-scene" aria-label="가게 카운터와 손님">
-          <div class="store-window" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
-          <div class="store-seat-grid">
-            ${Array.from({ length: SEAT_COUNT }, (_, seat) => renderSeat(sale ? sale.seats[seat] : null, seat, isActive)).join("")}
-          </div>
-          <div class="store-counter-front" aria-hidden="true"><i></i><i></i><i></i></div>
-          ${isActive ? "" : '<p class="store-scene-note">영업을 시작하면 손님이 찾아와요</p>'}
-        </section>`;
-    }
-
-    function renderOrderRow(customer) {
-      const urgency = customer.patience / customer.patienceMax <= .3;
-      const selected = sale.selectedCustomerId === customer.id;
-      const expression = customerExpression(customer);
-      return `
-        <button type="button" class="order-slip-row ${urgency ? "is-urgent" : ""} ${selected ? "is-selected" : ""}"
-          data-customer-id="${customer.id}">
-          <img class="order-slip-cat" src="${catImagePath(customer.type, expression)}" alt="" aria-hidden="true">
-          <span class="order-slip-content">
-            <span class="order-slip-seat">${customer.seat + 1}번 손님</span>
-            <span class="order-slip-items">
-              ${customer.order.filter(item => item.remaining > 0).map(item => `
-                <span class="order-slip-item">
-                  <canvas class="order-slip-bread" width="160" height="128" data-bread="${item.id}" aria-hidden="true"></canvas>
-                  <span>${recipeFor(item.id).name} ×${item.remaining}</span>
-                </span>`).join("")}
-            </span>
-            <span class="order-slip-gauge"><i style="width:${customer.patience / customer.patienceMax * 100}%"></i></span>
-            <span class="order-slip-time">${Math.ceil(customer.patience)}초 남음</span>
-          </span>
-        </button>`;
-    }
-
-    function renderOrderSlip(isActive) {
-      const customers = sale
-        ? sale.seats.filter(Boolean).sort((left, right) => left.patience - right.patience)
-        : [];
-      const rows = customers.map(renderOrderRow).join("");
-      return `
-        <aside class="store-order-slip" aria-labelledby="order-slip-title">
-          <div class="store-order-slip-heading">
-            <div><p class="eyebrow">오늘의 주문</p><h3 id="order-slip-title">주문서</h3></div>
-            ${isActive ? `<strong>${customers.length}명</strong>` : ""}
-          </div>
-          <div class="order-slip-list">
-            ${rows || `<p class="order-slip-empty">${isActive ? "잠시 후 손님이 도착해요." : "영업 시작 후 주문이 여기에 표시돼요."}</p>`}
-          </div>
-        </aside>`;
-    }
-
-    function renderIntro() {
-      root.innerHTML = `
-        <div class="store-heading">
-          <div><p class="eyebrow">MEOW BAKERY</p><h2>매장</h2></div>
-          <p>손님을 맞이하고 주문에 맞는 빵을 건네주세요.</p>
-          <button type="button" class="button button-primary store-start-button" id="sales-start">영업 시작</button>
-        </div>
-        <div class="store-layout">
-          <div class="store-main">
-            ${renderStoreScene(false)}
-            ${renderStockButtons(false)}
-          </div>
-          ${renderOrderSlip(false)}
-        </div>`;
-      drawArtwork();
-      root.querySelector("#sales-start").addEventListener("click", startSale);
-      bindNavigationButtons();
-    }
-
-    function renderActive() {
-      const totalSold = Object.values(sale.sales).reduce((sum, item) => sum + item.perfect + item.normal, 0);
-      root.innerHTML = `
-        <div class="store-heading is-active">
-          <div><p class="eyebrow">MEOW BAKERY</p><h2>매장</h2></div>
-          <div class="sales-clock"><span>영업 종료까지</span><strong id="sales-timer">${Math.ceil(sale.secondsLeft)}</strong><span>초</span></div>
-          <button type="button" class="sales-restart" id="sales-restart">다시 시작</button>
-        </div>
-        <div class="sales-status-strip">
-          <span>매출 <strong id="sales-revenue">${sale.revenue}</strong></span>
-          <span>놓친 손님 <strong id="sales-missed">${sale.missed}</strong></span>
-          <span>판매 성공 <strong id="sales-count">${totalSold}</strong></span>
-        </div>
-        <div class="store-layout">
-          <div class="store-main">
-            ${renderStoreScene(true)}
-            ${renderStockButtons(true)}
-            <p class="store-feedback" aria-live="polite">${sale.feedback}</p>
-          </div>
-          ${renderOrderSlip(true)}
-        </div>`;
-      drawArtwork();
-      root.querySelector("#sales-restart").addEventListener("click", startSale);
-      bindCustomerButtons();
-      bindBreadButtons();
-      bindNavigationButtons();
-    }
-
-    function renderResult() {
-      const sold = RECIPES.map(recipe => {
-        const item = sale.sales[recipe.id];
-        if (!item || item.perfect + item.normal === 0) return "";
-        return `<li><span>${recipe.name}<small>완벽 ${item.perfect} · 보통 ${item.normal}</small></span><strong>${item.perfect + item.normal}개 · ${item.revenue}</strong></li>`;
+          </li>`;
       }).join("");
       root.innerHTML = `
-        <div class="sales-result">
-          <p class="eyebrow">영업 종료</p>
-          <h2>오늘의 매출</h2>
-          <p class="sales-result-revenue"><strong>${sale.revenue}</strong><span>원</span></p>
-          <div class="sales-result-stats">
-            <span>놓친 손님 <strong>${sale.missed}명</strong></span>
-            <span>총 판매 수 <strong>${Object.values(sale.sales).reduce((sum, item) => sum + item.perfect + item.normal, 0)}개</strong></span>
+        <div class="stage3-heading">
+          <div><p class="eyebrow">3단계</p><h2>굽기</h2></div>
+          <p class="oven-tip">초록 구간에서 멈춤을 누르세요</p>
+        </div>
+        <div class="baking-layout">
+          <div class="oven-panel">
+            <canvas id="oven-canvas" width="520" height="300" aria-label="빌트인 오븐과 굽기 미니게임"></canvas>
+            <button type="button" id="oven-stop" class="oven-stop" ${baking ? "" : "disabled"}>멈춤</button>
+            <p class="oven-result" aria-live="polite">${resultText}</p>
           </div>
-          <section class="sales-result-list">
-            <h3>판매한 빵</h3>
-            <ul>${sold || "<li class=\"sales-empty\">판매한 빵이 없어요.</li>"}</ul>
-          </section>
-          <p class="sales-score-status" id="sales-score-status" aria-live="polite">${sale.scoreStatus || "기록을 저장하고 있어요."}</p>
-          <button type="button" class="button button-primary" id="sales-again">다시 영업하기</button>
-        </div>`;
-      root.querySelector("#sales-again").addEventListener("click", startSale);
-    }
+          <div class="stage3-side-panels">
+            <aside class="pantry stage3-pantry" aria-labelledby="stage3-pantry-title">
+              <div class="pantry-heading">
+                <span class="pantry-icon" aria-hidden="true"></span>
+                <div><p class="eyebrow">오늘의 준비</p><h3 id="stage3-pantry-title">재료 바구니</h3></div>
+              </div>
+              <ul class="ingredient-list stage3-ingredient-list">${ingredients}</ul>
+              <p class="pantry-total">모은 재료 <strong>${INGREDIENT_ORDER.reduce((sum, id) => sum + (inventory[id] || 0), 0)}</strong></p>
+            </aside>
+            <aside class="bread-stock">
+              <h3>구운 빵 재고</h3>
+              <ul>${stock}</ul>
+            </aside>
+          </div>
+        </div>
+        <div class="recipe-grid">${cards}</div>`;
 
-    function drawArtwork() {
-      root.querySelectorAll(".store-order-art, .order-slip-bread, .store-bread-art").forEach(canvas => {
-        const context = canvas.getContext("2d");
-        context.imageSmoothingEnabled = false;
-        const enlarged = canvas.classList.contains("store-order-art") || canvas.classList.contains("order-slip-bread");
-        drawBread(context, canvas.dataset.bread, 0, 0, enlarged ? 2 : 1);
+      root.querySelectorAll(".bake-button").forEach(button => {
+        button.addEventListener("click", () => beginBake(RECIPES.find(recipe => recipe.id === button.dataset.recipe)));
       });
-    }
-
-    function bindCustomerButtons() {
-      root.querySelectorAll("[data-customer-id]").forEach(button => {
-        button.addEventListener("click", () => {
-          const id = Number(button.dataset.customerId);
-          sale.selectedCustomerId = sale.selectedCustomerId === id ? null : id;
-          renderActive();
-        });
-      });
-    }
-
-    function bindBreadButtons() {
-      root.querySelectorAll(".store-bread-button:not(:disabled)").forEach(button => {
-        button.addEventListener("click", () => deliverBread(button.dataset.bread));
-      });
-    }
-
-    function bindNavigationButtons() {
       root.querySelectorAll("[data-go-stage]").forEach(button => {
         button.addEventListener("click", () => callbacks.navigate(button.dataset.goStage));
       });
-    }
+      const ovenCanvas = root.querySelector("#oven-canvas");
+      const ovenContext = ovenCanvas.getContext("2d");
+      ovenContext.imageSmoothingEnabled = false;
+      drawOven(ovenContext, 520, 300, baking, performance.now());
 
-    function updateLiveStatus() {
-      if (!root || !sale) return;
-      const timer = root.querySelector("#sales-timer");
-      if (timer) timer.textContent = String(Math.ceil(sale.secondsLeft));
-    }
+      if (baking) drawMarker(ovenContext);
 
-    function startSale() {
-      running = false;
-      cancelAnimationFrame(animationId);
-      sale = createSaleRecord();
-      const seats = Array.from({ length: SEAT_COUNT }, (_, index) => index)
-        .sort(() => Math.random() - .5);
-      const initialCount = 3 + Math.floor(Math.random() * 2);
-      seats.slice(initialCount).forEach(seat => {
-        sale.respawnTimers[seat] = 3 + Math.random() * 4;
+      const stopButton = root.querySelector("#oven-stop");
+      stopButton.addEventListener("pointerdown", event => {
+        event.preventDefault();
+        stopOven();
       });
-      seats.slice(0, initialCount).forEach(fillSeat);
-      running = true;
-      lastTimestamp = 0;
-      renderActive();
-      animationId = requestAnimationFrame(loop);
-    }
-
-    function consumeBread(id) {
-      const stock = readStock(bakedGoods, id);
-      const quality = stock.perfect > 0 ? "perfect" : "normal";
-      if (stock[quality] <= 0) return null;
-      const next = { ...bakedGoods, [id]: { ...stock, [quality]: stock[quality] - 1 } };
-      bakedGoods = next;
-      callbacks.onBakedGoodsChange({ ...next });
-      return quality;
-    }
-
-    function deliverBread(id) {
-      if (!running || !sale || sale.finished || stockTotal(bakedGoods, id) <= 0) return;
-      const customer = eligibleCustomers(id)[0];
-      if (!customer) return;
-      const quality = consumeBread(id);
-      if (!quality) return;
-
-      const orderItem = customer.order.find(item => item.id === id && item.remaining > 0);
-      if (!orderItem) return;
-      const recipe = recipeFor(id);
-      const price = quality === "perfect" ? Math.ceil(recipe.price * 1.5) : recipe.price;
-      const soldItem = sale.sales[id];
-      soldItem[quality] += 1;
-      soldItem.revenue += price;
-      sale.revenue += price;
-      orderItem.remaining -= 1;
-      sale.feedback = `${customer.seat + 1}번 손님에게 ${recipe.name} 1개를 건넸어요.`;
-
-      if (customer.order.every(item => item.remaining === 0)) {
-        leaveSeat(customer, "satisfied");
-      }
-      renderActive();
-    }
-
-    function update(delta) {
-      if (!running || !sale || sale.finished) return;
-      sale.secondsLeft = Math.max(0, sale.secondsLeft - delta);
-      let shouldRender = false;
-
-      sale.seats.forEach((customer, seat) => {
-        if (customer) {
-          customer.patience = Math.max(0, customer.patience - delta);
-          if (customer.patience <= 0) {
-            leaveSeat(customer, "missed");
-            shouldRender = true;
-          }
-        } else if (sale.respawnTimers[seat] !== null) {
-          sale.respawnTimers[seat] = Math.max(0, sale.respawnTimers[seat] - delta);
-          if (sale.respawnTimers[seat] <= 0) {
-            fillSeat(seat);
-            shouldRender = true;
-          }
+      stopButton.addEventListener("keydown", event => {
+        if (event.code === "Space" || event.code === "Enter") {
+          event.preventDefault();
+          stopOven();
         }
       });
-      sale.departures.forEach((departure, seat) => {
-        if (!departure) return;
-        departure.remaining = Math.max(0, departure.remaining - delta);
-        if (departure.remaining <= 0) {
-          sale.departures[seat] = null;
-          shouldRender = true;
-        }
+      ovenCanvas.addEventListener("pointerdown", event => {
+        event.preventDefault();
+        if (baking) stopOven();
       });
+    }
 
-      sale.uiAccumulator += delta;
-      if (sale.uiAccumulator >= .25) {
-        sale.uiAccumulator = 0;
-        shouldRender = true;
+    function drawMarker(context) {
+      const width = 520;
+      const barY = 254;
+      const markerX = 89 + markerPosition * (width - 178);
+      rect(context, markerX - 4, barY - 5, 8, 22, "#4a352f");
+      rect(context, markerX - 1, barY - 2, 3, 16, "#fff7e7");
+    }
+
+    function beginBake(recipe) {
+      if (!recipe || baking || !canBake(recipe)) return;
+      consumeRecipe(recipe);
+      selectedRecipe = recipe;
+      baking = true;
+      markerPosition = 0;
+      markerDirection = 1;
+      lastTime = performance.now();
+      resultText = "";
+      render();
+      animationId = requestAnimationFrame(ovenLoop);
+    }
+
+    function ovenLoop(time) {
+      if (!running || !baking) return;
+      const delta = Math.min((time - lastTime) / 1000, 0.05);
+      lastTime = time;
+      markerPosition += markerDirection * delta * 0.72;
+      if (markerPosition >= 1) {
+        markerPosition = 1;
+        markerDirection = -1;
+      } else if (markerPosition <= 0) {
+        markerPosition = 0;
+        markerDirection = 1;
       }
-      if (shouldRender) renderActive();
-      updateLiveStatus();
-      if (sale.secondsLeft <= 0) finishSale();
+      const ovenCanvas = root.querySelector("#oven-canvas");
+      if (ovenCanvas) {
+        const context = ovenCanvas.getContext("2d");
+        drawOven(context, 520, 300, true, time);
+        drawMarker(context);
+      }
+      animationId = requestAnimationFrame(ovenLoop);
     }
 
-    function loop(timestamp) {
-      if (!running || document.hidden) return;
-      if (!lastTimestamp) lastTimestamp = timestamp;
-      const delta = Math.min((timestamp - lastTimestamp) / 1000, .1);
-      lastTimestamp = timestamp;
-      update(delta);
-      if (running && sale && !sale.finished) animationId = requestAnimationFrame(loop);
-    }
-
-    function finishSale() {
-      if (!sale || sale.finished) return;
-      sale.finished = true;
-      sale.secondsLeft = 0;
-      running = false;
+    function stopOven() {
+      if (!baking || !selectedRecipe) return;
+      baking = false;
       cancelAnimationFrame(animationId);
-      renderResult();
-      if (!sale.scoreSubmitted) {
-        sale.scoreSubmitted = true;
-        const completedSale = sale;
-        Promise.resolve()
-          .then(() => callbacks.submitScore(completedSale.revenue))
-          .then(result => {
-            completedSale.scoreStatus = result ? "매출 기록을 저장했어요." : "매출 기록을 저장하지 못했어요.";
-            const status = sale === completedSale && root && root.querySelector("#sales-score-status");
-            if (status) status.textContent = completedSale.scoreStatus;
-          })
-          .catch(error => {
-            console.error("Meow Bakery 판매 점수를 저장하지 못했습니다.", error);
-            completedSale.scoreStatus = "매출 기록을 저장하지 못했어요.";
-            const status = sale === completedSale && root && root.querySelector("#sales-score-status");
-            if (status) status.textContent = completedSale.scoreStatus;
-          });
-      }
-    }
+      const greenCenter = 0.5;
+      const distance = Math.abs(markerPosition - greenCenter);
+      let outcome = "탄 빵";
+      if (distance <= 0.18) outcome = "완벽";
+      else if (distance <= 0.34) outcome = "보통";
 
-    function onVisibilityChange() {
-      if (!sale || !sale.started || sale.finished) return;
-      lastTimestamp = 0;
-      if (document.hidden) {
-        cancelAnimationFrame(animationId);
-      } else if (running) {
-        animationId = requestAnimationFrame(loop);
+      if (outcome !== "탄 빵") {
+        const next = { ...bakedGoods };
+        const quality = outcome === "완벽" ? "perfect" : "normal";
+        const quantity = readStock(bakedGoods, selectedRecipe.id);
+        next[selectedRecipe.id] = { ...quantity, [quality]: quantity[quality] + 1 };
+        bakedGoods = next;
+        callbacks.onBakedGoodsChange(bakedGoods);
       }
+      resultText = outcome === "탄 빵" ? "탄 빵: 재고에 들어가지 않았어요." : `${selectedRecipe.name} - ${outcome}! 재고에 추가됐어요.`;
+      selectedRecipe = null;
+      render();
     }
 
     function start(options) {
       root = options.root;
+      callbacks = options;
+      inventory = { ...options.inventory };
       bakedGoods = Object.fromEntries(RECIPES.map(recipe => [
         recipe.id,
         readStock(options.bakedGoods, recipe.id)
       ]));
-      callbacks = options;
-      running = Boolean(sale && sale.started && !sale.finished);
-      lastTimestamp = 0;
-      document.addEventListener("visibilitychange", onVisibilityChange);
-      if (!sale || sale.finished) {
-        render();
-      } else {
-        renderActive();
-      }
-      if (running && !document.hidden) animationId = requestAnimationFrame(loop);
+      running = true;
+      resultText = "";
+      render();
 
       return {
         stop() {
+          if (!running) return;
           running = false;
+          if (baking && selectedRecipe) {
+            const refunded = { ...inventory };
+            Object.entries(selectedRecipe.needs).forEach(([id, amount]) => {
+              refunded[id] = (refunded[id] || 0) + amount;
+            });
+            inventory = refunded;
+            callbacks.onInventoryChange(inventory);
+          }
+          baking = false;
+          selectedRecipe = null;
           cancelAnimationFrame(animationId);
-          document.removeEventListener("visibilitychange", onVisibilityChange);
           root = null;
         }
       };
     }
 
-    function render() {
-      if (!root) return;
-      if (!sale) {
-        renderIntro();
-      } else if (sale.finished) {
-        renderResult();
-      } else {
-        renderActive();
-      }
-    }
-
-    return { start };
+    return { start, drawBread };
   }
 
   window.MeowStages = window.MeowStages || {};
-  window.MeowStages.stage3 = createStage();
+  const stage3 = createStage();
+  window.MeowStages.drawBread = stage3.drawBread;
+  window.MeowStages.foodImagePath = foodImagePath;
+  window.MeowStages.stage3 = stage3;
 })();
