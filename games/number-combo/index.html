@@ -129,7 +129,7 @@
       </div>
       <div class="bar" aria-hidden="true"><i id="timebar"></i></div>
       <div class="meter-row">
-        <span>손패 <b id="handCount">0</b> / <span id="handMax">25</span> · 넘치면 게임 오버</span>
+        <span>손패 <b id="handCount">0</b> / <span id="handMax">20</span> · 넘치면 게임 오버</span>
         <div class="meter" id="meter" aria-hidden="true"></div>
       </div>
 
@@ -153,7 +153,7 @@
           <ul class="rules">
             <li><span class="mini" id="exGroup"></span><span><b>그룹</b> 같은 숫자 3~4장, 색은 모두 달라야 해요</span></li>
             <li><span class="mini" id="exRun"></span><span><b>연속</b> 같은 색으로 이어지는 숫자 3장 이상</span></li>
-            <li><span class="mini"></span><span>길게, 큰 숫자로, 빠르게 이어서 낼수록 점수가 커져요. 손패가 25장을 넘으면 끝나요.</span></li>
+            <li><span class="mini"></span><span>길게, 큰 숫자로, 빠르게 이어서 낼수록 점수가 커져요. 손패가 20장을 넘으면 끝나요.</span></li>
           </ul>
           <button class="btn primary" id="startBtn">시작하기</button>
         </div>
@@ -172,7 +172,7 @@
             <li><b>콤보</b> 4초 안에 이어서 내면 ×1.25, ×1.5 … 최대 ×2</li>
             <li><b>보너스</b> 손패를 다 비우면 +300점, 새 타일 4장</li>
             <li><b>감점</b> 조합이 아닌 걸 내면 −30점, 버리기는 장당 −15점 (콤보 끊김)</li>
-            <li><b>게임 오버</b> 90초가 끝나거나 손패가 25장을 넘으면</li>
+            <li><b>게임 오버</b> 90초가 끝나거나 손패가 20장을 넘으면</li>
             <li><b>타일</b> 1~13 숫자 × 4색 × 2벌, 판마다 새로 섞여요</li>
           </ul>
           <button class="btn primary" id="rulesClose">닫기</button>
@@ -208,7 +208,7 @@
   const GAME_ID = "number-combo";
   const COLORS = { r: { name: "빨강", mark: "●" }, b: { name: "파랑", mark: "▲" }, o: { name: "주황", mark: "■" }, k: { name: "검정", mark: "◆" } };
   const CK = Object.keys(COLORS);
-  const DURATION = 90000, HAND_MAX = 25, START_HAND = 8;
+  const DURATION = 90000, HAND_MAX = 20, START_HAND = 8;
   const $ = id => document.getElementById(id);
 
   // ── 허브 연결 ──
@@ -266,15 +266,38 @@
   }
   const selected = () => hand.filter(t => sel.has(t.id));
 
+  // 타일 버튼은 한 번 만들면 계속 다시 씀 (새 타일이 들어와도 누르던 버튼이 사라지지 않게)
+  const tileNodes = new Map();
+  function toggleTile(id) {
+    if (!running || paused) return;
+    sel.has(id) ? sel.delete(id) : sel.add(id);
+    render();
+  }
+  function nodeFor(t) {
+    let e = tileNodes.get(t.id);
+    if (!e) {
+      e = tileEl(t);
+      // 손가락이 닿는 순간 바로 선택 (떼기 전에 화면이 바뀌어도 놓치지 않음)
+      e.addEventListener("pointerdown", ev => { if (ev.button !== 0) return; ev.preventDefault(); toggleTile(t.id); });
+      e.addEventListener("click", ev => { if (ev.detail === 0) toggleTile(t.id); }); // 키보드(스페이스)용
+      e.addEventListener("animationend", () => e.classList.remove("new"));
+      tileNodes.set(t.id, e);
+    }
+    return e;
+  }
+
   function render() {
-    rackEl.replaceChildren(...hand.map(t => {
-      const e = tileEl(t);
-      if (sel.has(t.id)) e.classList.add("sel");
-      if (newIds.has(t.id)) e.classList.add("new");
+    const nodes = hand.map(t => {
+      const e = nodeFor(t);
+      e.classList.toggle("sel", sel.has(t.id));
       e.setAttribute("aria-pressed", sel.has(t.id));
-      e.onclick = () => { if (!running || paused) return; sel.has(t.id) ? sel.delete(t.id) : sel.add(t.id); render(); };
+      if (newIds.has(t.id)) e.classList.add("new");
       return e;
-    }));
+    });
+    const cur = rackEl.children;
+    if (cur.length !== nodes.length || nodes.some((n, i) => cur[i] !== n)) rackEl.replaceChildren(...nodes);
+    const inHand = new Set(hand.map(t => t.id));
+    for (const id of tileNodes.keys()) if (!inHand.has(id)) tileNodes.delete(id);
     newIds.clear();
     $("handCount").textContent = hand.length;
     const m = $("meter"); m.replaceChildren();
@@ -341,6 +364,7 @@
   }
 
   function start() {
+    tileNodes.clear();
     deck = buildDeck(); deckPos = 0; hand = []; sel.clear(); score = 0; combo = 0; lastPlay = -1e9; plays = 0; bestPlay = 0;
     running = true; paused = false; draw(START_HAND); sortHand();
     t0 = performance.now(); nextDraw = interval(0);
