@@ -212,7 +212,7 @@
             <span class="store-bubble-items">
               ${customer.order.filter(item => item.remaining > 0).map(item => `
                 <span class="store-order-item">
-                  <canvas class="store-order-art" width="44" height="36" data-bread="${item.id}" aria-hidden="true"></canvas>
+                  <canvas class="store-order-art" width="80" height="64" data-bread="${item.id}" aria-hidden="true"></canvas>
                   <b>×${item.remaining}</b>
                 </span>`).join("")}
             </span>
@@ -247,7 +247,7 @@
             <span class="order-slip-items">
               ${customer.order.filter(item => item.remaining > 0).map(item => `
                 <span class="order-slip-item">
-                  <canvas class="order-slip-bread" width="44" height="36" data-bread="${item.id}" aria-hidden="true"></canvas>
+                  <canvas class="order-slip-bread" width="80" height="64" data-bread="${item.id}" aria-hidden="true"></canvas>
                   <span>${recipeFor(item.id).name} ×${item.remaining}</span>
                 </span>`).join("")}
             </span>
@@ -353,7 +353,8 @@
       root.querySelectorAll(".store-order-art, .order-slip-bread, .store-bread-art").forEach(canvas => {
         const context = canvas.getContext("2d");
         context.imageSmoothingEnabled = false;
-        drawBread(context, canvas.dataset.bread, 4, 2, 1);
+        const enlarged = canvas.classList.contains("store-order-art") || canvas.classList.contains("order-slip-bread");
+        drawBread(context, canvas.dataset.bread, enlarged ? 0 : 4, enlarged ? 0 : 2, enlarged ? 2 : 1);
       });
     }
 

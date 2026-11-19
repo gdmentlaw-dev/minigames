@@ -33,7 +33,7 @@
       </div>
       <p class="eyebrow">1단계 · 재료 받기</p>
       <h2 id="game-title">재료를 모아 주세요</h2>
-      <p class="intro">60초 동안 바구니를 움직여 베이킹 재료를 받아요.<br>떨어지는 방해물을 조심하세요.</p>
+      <p class="intro">30초 동안 바구니를 움직여 베이킹 재료를 받아요.<br>떨어지는 방해물을 조심하세요.</p>
       <p class="controls-hint">모은 재료는 매장으로 이동해도 바구니에 남아요.</p>
       <div class="ingredient-preview" aria-label="우유, 달걀, 버터, 설탕, 소금, 초코파우더, 딸기, 초코칩, 생크림">
         <span>우유</span><span>달걀</span><span>버터</span><span>설탕</span><span>소금</span>
@@ -49,12 +49,14 @@
           <span class="paw-print" aria-hidden="true"><i></i><i></i><i></i><i></i><b></b></span><span>매장</span>
         </button>
         <div class="step-badge"><span>1</span> 재료 받기</div>
-        <div class="timer-box"><span class="timer-label">남은 시간</span><strong id="timer">60</strong><span>초</span></div>
+        <div class="timer-box"><span class="timer-label">남은 시간</span><strong id="timer">30</strong><span>초</span></div>
+        <button class="button button-primary play-take-away" id="take-away-button" type="button">재료 가져가기</button>
         <button class="button button-primary play-retry" id="play-retry-button" type="button">다시 시도</button>
       </div>
       <div class="play-layout">
         <div class="canvas-wrap">
           <canvas id="bakery-canvas" width="640" height="420" aria-label="하늘에서 떨어지는 재료를 바구니로 받는 게임"></canvas>
+          <div class="catch-feedback" id="catch-feedback" aria-live="polite"></div>
           <div class="touch-controls" aria-label="바구니 이동">
             <button type="button" class="move-button" data-direction="-1" aria-label="왼쪽으로 이동">왼쪽</button>
             <span>바구니 이동</span>
@@ -66,9 +68,13 @@
             <span class="pantry-icon" aria-hidden="true"></span>
             <div><p class="eyebrow">오늘의 준비</p><h2 id="pantry-title">재료 바구니</h2></div>
           </div>
+          <div class="pantry-count-headings" aria-hidden="true"><span>재료</span><span>공용</span><span>이번 판</span></div>
           <ul class="ingredient-list" id="ingredient-list"></ul>
-          <p class="pantry-total">모은 재료 <strong id="total-count">0</strong></p>
-          <p class="hazard-note"><span aria-hidden="true">!</span> 똥을 받으면 재료가 하나 줄어요</p>
+          <div class="pantry-totals">
+            <p class="pantry-total">공용 합계 <strong id="shared-total">0</strong></p>
+            <p class="pantry-total">이번 판 <strong id="total-count">0</strong></p>
+          </div>
+          <p class="hazard-note"><span aria-hidden="true">!</span> 똥을 받으면 이번 판 재료를 모두 잃어요</p>
         </aside>
       </div>
     </section>
@@ -86,11 +92,11 @@
 
     <section class="screen result-screen" id="result-screen" aria-labelledby="result-title">
       <p class="eyebrow">1단계 완료</p>
-      <h2 id="result-title">오늘 모은 재료</h2>
+      <h2 id="result-title">이번에 가져간 재료</h2>
       <p class="result-total"><strong id="result-total">0</strong><span>개</span></p>
       <ul class="result-list" id="result-list"></ul>
       <p class="score-message" id="score-message" aria-live="polite"></p>
-      <button class="button button-primary" id="retry-button" type="button">다시 모으기</button>
+      <button class="button button-primary" id="retry-button" type="button">다시 받기</button>
     </section>
 
     <footer class="bakery-footer"><span>FRESH FROM THE OVEN</span><span class="footer-star" aria-hidden="true">✦</span><span>MADE WITH CARE</span></footer>
@@ -156,36 +162,69 @@
       return INGREDIENTS.reduce((total, item) => total + inventory[item.id], 0);
     }
 
-    function renderInventory(list, inventory) {
+    function renderInventory(list, inventory, roundInventory = null) {
       list.replaceChildren();
       INGREDIENTS.forEach(item => {
         const row = document.createElement("li");
         const name = document.createElement("span");
-        const count = document.createElement("strong");
         const swatch = document.createElement("i");
-        row.className = "ingredient-row";
+        row.className = roundInventory ? "ingredient-row pantry-inventory-row" : "ingredient-row";
         name.className = "ingredient-name";
         name.textContent = `${item.name} · ${item.english}`;
         swatch.className = "ingredient-swatch";
         swatch.style.setProperty("--ingredient-color", item.color);
         swatch.setAttribute("aria-hidden", "true");
-        count.textContent = String(inventory[item.id]);
-        row.append(swatch, name, count);
+        if (roundInventory) {
+          const sharedCount = document.createElement("strong");
+          const roundCount = document.createElement("strong");
+          sharedCount.className = "shared-count";
+          roundCount.className = "round-count";
+          sharedCount.textContent = String(inventory[item.id] || 0);
+          roundCount.textContent = String(roundInventory[item.id] || 0);
+          row.append(swatch, name, sharedCount, roundCount);
+        } else {
+          const count = document.createElement("strong");
+          count.textContent = String(inventory[item.id] || 0);
+          row.append(swatch, name, count);
+        }
         list.append(row);
       });
     }
 
-    function updatePantry(inventory, secondsLeft) {
-      currentInventory = { ...inventory };
-      renderInventory(ingredientList, currentInventory);
-      document.getElementById("total-count").textContent = String(totalIngredients(currentInventory));
-      document.getElementById("timer").textContent = String(Math.ceil(secondsLeft));
+    function inventoriesMatch(left, right) {
+      return INGREDIENTS.every(item => (left[item.id] || 0) === (right[item.id] || 0));
     }
 
-    function finishRound(inventory) {
-      currentInventory = { ...inventory };
-      document.getElementById("result-total").textContent = String(totalIngredients(currentInventory));
-      renderInventory(resultList, currentInventory);
+    let lastCatchMessage = "";
+    let pantryRendered = false;
+    function updatePantry(sharedInventory, roundInventory, secondsLeft, catchMessage) {
+      const sharedChanged = !inventoriesMatch(currentInventory, sharedInventory);
+      currentInventory = { ...sharedInventory };
+      if (!pantryRendered || sharedChanged || lastCatchMessage !== catchMessage) {
+        renderInventory(ingredientList, currentInventory, roundInventory);
+        pantryRendered = true;
+      }
+      document.getElementById("shared-total").textContent = String(totalIngredients(currentInventory));
+      document.getElementById("total-count").textContent = String(totalIngredients(roundInventory));
+      document.getElementById("timer").textContent = String(Math.ceil(secondsLeft));
+      const feedback = document.getElementById("catch-feedback");
+      if (lastCatchMessage !== catchMessage) {
+        feedback.textContent = catchMessage;
+        feedback.classList.toggle("is-visible", Boolean(catchMessage));
+        lastCatchMessage = catchMessage;
+      } else if (!sharedChanged) {
+        INGREDIENTS.forEach(item => {
+          const row = ingredientList.querySelector(`.ingredient-row:nth-child(${INGREDIENTS.indexOf(item) + 1})`);
+          if (row) row.querySelector(".round-count").textContent = String(roundInventory[item.id] || 0);
+        });
+      }
+    }
+
+    function finishRound(sharedInventory, transferred, reason) {
+      currentInventory = { ...sharedInventory };
+      if (reason === "navigate") return;
+      document.getElementById("result-total").textContent = String(totalIngredients(transferred));
+      renderInventory(resultList, transferred);
       showScreen("result");
       document.getElementById("score-message").textContent = "";
     }
@@ -204,8 +243,10 @@
 
       setActiveNav(stageId);
       const stage = window.MeowStages[stageId];
+      if (!stage) throw new Error(`Unknown game stage: ${stageId}`);
 
       if (stageId === "stage1") {
+        pantryRendered = false;
         showScreen("play");
         activeStage = stage.start({
           canvas,
@@ -214,10 +255,9 @@
             currentInventory = { ...inventory };
           },
           onUpdate: updatePantry,
-          onComplete: inventory => {
+          onComplete: (inventory, transferred, reason) => {
             activeStage = null;
-            currentInventory = { ...inventory };
-            finishRound(currentInventory);
+            finishRound(inventory, transferred, reason);
           }
         });
         return;
@@ -259,14 +299,7 @@
         return;
       }
 
-      finishRound(currentInventory);
-    }
-
-    function enterStageOne({ resetInventory = false } = {}) {
-      if (resetInventory) {
-        currentInventory = emptyInventory();
-      }
-      startStage("stage1");
+      throw new Error(`Unsupported game stage: ${stageId}`);
     }
 
     function openStageOneIntro() {
@@ -279,13 +312,19 @@
     }
 
     function restartStageOne() {
-      enterStageOne({ resetInventory: true });
-      updatePantry(currentInventory, 60);
+      if (activeStage && activeStage.discard) {
+        activeStage.discard();
+        activeStage = null;
+      }
+      startStage("stage1");
     }
 
     document.getElementById("start-button").addEventListener("click", () => startStage("stage1"));
     document.getElementById("retry-button").addEventListener("click", restartStageOne);
     document.getElementById("play-retry-button").addEventListener("click", restartStageOne);
+    document.getElementById("take-away-button").addEventListener("click", () => {
+      if (activeStage && activeStage.takeAway) activeStage.takeAway();
+    });
 
     document.querySelectorAll(".stage-nav-button").forEach(button => {
       button.addEventListener("click", () => {
