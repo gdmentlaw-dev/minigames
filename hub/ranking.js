@@ -156,6 +156,11 @@
     const cv = view(c, g);
     // 1위 카드: 얼굴 · 이름 · 점수, 종합이면 게임별 포인트 막대
     const gmCols = Math.min(4, games.length) || 1;
+    // 게임별 포인트 (이름 + 점수 + 막대). 1위 카드에는 늘 보이고, 2위부터는 줄을 눌러서 펼친다
+    const gmHtml = (r) => `<div class="gm" style="grid-template-columns:repeat(${gmCols},1fr)">${games.map((x) => {
+      const p = Number((r.per_game || {})[x.id] || 0);
+      return `<span class="g${p ? "" : " z"}"><span class="gl">${esc(short(x.title))}<b>${p ? fmtP(p) : "-"}</b></span><i style="--w:${Math.round(p)}%"></i></span>`;
+    }).join("")}</div>`;
     const champ = `<section class="champ">
       <div class="champ-top">
         ${MiniHub.avatar(c, 68)}
@@ -163,22 +168,29 @@
         <span class="big">${cv.value}<small>${esc(cv.unit)}</small></span>
       </div>
       ${g ? `<span class="champ-sub">${cv.sub}</span>`
-          : `<div class="gm" style="grid-template-columns:repeat(${gmCols},1fr)">${games.map((x) => {
-              const p = Number((c.per_game || {})[x.id] || 0);
-              return `<span class="g${p ? "" : " z"}">${esc(short(x.title))}<i style="--w:${Math.round(p)}%"></i></span>`;
-            }).join("")}</div>`}
+          : gmHtml(c)}
     </section>`;
     // 2위부터: 순위 · 얼굴 · 이름(+등락) · 점수
     const rest = rows.slice(1).map((r) => {
       const v = view(r, g);
-      return `<div class="li${isMe(r) ? " me" : ""}">
+      const open = !g; // 종합은 줄을 누르면 게임별 점수가 펼쳐진다
+      return `<div class="li${isMe(r) ? " me" : ""}${open ? " exp" : ""}"${open ? ' role="button" tabindex="0" aria-expanded="false"' : ""}>
         <span class="rk">${r.rank}</span>${MiniHub.avatar(r, 40)}
-        <span class="who"><span class="nm"><span class="n">${name(r)}</span>${dSpan(r)}</span>${g ? `<span class="dt">${v.sub}</span>` : ""}</span>
+        <span class="who"><span class="nm"><span class="n">${name(r)}</span>${dSpan(r)}</span>${g ? `<span class="dt">${v.sub}</span>` : `<span class="dt">${r.games_played}/${games.length} 게임 참여</span>`}</span>
         <span class="val">${v.value}<small>${esc(v.unit)}</small></span>
+        ${open ? gmHtml(r) : ""}
       </div>`;
     }).join("");
     return `<div class="top3">${champ}</div>${rest ? `<div class="list">${rest}</div>` : ""}`;
   }
+
+  // 종합 순위 줄을 누르면 게임별 점수 펼치기/접기
+  const toggleRow = (li) => { const on = li.classList.toggle("open"); li.setAttribute("aria-expanded", on); };
+  $("board").addEventListener("click", (e) => { const li = e.target.closest(".li.exp"); if (li) toggleRow(li); });
+  $("board").addEventListener("keydown", (e) => {
+    const li = e.target.closest(".li.exp");
+    if (li && li === e.target && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); toggleRow(li); }
+  });
 
   function gapText(me, rows, g) {
     if (me.rank === 1) return "1위를 지키고 있어요";

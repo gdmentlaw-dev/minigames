@@ -66,6 +66,8 @@ button { font: inherit; color: inherit; }
 .champ-sub { display: block; margin-top: 8px; font-size: 12px; color: #8a6a1a; }
 .gm { display: grid; gap: 6px; margin-top: 12px; }
 .gm .g { background: rgba(255, 255, 255, .7); border-radius: 12px; padding: 3px 7px 6px; font-size: 11px; line-height: 1.3; min-width: 0; white-space: nowrap; overflow: hidden; }
+.gm .gl { display: flex; justify-content: space-between; gap: 4px; }
+.gm .gl b { font-weight: 400; font-variant-numeric: tabular-nums; opacity: .8; }
 .gm .g i { display: block; height: 8px; border-radius: 5px; margin-top: 3px; background: linear-gradient(90deg, #ff9a8b var(--w), #fff0cc var(--w)); }
 .gm .g.z i { background: #fff0cc; }
 
@@ -89,6 +91,16 @@ button { font: inherit; color: inherit; }
 .val { font-size: 14px; font-weight: 700; color: var(--violet); font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
 .val small { font-size: 11px; font-weight: 400; color: var(--soft); margin-left: 2px; }
 .li.me .val { color: #2f86bd; }
+/* 종합 줄 펼치기: 눌러서 게임별 점수 보기 */
+.li.exp { cursor: pointer; row-gap: 0; -webkit-tap-highlight-color: transparent; }
+.li.exp .val::after { content: "▾"; display: inline-block; margin-left: 6px; font-size: 10px; font-weight: 400; color: #b3a5d6; transition: transform .15s; }
+.li.exp.open .val::after { transform: rotate(180deg); }
+.li .gm { grid-column: 1 / -1; display: none; margin-top: 8px; }
+.li.open .gm { display: grid; }
+.li .gm .g { background: var(--lav); }
+.li.me .gm .g { background: #fff; }
+.li .gm .g i { background: linear-gradient(90deg, #b69cff var(--w), #e6dcfb var(--w)); }
+.li .gm .g.z i { background: #e6dcfb; }
 
 /* 하단 고정: 내 순위 + 플레이 (떠 있는 알약) */
 .mybar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; padding: 0 14px calc(14px + env(safe-area-inset-bottom)); pointer-events: none; }
@@ -140,7 +152,8 @@ button { font: inherit; color: inherit; }
   .champ { padding: 18px 22px; }
   .champ-name { font-size: 52px; }
   .big { font-size: 56px; }
-  .gm { grid-template-columns: repeat(8, 1fr) !important; }
+  .champ .gm { grid-template-columns: repeat(8, 1fr) !important; }
+  .li .gm { grid-template-columns: repeat(4, 1fr) !important; }
   .li { grid-template-columns: 40px 44px minmax(0, 1fr) auto; min-height: 62px; }
   .mybar { left: var(--side); padding: 0 37px 18px; }
   .mybar .tag { display: inline-flex; }
