@@ -21,6 +21,12 @@
     strawberryCake: "딸기 케이크", sourdough: "사워도우"
   };
 
+  function readStock(bakedGoods, recipeId) {
+    const stock = bakedGoods[recipeId];
+    if (typeof stock === "number") return { perfect: 0, normal: stock };
+    return { perfect: stock && stock.perfect || 0, normal: stock && stock.normal || 0 };
+  }
+
   function createStage() {
     let root = null;
     let inventory = {};
@@ -200,9 +206,15 @@
           <strong>${inventory[id] || 0}</strong>
         </li>
       `).join("");
-      const stock = RECIPES.map(recipe => `
-        <li><span>${BREAD_LABELS[recipe.id]}</span><strong>${bakedGoods[recipe.id] || 0}</strong></li>
-      `).join("");
+      const stock = RECIPES.map(recipe => {
+        const quantity = readStock(bakedGoods, recipe.id);
+        const total = quantity.perfect + quantity.normal;
+        return `
+          <li>
+            <span>${BREAD_LABELS[recipe.id]}<small>완벽 ${quantity.perfect} · 보통 ${quantity.normal}</small></span>
+            <strong>${total}</strong>
+          </li>`;
+      }).join("");
 
       root.innerHTML = `
         <div class="stage2-heading">
@@ -322,7 +334,9 @@
 
       if (outcome !== "탄 빵") {
         const next = { ...bakedGoods };
-        next[selectedRecipe.id] = (next[selectedRecipe.id] || 0) + 1;
+        const quality = outcome === "완벽" ? "perfect" : "normal";
+        const quantity = readStock(bakedGoods, selectedRecipe.id);
+        next[selectedRecipe.id] = { ...quantity, [quality]: quantity[quality] + 1 };
         bakedGoods = next;
         callbacks.onBakedGoodsChange(bakedGoods);
       }
@@ -335,7 +349,10 @@
       root = options.root;
       callbacks = options;
       inventory = { ...options.inventory };
-      bakedGoods = { ...options.bakedGoods };
+      bakedGoods = Object.fromEntries(RECIPES.map(recipe => [
+        recipe.id,
+        readStock(options.bakedGoods, recipe.id)
+      ]));
       running = true;
       resultText = "";
       render();
@@ -360,9 +377,11 @@
       };
     }
 
-    return { start };
+    return { start, drawBread };
   }
 
   window.MeowStages = window.MeowStages || {};
-  window.MeowStages.stage2 = createStage();
+  const stage2 = createStage();
+  window.MeowStages.drawBread = stage2.drawBread;
+  window.MeowStages.stage2 = stage2;
 })();

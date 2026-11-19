@@ -17,30 +17,37 @@
     </header>
 
     <nav class="stage-nav" aria-label="단계 이동">
+      <button type="button" class="stage-nav-button" data-stage="stage3"><span class="store-nav-mark" aria-hidden="true"></span> 매장</button>
       <button type="button" class="stage-nav-button" data-stage="stage1"><span>1</span> 재료 받기</button>
       <button type="button" class="stage-nav-button" data-stage="stage2"><span>2</span> 굽기</button>
-      <button type="button" class="stage-nav-button" data-stage="stage3"><span>3</span> 판매</button>
     </nav>
 
-    <section class="screen start-screen is-visible" id="start-screen" aria-labelledby="game-title">
+    <section class="screen start-screen" id="start-screen" aria-labelledby="game-title">
+      <button type="button" class="stage-return-button intro-return" aria-label="매장으로 돌아가기">
+        <span class="paw-print" aria-hidden="true"><i></i><i></i><i></i><i></i><b></b></span><span>매장</span>
+      </button>
       <div class="pixel-cat cat-on-start" aria-hidden="true">
         <span class="cat-hat"></span><span class="cat-ear left"></span><span class="cat-ear right"></span>
         <span class="cat-face"></span><span class="cat-eye left"></span><span class="cat-eye right"></span>
         <span class="cat-nose"></span><span class="cat-whiskers"></span><span class="cat-apron"></span>
       </div>
-      <p class="eyebrow">오늘의 첫 주문</p>
+      <p class="eyebrow">1단계 · 재료 받기</p>
       <h2 id="game-title">재료를 모아 주세요</h2>
       <p class="intro">60초 동안 바구니를 움직여 베이킹 재료를 받아요.<br>떨어지는 방해물을 조심하세요.</p>
+      <p class="controls-hint">모은 재료는 매장으로 이동해도 바구니에 남아요.</p>
       <div class="ingredient-preview" aria-label="우유, 달걀, 버터, 설탕, 소금, 초코파우더, 딸기, 초코칩, 생크림">
         <span>우유</span><span>달걀</span><span>버터</span><span>설탕</span><span>소금</span>
         <span>초코파우더</span><span>딸기</span><span>초코칩</span><span>생크림</span>
       </div>
       <p class="controls-hint">마우스 · 터치로 바구니 이동 / 키보드 방향키</p>
-      <button class="button button-primary" id="start-button" type="button">가게 열기</button>
+      <button class="button button-primary" id="start-button" type="button">재료 받기 시작</button>
     </section>
 
     <section class="screen play-screen" id="play-screen" aria-label="재료 받기">
       <div class="play-topbar">
+        <button type="button" class="stage-return-button" aria-label="매장으로 돌아가기">
+          <span class="paw-print" aria-hidden="true"><i></i><i></i><i></i><i></i><b></b></span><span>매장</span>
+        </button>
         <div class="step-badge"><span>1</span> 재료 받기</div>
         <div class="timer-box"><span class="timer-label">남은 시간</span><strong id="timer">60</strong><span>초</span></div>
         <button class="button button-primary play-retry" id="play-retry-button" type="button">다시 시도</button>
@@ -67,16 +74,14 @@
     </section>
 
     <section class="screen stage2-screen" id="stage2-screen" aria-label="굽기">
+      <button type="button" class="stage-return-button stage2-return" aria-label="매장으로 돌아가기">
+        <span class="paw-print" aria-hidden="true"><i></i><i></i><i></i><i></i><b></b></span><span>매장</span>
+      </button>
       <div id="stage2-root"></div>
     </section>
 
-    <section class="screen preparing-screen" id="stage3-screen" aria-label="판매 준비 중">
-      <div class="preparing-card">
-        <div class="preparing-badge" aria-hidden="true">3</div>
-        <p class="eyebrow">다음 단계</p>
-        <h2>판매 준비 중</h2>
-        <p>손님과 판매 기능은 다음 단계에서 만나요.</p>
-      </div>
+    <section class="screen stage3-screen is-visible" id="stage3-screen" aria-label="매장">
+      <div id="stage3-root"></div>
     </section>
 
     <section class="screen result-screen" id="result-screen" aria-labelledby="result-title">
@@ -94,11 +99,12 @@
   <script src="../../shared/minihub-sdk.js"></script>
   <script src="./stages/stage1.js"></script>
   <script src="./stages/stage2.js"></script>
+  <script src="./stages/stage3.js"></script>
   <script>
     "use strict";
 
     const GAME_ID = "meow-bakery";
-    const STAGE_ORDER = ["stage1", "stage2", "stage3"];
+    const STAGE_ORDER = ["stage3", "stage1", "stage2"];
     const INGREDIENTS = [
       { id: "milk", name: "우유", english: "Milk", color: "#b9e8ed" },
       { id: "egg", name: "달걀", english: "Egg", color: "#f8df9b" },
@@ -124,8 +130,6 @@
     let activeStage = null;
     let currentInventory = emptyInventory();
     let bakedGoods = emptyBakedGoods();
-    let scoreSubmitted = false;
-
     MiniHub.init(GAME_ID);
 
     function emptyInventory() {
@@ -133,7 +137,13 @@
     }
 
     function emptyBakedGoods() {
-      return { butterCookie: 0, chocolateCookie: 0, madeleine: 0, strawberryCake: 0, sourdough: 0 };
+      return {
+        butterCookie: { perfect: 0, normal: 0 },
+        chocolateCookie: { perfect: 0, normal: 0 },
+        madeleine: { perfect: 0, normal: 0 },
+        strawberryCake: { perfect: 0, normal: 0 },
+        sourdough: { perfect: 0, normal: 0 }
+      };
     }
 
     function showScreen(name) {
@@ -177,30 +187,7 @@
       document.getElementById("result-total").textContent = String(totalIngredients(currentInventory));
       renderInventory(resultList, currentInventory);
       showScreen("result");
-      document.getElementById("score-message").textContent = "기록을 저장하고 있어요.";
-      if (!scoreSubmitted) {
-        scoreSubmitted = true;
-        saveScore(totalIngredients(currentInventory));
-      }
-    }
-
-    async function saveScore(score) {
-      const message = document.getElementById("score-message");
-      try {
-        const result = await MiniHub.submitScore(score);
-        if (!result) {
-          message.textContent = "기록을 저장하지 못했어요. 재료 목록은 확인할 수 있어요.";
-        } else if (result.improved && result.previous !== null) {
-          message.textContent = `새 기록이에요. 이전 기록 ${result.previous}개 · ${result.rank}위`;
-        } else if (result.improved) {
-          message.textContent = `첫 기록 저장 완료 · ${result.rank}위`;
-        } else {
-          message.textContent = `최고 기록 ${result.best}개 · ${result.rank}위`;
-        }
-      } catch (error) {
-        console.error("Meow Bakery 점수를 저장하지 못했습니다.", error);
-        message.textContent = "기록을 저장하지 못했어요. 재료 목록은 확인할 수 있어요.";
-      }
+      document.getElementById("score-message").textContent = "";
     }
 
     function setActiveNav(stageId) {
@@ -220,7 +207,6 @@
 
       if (stageId === "stage1") {
         showScreen("play");
-        scoreSubmitted = false;
         activeStage = stage.start({
           canvas,
           inventory: currentInventory,
@@ -255,6 +241,21 @@
 
       if (stageId === "stage3") {
         showScreen("stage3");
+        activeStage = stage.start({
+          root: document.getElementById("stage3-root"),
+          bakedGoods,
+          onBakedGoodsChange: goods => {
+            bakedGoods = { ...goods };
+          },
+          navigate: nextStage => {
+            if (nextStage === "stage1") {
+              openStageOneIntro();
+            } else {
+              startStage(nextStage);
+            }
+          },
+          submitScore: score => MiniHub.submitScore(score)
+        });
         return;
       }
 
@@ -264,9 +265,17 @@
     function enterStageOne({ resetInventory = false } = {}) {
       if (resetInventory) {
         currentInventory = emptyInventory();
-        scoreSubmitted = false;
       }
       startStage("stage1");
+    }
+
+    function openStageOneIntro() {
+      if (activeStage) {
+        activeStage.stop();
+        activeStage = null;
+      }
+      setActiveNav("stage1");
+      showScreen("start");
     }
 
     function restartStageOne() {
@@ -274,19 +283,25 @@
       updatePantry(currentInventory, 60);
     }
 
-    document.getElementById("start-button").addEventListener("click", restartStageOne);
+    document.getElementById("start-button").addEventListener("click", () => startStage("stage1"));
     document.getElementById("retry-button").addEventListener("click", restartStageOne);
     document.getElementById("play-retry-button").addEventListener("click", restartStageOne);
 
     document.querySelectorAll(".stage-nav-button").forEach(button => {
       button.addEventListener("click", () => {
         if (button.dataset.stage === "stage1") {
-          enterStageOne();
+          openStageOneIntro();
         } else {
           startStage(button.dataset.stage);
         }
       });
     });
+
+    document.querySelectorAll(".stage-return-button").forEach(button => {
+      button.addEventListener("click", () => startStage("stage3"));
+    });
+
+    startStage("stage3");
 
     document.querySelectorAll(".move-button").forEach(button => {
       const direction = Number(button.dataset.direction);
