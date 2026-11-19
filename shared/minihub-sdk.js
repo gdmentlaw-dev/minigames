@@ -352,12 +352,21 @@
 
   // ───────────── 화면 (닉네임 창, 알림) — 게임 CSS와 섞이지 않게 Shadow DOM 사용 ─────────────
   let ui = null;
+  // 화면 모드: <html data-theme="light|dark">(shared/minihub-theme.js)를 따른다.
+  // 밝은 모드 = 파스텔 창, 어두운 모드 = 남색 창. 메인페이지(data-minihub-theme="light")는 어두워도 파스텔 모양 + 남색 색.
+  function syncTheme(host) {
+    const d = document.documentElement.dataset;
+    const dark = d.theme ? d.theme === "dark" : d.minihubTheme !== "light";
+    const soft = d.minihubTheme === "light" || !dark;
+    if (soft) host.dataset.theme = "light"; else delete host.dataset.theme;
+    if (dark) host.dataset.mode = "dark"; else delete host.dataset.mode;
+  }
   function getUI() {
-    if (ui) return ui;
+    if (ui) { syncTheme(ui.host); return ui; }
     const host = document.createElement("div");
     host.id = "minihub-ui";
     host.style.cssText = "position:fixed;inset:0;pointer-events:none;z-index:2147483647;";
-    if (document.documentElement.dataset.minihubTheme === "light") host.dataset.theme = "light";
+    syncTheme(host);
     const root = host.attachShadow({ mode: "open" });
     root.innerHTML = `<style>
       :host{all:initial;
@@ -385,6 +394,12 @@
       :host([data-theme=light]) button{font-family:var(--head);font-weight:700;font-size:24px;line-height:1;border-radius:999px;min-height:46px;padding:10px 22px 12px}
       :host([data-theme=light]) button.wide{font-size:20px;font-family:var(--font);font-weight:400;border-radius:var(--r-in);padding:12px 18px}
       :host([data-theme=light]) button.ghost:hover{background:#e9defc}
+      /* 어두운 모드의 메인페이지: 파스텔 모양 그대로 남색 색상 */
+      :host([data-theme=light][data-mode=dark]){
+        --card:#1d2455; --text:#eef0ff; --sub:#b8bde6; --field:#121838; --line:rgba(182,156,255,.3); --focus:#b69cff;
+        --btn:linear-gradient(135deg,#ff8ab8,#9d86f0); --ghost:#272f69; --err:#ff7aa8; --back:rgba(5,8,24,.6);
+        --toast:#1d2455; --toast-line:#9d86f0; --hi:#ff8ab8; --shadow:rgba(0,0,0,.45)}
+      :host([data-theme=light][data-mode=dark]) button.ghost:hover{background:#333c7a}
       .avs{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:4px 0 2px}
       .avs button.av{min-height:0;line-height:0;padding:6px;background:var(--field);border:2px solid transparent;border-radius:18px;display:grid;place-items:center;font-size:0}
       .avs .av svg{width:100%;height:auto;max-width:56px}

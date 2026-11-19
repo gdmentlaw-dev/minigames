@@ -1,7 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" fill="#231f45"/>
-  <circle cx="256" cy="270" r="150" fill="#4e40b8"/>
-  <circle cx="256" cy="250" r="150" fill="#7c6cf0"/>
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="0.4" y2="1"><stop offset="0" stop-color="#ffe3f0"/><stop offset=".55" stop-color="#ebe4ff"/><stop offset="1" stop-color="#dcf1ff"/></linearGradient>
+    <linearGradient id="b" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c9b8ff"/><stop offset="1" stop-color="#8f6fe0"/></linearGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#g)"/>
+  <circle cx="256" cy="282" r="150" fill="#6f4fc4"/>
+  <circle cx="256" cy="250" r="150" fill="url(#b)"/>
   <text x="256" y="278" text-anchor="middle" font-family="sans-serif" font-size="84" font-weight="800" fill="#fff">TAP</text>
-  <text x="256" y="470" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="800" fill="#ffc83d">10s</text>
+  <text x="256" y="470" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="800" fill="#c77700">10s</text>
 </svg>

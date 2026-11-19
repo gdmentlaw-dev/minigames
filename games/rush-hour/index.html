@@ -5,11 +5,26 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>러시아워</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<!-- 화면 모드(밝게/어둡게): 메인페이지와 연동. <html data-theme="light|dark"> 를 붙여 준다 -->
+<script src="../../shared/minihub-theme.js"></script>
 <style>
   /* 점수 = 판별 점수의 합 (높을수록 좋음, scoreOrder "desc"). 판 점수는 난이도(별 1~3) x 이동 효율 */
-  /* 디자인: 밝은 회색 바탕 + 흰 카드 + 어두운 격자판 + 유리창·라이트가 있는 차 */
-  :root { --bg: #e8ecef; --card: #fff; --line: #d7dce2; --ink: #2b313b; --sub: #5a6372; --green: #1f7a4d;
-          --gold: #c98a00; --board: #353b45; --frame: #bdc3cc; --amber: #f0ae1e; }
+  /* 디자인: 밝은 모드 = 밝은 회색 바탕 + 흰 카드 / 어두운 모드 = 남색 바탕. 어두운 격자판 + 유리창·라이트가 있는 차 */
+  :root { --bg: #e8ecef; --card: #fff; --line: #d7dce2; --ink: #2b313b; --sub: #5a6372; --green: #1f7a4d; --green-bg: #1f7a4d;
+          --gold: #c98a00; --board: #353b45; --frame: #bdc3cc; --amber: #f0ae1e; --minb-bg: #d3f2e2;
+          --overlay: rgba(232,236,239,.95); --msg: #8a5a00; --red-text: #d1362a; color-scheme: light; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #16132e; --card: #231f45; --line: #3a3566; --ink: #f4f2ff; --sub: #b5b0d8; --green: #4fd09a; --green-bg: #1f7a4d;
+      --gold: #ffc83d; --board: #0f0d22; --frame: #4a4380; --amber: #ffc83d; --minb-bg: #1d4a3a;
+      --overlay: rgba(22,19,46,.95); --msg: #ffc83d; --red-text: #ff6b5a; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #16132e; --card: #231f45; --line: #3a3566; --ink: #f4f2ff; --sub: #b5b0d8; --green: #4fd09a; --green-bg: #1f7a4d;
+    --gold: #ffc83d; --board: #0f0d22; --frame: #4a4380; --amber: #ffc83d; --minb-bg: #1d4a3a;
+    --overlay: rgba(22,19,46,.95); --msg: #ffc83d; --red-text: #ff6b5a; color-scheme: dark;
+  }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { width: 100%; height: 100%; overflow: hidden; background: var(--bg); }
   body { display: flex; align-items: center; justify-content: center;
@@ -23,9 +38,9 @@
   h1 { font-size: 40px; font-weight: 800; }
   h2 { font-size: 24px; font-weight: 800; }
   /* 로고: 초록 도로 표지판 */
-  .logo, .title2 { background: var(--green); color: #fff; font-style: italic; font-weight: 900; text-transform: uppercase;
+  .logo, .title2 { background: var(--green-bg); color: #fff; font-style: italic; font-weight: 900; text-transform: uppercase;
                    border: 2px solid rgba(255,255,255,.7); border-radius: 4px; transform: skewX(-6deg);
-                   box-shadow: 0 0 0 3px var(--green), 0 8px 16px rgba(30,50,40,.25); white-space: nowrap; }
+                   box-shadow: 0 0 0 3px var(--green-bg), 0 8px 16px rgba(30,50,40,.25); white-space: nowrap; }
   .logo { font-size: 32px; letter-spacing: -1px; padding: 10px 18px; }
   .title2 { font-size: 22px; padding: 4px 16px; }
   .logo .car-l, .logo .car-r { display: inline-block; font-size: 28px; }
@@ -35,14 +50,16 @@
   .hello { color: var(--green); font-size: 18px; font-weight: 700; min-height: 1.4em; }
   .desc { color: var(--sub); font-size: 15px; line-height: 1.6; }
   .btn { border: 0; border-radius: 6px; padding: 13px 24px; font: inherit; font-size: 18px;
-         font-weight: 800; cursor: pointer; background: var(--green); color: #fff; min-width: 150px; }
+         font-weight: 800; cursor: pointer; background: var(--green-bg); color: #fff; min-width: 150px; }
+  .btn.theme { display: inline-flex; align-items: center; gap: 6px; }
+  .btn.theme svg { width: 16px; height: 16px; }
   .btn.sub { background: var(--card); color: var(--ink); border: 1px solid var(--line); }
   .btn.small { font-size: 15px; padding: 9px 14px; min-width: 0; }
   .row { display: flex; gap: 10px; align-items: center; justify-content: center; }
 
   /* 판 고르기 */
   /* 최소 이동 횟수는 초록 배지로 다른 기록과 구분 */
-  .minb { display: inline-block; background: #d3f2e2; color: var(--green); font-weight: 800;
+  .minb { display: inline-block; background: var(--minb-bg); color: var(--green); font-weight: 800;
           border-radius: 3px; padding: 0 7px; }
   .legend { font-size: 12px; color: var(--sub); margin-top: -6px; }
   #summary { color: var(--sub); font-size: 14px; line-height: 1.5; }
@@ -90,16 +107,16 @@
   .car.red { z-index: 3; background-color: #dc3b2a; }
   .car.red .gl { background: rgba(255,255,255,.22); }
   .car.red .gl b { color: #fff; font-size: 14px; font-weight: 900; letter-spacing: 1px; }
-  #msg { min-height: 1.5em; font-size: 14px; color: #8a5a00; font-weight: 700; }
+  #msg { min-height: 1.5em; font-size: 14px; color: var(--msg); font-weight: 700; }
   #timer { font-size: 16px; color: var(--sub); font-weight: 700; min-width: 72px; text-align: left; font-variant-numeric: tabular-nums; }
-  #btn-hint { background: var(--amber); color: var(--ink); }
+  #btn-hint { background: var(--amber); color: #2b313b; }
   #btn-hint.empty { opacity: .45; }
   /* 힌트 표시: 움직일 차(노란 깜빡임) / 도착 자리(점선) */
   .car.hl-move { outline: 3px solid #ffc83d; outline-offset: 2px; z-index: 4; animation: blink .7s ease-in-out infinite alternate; }
   .ghost { position: absolute; border: 3px dashed #ffc83d; border-radius: 6px; background: rgba(255,200,61,.18);
            z-index: 6; pointer-events: none; animation: blink .7s ease-in-out infinite alternate; }
   @keyframes blink { from { opacity: 1; } to { opacity: .35; } }
-  #clear { position: absolute; inset: 0; background: rgba(232,236,239,.95); display: none; flex-direction: column;
+  #clear { position: absolute; inset: 0; background: var(--overlay); display: none; flex-direction: column;
            align-items: center; justify-content: center; gap: 14px; z-index: 10; padding: 24px; }
   #clear.on { display: flex; }
   #c-next { position: relative; }
@@ -114,9 +131,10 @@
   <section class="screen on" id="s-start">
     <h1 class="logo"><span class="car-l">🚗</span> rush hour <span class="car-r">🚗</span></h1>
     <p class="hello" id="hello">&nbsp;</p>
-    <p class="desc">차를 밀어서 <b style="color:#d1362a">빨간 차</b>를 오른쪽 출구로 빼내세요.<br>이동 횟수가 적을수록 좋은 기록이에요!<br>많이 헤매면 💡힌트가 열려요.<br>조작: 차를 끌기 (마우스/터치)</p>
+    <p class="desc">차를 밀어서 <b style="color:var(--red-text)">빨간 차</b>를 오른쪽 출구로 빼내세요.<br>이동 횟수가 적을수록 좋은 기록이에요!<br>많이 헤매면 💡힌트가 열려요.<br>조작: 차를 끌기 (마우스/터치)</p>
     <button class="btn" id="btn-start">시작</button>
     <button class="btn sub" id="btn-exit1">메인으로</button>
+    <button class="btn sub small theme" type="button" aria-label="어두운 모드로 바꾸기"></button>
   </section>
 
   <!-- stages -->
@@ -127,6 +145,7 @@
     <div id="grid"></div>
     <div class="row">
       <button class="btn sub small" id="btn-exit2">메인으로</button>
+      <button class="btn sub small theme" type="button" aria-label="어두운 모드로 바꾸기"></button>
     </div>
   </section>
 
@@ -180,6 +199,22 @@
   function show(id) {
     document.querySelectorAll(".screen").forEach((e) => e.classList.toggle("on", e.id === id));
   }
+
+  // ---------- 밝은 모드 / 어두운 모드 ----------
+  const ICON_MOON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><span>어둡게</span>';
+  const ICON_SUN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg><span>밝게</span>';
+  // 모드 선택은 메인페이지·다른 게임과 공유 (shared/minihub-theme.js)
+  const isDark = () => MiniHubTheme.get() === "dark";
+  function paintThemeBtn() {
+    const dark = isDark();
+    document.querySelectorAll(".theme").forEach((b) => {
+      b.innerHTML = dark ? ICON_SUN : ICON_MOON;
+      b.setAttribute("aria-label", dark ? "밝은 모드로 바꾸기" : "어두운 모드로 바꾸기");
+    });
+  }
+  document.querySelectorAll(".theme").forEach((b) => (b.onclick = () => MiniHubTheme.toggle()));
+  MiniHubTheme.onChange(paintThemeBtn);
+  paintThemeBtn();
 
   // ---------- 저장 / 점수 ----------
   async function saveProgress() { try { await MiniHub.save({ v: 2, best }); } catch {} }
@@ -398,7 +433,7 @@
 
   function updateInfo() {
     const b = best[cur.level.id];
-    $("info").innerHTML = `level ${cur.level.no} <span style="color:#c98a00">${stars(diff(cur.level))}</span> · 이동 <b>${cur.moves}</b><br><span class="minb">최소 ${cur.level.min}번</span>${b != null ? "<br>내 최고 기록: " + b + "번(" + stagePts(cur.level, b) + "/" + diff(cur.level) * 100 + ")" : ""}`;
+    $("info").innerHTML = `level ${cur.level.no} <span style="color:var(--gold)">${stars(diff(cur.level))}</span> · 이동 <b>${cur.moves}</b><br><span class="minb">최소 ${cur.level.min}번</span>${b != null ? "<br>내 최고 기록: " + b + "번(" + stagePts(cur.level, b) + "/" + diff(cur.level) * 100 + ")" : ""}`;
     refreshHud();
   }
 
@@ -498,11 +533,11 @@
       $("c-big").textContent = mv === l.min ? "✓ 최소 이동 클리어!" : "클리어!";
       const gain = stagePts(l, best[l.id]) - (prev != null ? stagePts(l, prev) : 0);   // 이 판에서 새로 늘어난 점수
       let t = `${mv}번 이동 <span class="minb">최소 ${l.min}번</span><br>${stars(diff(l))} 최대 ${diff(l) * 100}점<br>` +
-        `<b style="color:#c98a00">${gain > 0 ? gain + "점 추가" : "점수 갱신 없음"}</b>`;
+        `<b style="color:var(--gold)">${gain > 0 ? gain + "점 추가" : "점수 갱신 없음"}</b>`;
       if (prev != null && improved) t += `<br>🎉 새 기록!`;
       t += `<br>내 최고 기록: ${best[l.id]}번(${stagePts(l, best[l.id])}/${diff(l) * 100})`;
       const after = score();
-      t += `<br>총점 ${after !== before ? before + " → " : ""}<b style="color:#c98a00">${after}</b>`;
+      t += `<br>총점 ${after !== before ? before + " → " : ""}<b style="color:var(--gold)">${after}</b>`;
       $("c-text").innerHTML = t;
       const nx = nextTarget();
       $("c-next").style.display = nx ? "" : "none";

@@ -4,6 +4,10 @@ const GAME_ID = 'memory-match';
 const TRAY_SIZE = 7;
 const MATCH_SIZE = 3;
 const REFILL_INTERVAL = 5;
+const SAVE_VERSION = 3;
+const MATCH_DURATION = 400;
+const STAGE_SECONDS = 120;
+const EXTRA_SECONDS = 30;
 const PICTURES = [
   '선물 상자', '별', '편지', '블루베리 타르트',
   '리본', '버섯', '주전자', '고슴도치',
@@ -15,15 +19,21 @@ const board = document.querySelector('#board');
 const stageDisplay = document.querySelector('#stage');
 const countDisplay = document.querySelector('#count');
 const scoreDisplay = document.querySelector('#score');
+const clockDisplay = document.querySelector('#clock');
 const message = document.querySelector('#status');
 const startButton = document.querySelector('#start');
 const dock = document.querySelector('#dock');
 const trayDisplay = document.querySelector('#tray');
 const trayCount = document.querySelector('#tray-count');
+const soundButton = document.querySelector('#sound');
 const shuffleButton = document.querySelector('#shuffle');
 const undoButton = document.querySelector('#undo');
 const returnButton = document.querySelector('#return');
+const timeItem = document.querySelector('#time-item');
 const finishButton = document.querySelector('#finish');
+const timeoutDialog = document.querySelector('#timeout');
+const extendButton = document.querySelector('#extend-time');
+const timeoutEndButton = document.querySelector('#timeout-end');
 
 let stage = 1;
 let score = 0;
@@ -31,6 +41,15 @@ let cards = [];
 let tray = [];
 let items;
 let playing = false;
+let checkpoint = null;
+let checkpointKey;
+let soundEnabled = true;
+let audioContext;
+let deadline = 0;
+let clockInterval;
+const matchingCards = new Set();
+const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+trayDisplay.parentElement.style.setProperty('--match-duration', MATCH_DURATION + 'ms');
 
 function shuffle(items) {
   for (let index = items.length - 1; index > 0; index--) {
@@ -44,12 +63,37 @@ function overlaps(first, second) {
   return Math.abs(first.x - second.x) < CARD_WIDTH && Math.abs(first.y - second.y) < CARD_HEIGHT;
 }
 
+function givePictures(positions) {
+  const order = [];
+  const visited = new Set();
+  function visit(card) {
+    if (visited.has(card.id)) return;
+    visited.add(card.id);
+    for (const id of card.blockers) visit(positions[id]);
+    order.push(card);
+  }
+  shuffle([...positions]).forEach(visit);
+
+  // A valid route exists, but finding a set often means uncovering cards in another layer.
+  // Interleave up to three distinct sets at a time so this route fits the seven slots.
+  const types = PICTURES.map((_, index) => index);
+  const packetSize = MATCH_SIZE * MATCH_SIZE;
+  let availableTypes = [];
+  for (let start = 0; start < order.length; start += packetSize) {
+    if (availableTypes.length === 0) availableTypes = shuffle([...types]);
+    const count = Math.min(MATCH_SIZE, (order.length - start) / MATCH_SIZE);
+    const packet = availableTypes.splice(0, count);
+    for (let index = 0; index < count * MATCH_SIZE; index++) {
+      order[start + index].type = packet[index % count];
+    }
+  }
+}
+
 function deal({ positions, width, height }) {
-  const sets = Array.from({ length: positions.length / MATCH_SIZE }, (_, index) => index % PICTURES.length);
-  shuffle(sets);
-  // Deal triples in a valid removal order, randomizing the order within each layer.
-  const removalOrder = shuffle([...positions]).sort((first, second) => second.layer - first.layer);
-  removalOrder.forEach((card, index) => { card.type = sets[Math.floor(index / MATCH_SIZE)]; });
+  for (const card of positions) {
+    card.blockers = positions.filter(other => other.layer > card.layer && overlaps(card, other)).map(other => other.id);
+  }
+  givePictures(positions);
   cards = positions;
   board.style.setProperty('--board-width', width);
   board.style.setProperty('--board-height', height);
@@ -57,7 +101,6 @@ function deal({ positions, width, height }) {
 
   const buttons = document.createDocumentFragment();
   for (const card of cards) {
-    card.blockers = cards.filter(other => other.layer > card.layer && overlaps(card, other)).map(other => other.id);
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'card';
@@ -93,21 +136,109 @@ const storageSlots = Array.from({ length: TRAY_SIZE }, () => {
   return slot;
 });
 
-function updateDock() {
+function renderTray() {
   const grouped = [...tray].sort((first, second) => first.type - second.type);
-  storageSlots.forEach((slot, index) => {
-    const card = grouped[index];
-    slot.classList.toggle('filled', Boolean(card));
-    if (card) showPicture(slot, card.type);
-    else slot.setAttribute('aria-label', '빈 칸');
+  const tiles = grouped.map(card => {
+    if (!card.trayTile) {
+      card.trayTile = document.createElement('span');
+      card.trayTile.className = 'tray-tile';
+      const face = document.createElement('span');
+      face.className = 'tray-face';
+      showPicture(face, card.type);
+      card.trayTile.appendChild(face);
+    }
+    return card.trayTile;
   });
+  if (storageSlots.every((slot, index) => slot.firstElementChild === (tiles[index] ?? null))) return;
+
+  const previous = new Map();
+  if (!reducedMotion.matches) {
+    for (const tile of tiles) {
+      if (tile.isConnected) previous.set(tile, tile.getBoundingClientRect().left);
+      tile.getAnimations().forEach(animation => animation.cancel());
+    }
+  }
+  storageSlots.forEach((slot, index) => {
+    const tile = tiles[index];
+    slot.classList.toggle('filled', Boolean(tile));
+    if (slot.firstElementChild !== (tile ?? null)) {
+      if (tile) slot.replaceChildren(tile);
+      else slot.replaceChildren();
+    }
+    slot.setAttribute('aria-label', tile ? PICTURES[grouped[index].type] : '빈 칸');
+  });
+  for (const [tile, left] of previous) {
+    const offset = left - tile.getBoundingClientRect().left;
+    if (Math.abs(offset) > 0.5) {
+      tile.animate([{ transform: 'translateX(' + offset + 'px)' }, { transform: 'translateX(0)' }],
+        { duration: 175, easing: 'ease-out' });
+    }
+  }
+}
+
+function updateDock() {
+  renderTray();
   trayCount.textContent = tray.length + ' / ' + TRAY_SIZE;
   shuffleButton.textContent = '판 섞기 · ' + items.shuffle;
   undoButton.textContent = '한 장 되돌리기 · ' + items.undo;
   returnButton.textContent = '보관함 비우기 · ' + items.return;
-  shuffleButton.disabled = !playing || items.shuffle === 0 || cards.length < 2;
-  undoButton.disabled = !playing || items.undo === 0 || tray.length === 0;
-  returnButton.disabled = !playing || items.return === 0 || tray.length === 0;
+  timeItem.textContent = '시간 +30초 · ' + items.time;
+  timeItem.classList.toggle('spent', items.time === 0);
+  const canPlay = playing && performance.now() < deadline && matchingCards.size === 0;
+  shuffleButton.disabled = !canPlay || items.shuffle === 0 || cards.length < 2;
+  undoButton.disabled = !canPlay || items.undo === 0 || tray.length === 0;
+  returnButton.disabled = !canPlay || items.return === 0 || tray.length === 0;
+  finishButton.disabled = !canPlay;
+}
+
+function stopClock() {
+  clearInterval(clockInterval);
+  clockInterval = undefined;
+}
+
+function updateClock() {
+  const left = Math.max(0, Math.ceil((deadline - performance.now()) / 1000));
+  const minutes = String(Math.floor(left / 60)).padStart(2, '0');
+  const seconds = String(left % 60).padStart(2, '0');
+  const label = minutes + ':' + seconds;
+  if (clockDisplay.textContent !== label) {
+    clockDisplay.textContent = label;
+    clockDisplay.classList.toggle('urgent', left <= 15);
+  }
+  if (left > 0 || !playing) return;
+
+  stopClock();
+  if (matchingCards.size > 0 || timeoutDialog.open) return;
+  if (items.time > 0) {
+    updateDock();
+    timeoutDialog.showModal();
+  } else {
+    finishGame('시간이 다 됐어요.');
+  }
+}
+
+function startClock(seconds) {
+  stopClock();
+  deadline = performance.now() + seconds * 1000;
+  updateClock();
+  updateDock();
+  clockInterval = setInterval(updateClock, 100);
+}
+
+function stageIsActive() {
+  if (!playing) return false;
+  if (performance.now() < deadline) return true;
+  updateClock();
+  return false;
+}
+
+function extendTime() {
+  if (!playing || !timeoutDialog.open || items.time === 0) return;
+  items.time--;
+  timeoutDialog.close();
+  startClock(EXTRA_SECONDS);
+  message.textContent = '시간을 30초 연장했어요.';
+  board.querySelector('.card:not([hidden]):not(:disabled)')?.focus({ preventScroll: true });
 }
 
 function updateBoard() {
@@ -121,62 +252,165 @@ function updateBoard() {
   updateDock();
 }
 
+function playMatchSound() {
+  if (!soundEnabled || !window.AudioContext) return;
+  try {
+    audioContext ??= new AudioContext();
+    audioContext.resume().then(() => {
+      if (!soundEnabled) return;
+      const start = audioContext.currentTime;
+      const note = audioContext.createOscillator();
+      const volume = audioContext.createGain();
+      note.type = 'sine';
+      note.frequency.setValueAtTime(480, start);
+      note.frequency.exponentialRampToValueAtTime(980, start + 0.065);
+      volume.gain.setValueAtTime(0.001, start);
+      volume.gain.exponentialRampToValueAtTime(0.12, start + 0.014);
+      volume.gain.exponentialRampToValueAtTime(0.001, start + 0.13);
+      note.connect(volume);
+      volume.connect(audioContext.destination);
+      note.start(start);
+      note.stop(start + 0.14);
+    }).catch(() => {});
+  } catch {
+    // Audio can be unavailable even when the animation works.
+  }
+}
+
+function animateMatch(matching) {
+  playMatchSound();
+  if (reducedMotion.matches) {
+    completeMatch(matching);
+    return;
+  }
+  const animations = matching.map(({ trayTile }, index) => {
+    trayTile.classList.add('popping');
+    const tilt = (index - 1) * 6;
+    return trayTile.firstElementChild.animate([
+      { transform: 'scale(1)', opacity: 1, easing: 'ease-out' },
+      { transform: 'translateY(-3px) scale(1.2) rotate(' + tilt + 'deg)', opacity: 1, offset: 0.32, easing: 'ease-out' },
+      { transform: 'translateY(-6px) scale(1.12) rotate(' + (tilt / 2) + 'deg)', opacity: 1, offset: 0.48, easing: 'ease-in' },
+      { transform: 'translateY(-13px) scale(.26)', opacity: 0 },
+    ], { duration: MATCH_DURATION, fill: 'forwards' });
+  });
+
+  const wrapper = trayDisplay.parentElement;
+  const bounds = wrapper.getBoundingClientRect();
+  const slots = matching.map(card => card.trayTile.parentElement.getBoundingClientRect());
+  const burst = document.createElement('span');
+  burst.className = 'match-burst';
+  burst.setAttribute('aria-hidden', 'true');
+  const first = slots[0];
+  const last = slots.at(-1);
+  const wave = document.createElement('span');
+  wave.className = 'burst-wave';
+  wave.style.left = (first.left + last.right) / 2 - bounds.left + 'px';
+  wave.style.top = first.top + first.height / 2 - bounds.top + 'px';
+  wave.style.width = last.right - first.left + 'px';
+  burst.appendChild(wave);
+
+  slots.forEach((slot, group) => {
+    const origin = document.createElement('span');
+    origin.className = 'burst-origin';
+    const x = slot.left + slot.width / 2 - bounds.left;
+    origin.style.left = x + 'px';
+    origin.style.top = slot.top + slot.height / 2 - bounds.top + 'px';
+    for (let index = 0; index < 8; index++) {
+      const sparkle = document.createElement('i');
+      const angle = index * Math.PI / 4 + group * Math.PI / 9;
+      const distance = 31 + (group + index) % 3 * 12;
+      const dx = Math.max(8 - x, Math.min(bounds.width - 8 - x, Math.cos(angle) * distance));
+      sparkle.style.setProperty('--spark-x', dx + 'px');
+      sparkle.style.setProperty('--spark-y', Math.sin(angle) * distance + 'px');
+      origin.appendChild(sparkle);
+    }
+    burst.appendChild(origin);
+  });
+  wrapper.appendChild(burst);
+  Promise.allSettled(animations.map(animation => animation.finished)).then(() => {
+    burst.remove();
+    completeMatch(matching);
+  });
+}
+
 function collectCard(card) {
-  if (!playing || card.button.disabled || !cards.includes(card)) return;
+  if (!stageIsActive() || tray.length >= TRAY_SIZE || card.button.disabled || !cards.includes(card)) return;
   const restoreFocus = document.activeElement === card.button;
   card.button.hidden = true;
   cards = cards.filter(other => other !== card);
   tray.push(card);
 
-  const matching = tray.filter(other => other.type === card.type);
+  const matching = tray.filter(other => other.type === card.type && !matchingCards.has(other));
   if (matching.length === MATCH_SIZE) {
-    for (const match of matching) match.button.remove();
-    tray = tray.filter(other => other.type !== card.type);
-    score += 10;
-    scoreDisplay.textContent = score + '점';
-    message.textContent = PICTURES[card.type] + ' 3장 완성! +10점';
+    matching.forEach(match => matchingCards.add(match));
+    updateBoard();
+    animateMatch(matching);
   } else {
     message.textContent = PICTURES[card.type] + ' 보관 · 같은 그림 ' + matching.length + ' / 3장';
+    updateBoard();
   }
 
-  if (cards.length === 0 && tray.length === 0) {
-    if (stage % REFILL_INTERVAL === 0) {
-      items.shuffle++;
-      items.undo++;
-      items.return++;
-    }
-    stage++;
-    startStage();
-    return;
-  }
-
-  updateBoard();
-  if (tray.length === TRAY_SIZE) {
+  if (matchingCards.size === 0 && tray.length === TRAY_SIZE) {
     finishGame('보관함이 가득 찼어요.');
     return;
   }
-  if (restoreFocus) {
+  if (restoreFocus && playing) {
     const next = board.querySelector('.card:not(:disabled):not([hidden])');
     (next ?? finishButton).focus({ preventScroll: true });
   }
 }
 
-function startStage() {
+function completeMatch(matching) {
+  for (const card of matching) {
+    matchingCards.delete(card);
+    card.button.remove();
+  }
+  tray = tray.filter(card => !matching.includes(card));
+  score += 10;
+  scoreDisplay.textContent = score + '점';
+  message.textContent = PICTURES[matching[0].type] + ' 3장 완성! +10점';
+
+  if (cards.length === 0 && tray.length === 0) {
+    if (stage === MAX_STAGE) {
+      updateBoard();
+      finishGame(MAX_STAGE + '개 스테이지를 모두 클리어했어요!');
+      return;
+    }
+    if (stage % REFILL_INTERVAL === 0) {
+      items.shuffle++;
+      items.undo++;
+      items.return++;
+      items.time = 1;
+    }
+    stage++;
+    saveStage();
+    startStage();
+    return;
+  }
+
+  updateBoard();
+  updateClock();
+}
+
+function startStage(restarting = false) {
   const layout = createStageLayout(stage);
   deal(layout);
+  startClock(STAGE_SECONDS);
   stageDisplay.textContent = stage;
   const clearedStage = stage - 1;
-  if (clearedStage === 0) {
+  if (restarting && stage > 1) {
+    message.textContent = stage + '스테이지를 처음부터 다시 시작했어요.';
+  } else if (clearedStage === 0) {
     message.textContent = '카드를 오른쪽 클릭하거나 눌러 보관하세요. 같은 그림 3장이 모이면 사라져요.';
   } else {
-    const refill = clearedStage % REFILL_INTERVAL === 0 ? ' 아이템을 각각 1개씩 받았어요.' : '';
+    const refill = clearedStage % REFILL_INTERVAL === 0 ? ' 아이템이 보충됐어요.' : '';
     message.textContent = clearedStage + '스테이지 통과! 새 카드 ' + layout.positions.length + '장이 나왔어요.' + refill;
   }
-  board.querySelector('.card:not(:disabled)').focus({ preventScroll: true });
+  board.querySelector('.card:not([hidden]):not(:disabled)')?.focus({ preventScroll: true });
 }
 
 function shuffleRemaining() {
-  if (shuffleButton.disabled) return;
+  if (shuffleButton.disabled || !stageIsActive()) return;
   items.shuffle--;
   const pictureCounts = new Map();
   for (const { type } of cards) pictureCounts.set(type, (pictureCounts.get(type) ?? 0) + 1);
@@ -206,11 +440,12 @@ function shuffleRemaining() {
 
 function returnCards(all) {
   const item = all ? 'return' : 'undo';
-  if (!playing || items[item] === 0 || tray.length === 0) return;
+  if (!stageIsActive() || matchingCards.size > 0 || items[item] === 0 || tray.length === 0) return;
   items[item]--;
   const returned = all ? tray.splice(0) : tray.splice(-1);
   for (const card of returned) {
     card.button.hidden = false;
+    card.trayTile = null;
     cards.push(card);
   }
   updateBoard();
@@ -219,26 +454,32 @@ function returnCards(all) {
 
 function startGame() {
   if (playing || startButton.disabled) return;
-  stage = 1;
+  stage = checkpoint?.stage ?? 1;
   score = 0;
+  for (let cleared = 1; cleared < stage; cleared++) {
+    score += createStageLayout(cleared).positions.length / MATCH_SIZE * 10;
+  }
   tray = [];
-  items = { shuffle: 1, undo: 1, return: 1 };
-  scoreDisplay.textContent = '0점';
+  items = checkpoint ? { ...checkpoint.items } : { shuffle: 1, undo: 1, return: 1, time: 1 };
+  scoreDisplay.textContent = score + '점';
   playing = true;
   startButton.hidden = true;
   dock.hidden = false;
   finishButton.hidden = false;
   board.hidden = false;
-  startStage();
+  if (!checkpoint) saveStage();
+  startStage(true);
 }
 
 async function finishGame(reason) {
-  if (!playing) return;
+  if (!playing || matchingCards.size > 0) return;
   playing = false;
+  stopClock();
+  if (timeoutDialog.open) timeoutDialog.close();
   board.hidden = true;
   finishButton.hidden = true;
   updateDock();
-  startButton.textContent = '다시 하기';
+  startButton.textContent = stage + '스테이지 다시 하기';
   startButton.hidden = false;
   startButton.disabled = true;
 
@@ -255,14 +496,85 @@ async function finishGame(reason) {
   }
 }
 
+function readCheckpoint(data) {
+  if (!data || ![1, 2, SAVE_VERSION].includes(data.version) ||
+      !Number.isInteger(data.stage) || data.stage < 1 || data.stage > MAX_STAGE) return null;
+  const { stage, items } = data;
+  if (!['shuffle', 'undo', 'return'].every(item => Number.isSafeInteger(items?.[item]) && items[item] >= 0)) return null;
+  const time = items.time ?? 1;
+  if (time !== 0 && time !== 1) return null;
+  return { version: SAVE_VERSION, stage, items: { shuffle: items.shuffle, undo: items.undo, return: items.return, time } };
+}
+
+function loadBrowserCheckpoint() {
+  if (!checkpointKey) return null;
+  try {
+    return readCheckpoint(JSON.parse(localStorage.getItem(checkpointKey)));
+  } catch {
+    return null;
+  }
+}
+
+function rememberStage() {
+  if (!checkpointKey) return;
+  try {
+    localStorage.setItem(checkpointKey, JSON.stringify(checkpoint));
+  } catch {
+    // Browser storage may be disabled.
+  }
+}
+
+function syncStage() {
+  MiniHub.save(checkpoint).catch(() => {});
+}
+
+function saveStage() {
+  checkpoint = { version: SAVE_VERSION, stage, items: { ...items } };
+  const local = loadBrowserCheckpoint();
+  if (local && local.stage > stage) return;
+  // Keep the reached stage even if the tab closes before the server write completes.
+  rememberStage();
+  syncStage();
+}
+
 if (typeof MiniHub === 'undefined') {
   message.textContent = '공용 랭킹 파일을 불러오지 못했어요. 최신 저장소를 Live Server로 열어 주세요.';
 } else {
   MiniHub.init(GAME_ID);
-  MiniHub.onReady(() => { startButton.disabled = false; });
+  MiniHub.onReady(async player => {
+    if (player?.id) checkpointKey = GAME_ID + '_stage_' + player.id;
+    let remote = null;
+    try {
+      remote = readCheckpoint(await MiniHub.load());
+    } catch {
+      // A browser checkpoint can still be used when the server is unavailable.
+    }
+    const local = loadBrowserCheckpoint();
+    const localIsAhead = local && (!remote || local.stage > remote.stage);
+    checkpoint = localIsAhead ? local : remote;
+    startButton.disabled = false;
+    if (checkpoint) {
+      rememberStage();
+      if (localIsAhead) syncStage();
+      startGame();
+    }
+  });
   startButton.addEventListener('click', startGame);
+  soundButton.addEventListener('click', () => {
+    soundEnabled = !soundEnabled;
+    soundButton.setAttribute('aria-pressed', String(soundEnabled));
+    soundButton.textContent = soundEnabled ? '효과음 켜짐' : '효과음 꺼짐';
+  });
   shuffleButton.addEventListener('click', shuffleRemaining);
   undoButton.addEventListener('click', () => returnCards(false));
   returnButton.addEventListener('click', () => returnCards(true));
-  finishButton.addEventListener('click', () => finishGame('게임을 포기했어요.'));
+  finishButton.addEventListener('click', () => {
+    if (stageIsActive()) finishGame('게임을 포기했어요.');
+  });
+  extendButton.addEventListener('click', extendTime);
+  timeoutEndButton.addEventListener('click', () => finishGame('시간이 다 됐어요.'));
+  timeoutDialog.addEventListener('cancel', event => {
+    event.preventDefault();
+    finishGame('시간이 다 됐어요.');
+  });
 }

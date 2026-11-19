@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>타일 톡톡</title>
+  <script src="../../shared/minihub-theme.js"></script>
   <link rel="icon" href="./thumbnail.svg" type="image/svg+xml">
   <link rel="preload" href="./card-art.png" as="image">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -38,7 +39,9 @@
     .hud { display: flex; justify-content: center; flex-wrap: wrap; gap: 6px; margin-top: 8px; font-size: .8rem; }
     .hud span { padding: 4px 11px; border-radius: 999px; background: #ffffffd9; box-shadow: 0 2px 5px var(--shadow); }
     .hud .level { color: var(--accent); background: var(--lavender); }
-    #score { color: var(--accent); font-variant-numeric: tabular-nums; }
+    #score, #clock { color: var(--accent); font-variant-numeric: tabular-nums; }
+    #clock { display: inline-block; min-width: 5ch; }
+    #clock.urgent { color: #aa375e; }
     #status { min-height: 2.8em; margin: 10px 0 3px; text-align: center; color: var(--sub); font-size: .88rem; line-height: 1.4; }
     #board { position: relative; flex: none; width: min(100%, calc(var(--tile-width) * var(--board-width) / 100)); aspect-ratio: var(--board-width) / var(--board-height); margin: auto; isolation: isolate; }
     button, a { touch-action: manipulation; }
@@ -60,22 +63,72 @@
       border-radius: 22px; background: #fff; box-shadow: 0 8px 24px var(--shadow);
     }
     .tray-label { display: flex; justify-content: space-between; align-items: center; gap: 6px; min-height: 22px; font-size: .8rem; font-weight: 700; }
+    .tray-tools { display: flex; gap: 8px; align-items: center; }
     #tray-count { color: var(--accent); font-variant-numeric: tabular-nums; }
+    #sound { padding: 1px 6px; border: 0; border-radius: 999px; background: var(--lavender); color: var(--accent); font-size: .7rem; }
     #finish { min-height: 32px; border: 0; background: none; color: var(--sub); padding: 2px 6px; text-decoration: underline; text-underline-offset: 2px; }
+    .game-actions { display: flex; justify-content: flex-end; margin-top: 7px; font-size: .8rem; }
+    .game-actions:has([hidden]) { display: none; }
     #tray, #items { display: grid; gap: 4px; }
+    .tray-area { position: relative; display: flow-root; }
     #tray { grid-template-columns: repeat(7, minmax(0, 1fr)); padding: 0; list-style: none; margin: 4px 0 8px; }
-    .tray-slot { display: grid; place-items: center; width: 100%; height: clamp(31px, 8.5vw, 44px); border-radius: 9px; border: 1px solid var(--line); background: var(--lavender); }
-    .tray-slot.filled { background: #fff; box-shadow: inset 0 -3px #e6dbf8; }
-    .card::after, .tray-slot.filled::after {
+    .tray-slot { position: relative; height: clamp(31px, 8.5vw, 44px); border-radius: 9px; border: 1px solid var(--line); background: var(--lavender); }
+    .tray-tile { position: absolute; inset: -1px; }
+    .tray-tile.popping { z-index: 1; }
+    .tray-face {
+      display: grid; place-items: center; width: 100%; height: 100%; border: 1px solid var(--line);
+      border-radius: 9px; background: #fff; box-shadow: inset 0 -3px #e6dbf8;
+    }
+    .card::after, .tray-face::after {
       content: ""; display: block; aspect-ratio: 1; pointer-events: none;
       background: url("./card-art.png") var(--picture-position) / 400% 300% no-repeat;
     }
     .card::after { width: 94%; }
-    .tray-slot.filled::after { width: min(94%, clamp(27px, 8.5vw - 4px, 40px)); }
-    #items { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-    #items button { min-height: 38px; padding: 4px; border: 0; border-radius: 14px; background: var(--lavender); font-size: clamp(.69rem, 2.65vw, .85rem); font-weight: 700; box-shadow: inset 0 -3px #e1d5f6; }
+    .tray-face::after { width: min(94%, clamp(27px, 8.5vw - 4px, 40px)); }
+    .match-burst { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
+    .burst-origin, .burst-wave { position: absolute; }
+    .burst-origin::before {
+      content: ""; position: absolute; inset: -21px; border-radius: 50%;
+      background: radial-gradient(circle, #fff 9%, #ffe4a3 32%, #ffbcdb 52%, transparent 72%);
+      animation: burst-flash var(--match-duration) ease-out both;
+    }
+    .burst-wave {
+      height: 55px; border: 2px solid #fff9df; border-radius: 50%;
+      box-shadow: 0 0 0 2px #c297ff, 0 0 15px #ffc9eb;
+      animation: burst-wave var(--match-duration) ease-out both;
+    }
+    .match-burst i {
+      position: absolute; top: -5px; left: -5px; width: 10px; height: 10px; opacity: 0;
+      background: linear-gradient(#fff8d2, #ffc043);
+      clip-path: polygon(50% 0, 63% 36%, 100% 50%, 63% 63%, 50% 100%, 36% 63%, 0 50%, 36% 36%);
+      animation: sparkle var(--match-duration) ease-out forwards;
+    }
+    .match-burst i:nth-child(3n + 1) { background: linear-gradient(#fff2fa, #f47bbb); width: 13px; height: 13px; }
+    .match-burst i:nth-child(3n + 2) { background: linear-gradient(#fff, #ad95fb); clip-path: none; width: 5px; height: 9px; border-radius: 3px; }
+    .match-burst i:nth-child(4n) { clip-path: none; width: 6px; height: 6px; border-radius: 50%; }
+    @keyframes burst-flash {
+      0%, 23% { transform: scale(.2); opacity: 0; }
+      36% { transform: scale(1.12); opacity: .95; }
+      70%, 100% { transform: scale(1.55); opacity: 0; }
+    }
+    @keyframes burst-wave {
+      0%, 23% { transform: translate(-50%, -50%) scale(.25); opacity: 0; }
+      36% { opacity: .9; }
+      100% { transform: translate(-50%, -50%) scale(1.08, 1.5); opacity: 0; }
+    }
+    @keyframes sparkle {
+      0%, 24% { transform: translate(0, 0) scale(.2); opacity: 0; }
+      42% { transform: translate(calc(var(--spark-x) * .42), calc(var(--spark-y) * .42)) rotate(42deg) scale(1.25); opacity: 1; }
+      63% { opacity: .9; }
+      100% { transform: translate(var(--spark-x), var(--spark-y)) rotate(145deg) scale(.26); opacity: 0; }
+    }
+    #items { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    #items button, #time-item { min-height: 38px; padding: 4px; border: 0; border-radius: 14px; background: var(--lavender); font-size: clamp(.69rem, 2.65vw, .85rem); font-weight: 700; box-shadow: inset 0 -3px #e1d5f6; }
+    #time-item { display: grid; place-items: center; text-align: center; color: var(--accent); }
+    @media (max-width: 390px) { #items { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
     #items button:hover:enabled { background: #eae0fb; }
     #items button:disabled { background: #f7f5fb; color: #817594; box-shadow: none; }
+    #time-item.spent { background: #f7f5fb; color: #817594; box-shadow: none; }
     #start {
       min-height: 44px; padding: 7px 24px; border: 0; border-radius: 999px;
       background: linear-gradient(135deg, #ff9cc2, #b69cff);
@@ -83,7 +136,32 @@
     }
     #start:active:enabled { transform: translateY(2px); box-shadow: 0 2px #9a80e0; }
     #start:disabled { opacity: .55; box-shadow: none; }
-    .footer { display: flex; align-items: center; justify-content: center; padding-top: 10px; font-size: .85rem; }
+    .footer { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: center; padding-top: 10px; font-size: .85rem; }
+    #timeout { width: min(340px, calc(100% - 28px)); border: 1px solid var(--line); border-radius: 24px; padding: 20px; background: #fff; color: var(--text); text-align: center; box-shadow: 0 12px 32px var(--shadow); }
+    #timeout::backdrop { background: rgba(74, 61, 110, .45); }
+    #timeout h2 { margin: 0; font: 700 2.5rem/1 var(--heading-font); }
+    #timeout p { margin: 6px 0 16px; color: var(--sub); font-size: .9rem; }
+    .timeout-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+    .timeout-actions button { min-height: 40px; padding: 6px 12px; border: 0; border-radius: 999px; background: var(--lavender); font-size: .85rem; font-weight: 700; }
+    #extend-time { background: linear-gradient(135deg, #ff9cc2, #b69cff); color: #402b66; }
+    /* 어두운 모드 (메인페이지와 연동: shared/minihub-theme.js) — 카드 그림은 밝은 바탕이 어울려 카드 면은 밝게 둔다 */
+    :root[data-theme="dark"] { color-scheme: dark; --text: #eef0ff; --sub: #b8bde6; --accent: #b69cff; --lavender: #272f69; --line: #3a4382; --shadow: rgba(0, 0, 0, .35); }
+    :root[data-theme="dark"] body { background: #121838; }
+    :root[data-theme="dark"] body::before { background: linear-gradient(170deg, #1c1d4d, #121838 55%, #0e2446); }
+    :root[data-theme="dark"] .home { background: #242c60e6; }
+    :root[data-theme="dark"] .home:hover { background: #2b3473; }
+    :root[data-theme="dark"] .hud span { background: #1d2455; }
+    :root[data-theme="dark"] .hud .level { background: var(--lavender); }
+    :root[data-theme="dark"] #clock.urgent { color: #ff7aa8; }
+    :root[data-theme="dark"] :focus-visible { outline-color: #b69cff; }
+    :root[data-theme="dark"] .card, :root[data-theme="dark"] .tray-face { background: #f6f4ff; }
+    :root[data-theme="dark"] .card.covered { background: #6a62a0; border-color: #554e8a; box-shadow: inset 0 -4px #473f78; }
+    :root[data-theme="dark"] #dock, :root[data-theme="dark"] #timeout { background: #1d2455; }
+    :root[data-theme="dark"] #timeout::backdrop { background: rgba(5, 8, 24, .65); }
+    :root[data-theme="dark"] #items button, :root[data-theme="dark"] #time-item { box-shadow: inset 0 -3px #1a2050; }
+    :root[data-theme="dark"] #items button:hover:enabled { background: #333c7a; }
+    :root[data-theme="dark"] #items button:disabled, :root[data-theme="dark"] #time-item.spent { background: #1a2050; color: #6f76ad; box-shadow: none; }
+    :root[data-theme="dark"] #start, :root[data-theme="dark"] #extend-time { color: #2a1d4e; }
     a { color: var(--accent); text-underline-offset: 2px; }
   </style>
   <script defer src="../../shared/minihub-sdk.js"></script>
@@ -96,28 +174,44 @@
       <nav class="navigation" aria-label="미니게임"><a class="home" href="../../">‹ 메인으로</a></nav>
       <h1>타일 톡톡</h1>
       <div class="hud">
-        <span class="level">스테이지 <strong id="stage">1</strong></span>
+        <span class="level">스테이지 <strong id="stage">1</strong> / 20</span>
         <span>남은 카드 <strong id="count">51장</strong></span>
         <span>점수 <strong id="score">0점</strong></span>
+        <span>시간 <strong id="clock" role="timer">02:00</strong></span>
       </div>
     </header>
-    <p id="status" role="status">같은 그림 3장을 모으세요. 보관함 7칸이 차면 게임이 끝나요.</p>
+    <p id="status" role="status">같은 그림 3장을 모으세요. 도달한 스테이지는 자동으로 저장돼요.</p>
     <div id="board" aria-label="겹쳐진 카드 게임판" hidden></div>
     <section id="dock" aria-label="카드 보관함과 아이템" hidden>
       <div class="tray-label">
-        <span>보관함</span><span id="tray-count">0 / 7</span>
+        <span>보관함</span>
+        <div class="tray-tools">
+          <button id="sound" type="button" aria-pressed="true">효과음 켜짐</button>
+          <span id="tray-count">0 / 7</span>
+        </div>
       </div>
-      <ul id="tray" aria-label="카드 보관함 7칸"></ul>
+      <div class="tray-area"><ul id="tray" aria-label="카드 보관함 7칸"></ul></div>
       <div id="items" aria-label="아이템">
         <button id="shuffle" type="button">판 섞기</button>
         <button id="undo" type="button">한 장 되돌리기</button>
         <button id="return" type="button">보관함 비우기</button>
+        <span id="time-item" title="시간이 다 되면 사용할 수 있어요.">시간 +30초 · 1</span>
+      </div>
+      <div class="game-actions">
+        <button id="finish" type="button" hidden>게임 포기</button>
       </div>
     </section>
     <div class="footer">
       <button id="start" type="button" disabled>게임 시작</button>
-      <button id="finish" type="button" hidden>게임 포기</button>
     </div>
   </main>
+  <dialog id="timeout" aria-labelledby="timeout-title" aria-describedby="timeout-description">
+    <h2 id="timeout-title">시간이 다 됐어요</h2>
+    <p id="timeout-description">시간 연장 아이템 1개를 써서 이 판을 30초 더 이어갈까요?</p>
+    <div class="timeout-actions">
+      <button id="extend-time" type="button" autofocus>30초 연장</button>
+      <button id="timeout-end" type="button">게임 종료</button>
+    </div>
+  </dialog>
 </body>
 </html>
