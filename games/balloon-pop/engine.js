@@ -1,0 +1,139 @@
+"use strict";
+
+// 화면의 색·안내와 실제 점수·속도가 항상 같은 규칙을 쓰도록 한 곳에 둔다.
+const BALLOON_RULES = Object.freeze({
+  colors: Object.freeze([
+    Object.freeze({ name: "분홍", light: "#ff91b5", dark: "#db4e81", points: 10, speed: 0.78, speedLabel: "느림" }),
+    Object.freeze({ name: "하늘", light: "#8dcaff", dark: "#4c90dd", points: 20, speed: 1, speedLabel: "보통" }),
+    Object.freeze({ name: "보라", light: "#bb9afa", dark: "#8560d1", points: 30, speed: 1.25, speedLabel: "빠름" }),
+    Object.freeze({ name: "주황", light: "#ffaf8b", dark: "#e67b5d", points: 40, speed: 1.55, speedLabel: "아주 빠름" }),
+  ]),
+  gold: Object.freeze({ name: "노랑 별", light: "#ffe394", dark: "#edb441", points: 60, speed: 1.85, speedLabel: "가장 빠름" }),
+  clock: Object.freeze({ name: "민트 시간", light: "#9ae9c8", dark: "#4eb89b", points: 15, speed: 0.9, speedLabel: "조금 느림" }),
+  bomb: Object.freeze({ name: "회색 폭탄", light: "#8a859e", dark: "#4c4965", points: 0, speed: 1.1, speedLabel: "조금 빠름" }),
+});
+
+function getBalloonSize(points, small = false) {
+  const baseWidth = small ? 62 : 76;
+  const baseHeight = small ? 77 : 94;
+  // 풍선에 적힌 기본 점수로 크기를 정한다. 10점은 원래 크기, 60점은 약 70%.
+  // 콤보나 누적 점수로는 크기를 바꾸지 않고, 터치 너비는 최소 44px을 유지한다.
+  const pointScale = 1 - Math.min(50, Math.max(0, points - 10)) * 0.006;
+  const scale = Math.max(44 / baseWidth, pointScale);
+  return { width: baseWidth * scale, height: baseHeight * scale, scale };
+}
+
+// 화면과 분리한 한 판의 규칙. 점수 저장은 game.js에서 공용 SDK로만 한다.
+class BalloonRound {
+  constructor({ random = Math.random, onEvent = () => {} } = {}) {
+    this.random = random;
+    this.onEvent = onEvent;
+    this.phase = "idle";
+    this.remaining = 30000;
+    this.elapsed = 0;
+    this.score = 0;
+    this.combo = 0;
+    this.maxCombo = 0;
+    this.popped = 0;
+    this.balloons = new Map();
+    this.spawned = 0;
+    this.nextSpawn = 0;
+    this.nextId = 1;
+  }
+
+  get level() { return 1 + Math.floor(this.elapsed / 15000); }
+  get multiplier() { return 1 + Math.floor(this.combo / 5); }
+
+  start() {
+    if (this.phase !== "idle") return;
+    this.phase = "playing";
+    for (let i = 0; i < 4; i++) this.spawn(450 + i * 420);
+    this.nextSpawn = 650;
+  }
+
+  spawn(age = 0) {
+    if (this.balloons.size >= 9) return;
+    this.spawned++;
+    let type = "normal";
+    if (this.spawned % 7 === 0) type = "clock";
+    else if (this.spawned % 9 === 0) type = "bomb";
+    else if (this.random() < 0.16) type = "gold";
+    let x = 0.09 + this.random() * 0.82;
+    for (let i = 0; i < 8; i++) {
+      if (![...this.balloons.values()].some(b => Math.abs(b.x - x) < 0.17 && Math.abs(b.age - age) < 850)) break;
+      x = 0.09 + this.random() * 0.82;
+    }
+    const color = Math.floor(this.random() * BALLOON_RULES.colors.length);
+    const profile = type === "normal" ? BALLOON_RULES.colors[color] : BALLOON_RULES[type];
+    const balloon = {
+      id: this.nextId++, type, x, age,
+      lifetime: (Math.max(2100, 5400 - this.level * 240) + this.random() * 600) / profile.speed,
+      color, profile, sway: this.random() * Math.PI * 2,
+    };
+    this.balloons.set(balloon.id, balloon);
+    return balloon;
+  }
+
+  tick(delta) {
+    if (this.phase !== "playing" || !Number.isFinite(delta) || delta <= 0) return;
+    const step = Math.min(delta, this.remaining);
+    this.remaining = Math.max(0, this.remaining - step);
+    this.elapsed += step;
+    for (const balloon of this.balloons.values()) {
+      balloon.age += step;
+      if (balloon.age >= balloon.lifetime) {
+        this.balloons.delete(balloon.id);
+        if (balloon.type !== "bomb") {
+          const brokeCombo = this.combo > 0;
+          this.combo = 0;
+          if (brokeCombo) this.onEvent({ type: "miss" });
+        }
+      }
+    }
+    if (this.remaining <= 0) { this.end(); return; }
+    this.nextSpawn -= step;
+    const interval = Math.max(280, 810 - this.level * 65);
+    while (this.nextSpawn <= 0) {
+      this.spawn();
+      this.nextSpawn += interval;
+    }
+  }
+
+  pop(id) {
+    if (this.phase !== "playing") return null;
+    const balloon = this.balloons.get(id);
+    if (!balloon) return null;
+    // 먼저 제거하여 한 풍선을 빠르게 여러 번 눌러도 한 번만 센다.
+    this.balloons.delete(id);
+    const previousScore = this.score;
+    let points = 0;
+    if (balloon.type === "bomb") {
+      this.combo = 0;
+      this.remaining = Math.max(0, this.remaining - 3000);
+    } else {
+      points = balloon.profile.points * this.multiplier;
+      this.score += points;
+      this.popped++;
+      this.combo++;
+      this.maxCombo = Math.max(this.maxCombo, this.combo);
+      if (balloon.type === "clock") this.remaining += 3000;
+    }
+    const first = Math.floor(previousScore / 100) + 1;
+    const last = Math.floor(this.score / 100);
+    // 90→210처럼 딱 100점을 찍지 않아도, 지나친 모든 100점 구간을 전달한다.
+    // 배열 대신 범위로 보내 높은 콤보에서도 메모리 사용이 늘어나지 않게 한다.
+    const milestones = last >= first ? { first: first * 100, last: last * 100, count: last - first + 1 } : null;
+    const event = { type: "pop", balloon, points, combo: this.combo, milestones };
+    this.onEvent(event);
+    if (this.remaining <= 0) this.end();
+    return event;
+  }
+
+  pause() { if (this.phase === "playing") this.phase = "paused"; }
+  resume() { if (this.phase === "paused") this.phase = "playing"; }
+  end() {
+    if (this.phase !== "playing" && this.phase !== "paused") return;
+    this.phase = "over";
+    this.onEvent({ type: "end", score: this.score });
+  }
+}
