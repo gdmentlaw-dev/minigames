@@ -106,6 +106,7 @@ await MiniHub.save({ stage: stage, cleared: [1, 2, 3] });   // → true(성공) 
 - 게임 안에 모드 버튼을 달고 싶으면 `MiniHubTheme.toggle()`, 현재 모드는 `MiniHubTheme.get()`,
   바뀔 때 다시 그리려면 `MiniHubTheme.onChange(모드 => ...)`. 선택은 SDK 쪽 공용 저장값이라 게임이 따로 저장하지 않는다.
 - 로그인 창·기록 알림(SDK)은 같은 모드를 자동으로 따른다.
+- 메인페이지 아이콘(썸네일)도 모드를 따른다: `thumbnail.svg`(밝은 모드) 옆에 `thumbnail-dark.svg`(어두운 모드)를 두면 자동으로 쓰인다. 없으면 기본 썸네일을 그대로 쓴다.
 
 ### 3. 하지 말 것
 - 자체 로그인·닉네임·PIN 입력창 만들기 (SDK가 한다)

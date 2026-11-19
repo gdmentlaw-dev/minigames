@@ -1,14 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
-  <rect width="256" height="256" rx="34" fill="#16132e"/>
+  <defs><linearGradient id="bg" x1="0" y1="0" x2="0.4" y2="1"><stop offset="0" stop-color="#ffe3f0"/><stop offset=".55" stop-color="#ebe4ff"/><stop offset="1" stop-color="#dcf1ff"/></linearGradient></defs>
+  <rect width="256" height="256" rx="34" fill="url(#bg)"/>
   <g transform="rotate(-13 88 125)">
-    <rect x="36" y="56" width="104" height="138" rx="16" fill="#231f45" stroke="#7c6cf0" stroke-width="6"/>
+    <rect x="36" y="56" width="104" height="138" rx="16" fill="#fff" stroke="#8f6fe0" stroke-width="6"/>
     <g transform="translate(-81 -3)">
       <path d="M169 114c-23-16-39 3-27 27 8 17 19 21 27 14 8 7 19 3 27-14 12-24-4-43-27-27" fill="#df506a"/>
       <path d="M168 114c-3-15 6-23 17-22-1 12-8 17-17 17" fill="#83bc7a"/>
     </g>
   </g>
   <g transform="rotate(13 170 128)">
-    <rect x="118" y="59" width="104" height="138" rx="16" fill="#f4f2ff"/>
+    <rect x="118" y="59" width="104" height="138" rx="16" fill="#fff" stroke="#c9b8ff" stroke-width="4"/>
     <path d="M169 114c-23-16-39 3-27 27 8 17 19 21 27 14 8 7 19 3 27-14 12-24-4-43-27-27" fill="#df506a"/>
     <path d="M168 114c-3-15 6-23 17-22-1 12-8 17-17 17" fill="#428457"/>
   </g>
