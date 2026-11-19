@@ -1,0 +1,11 @@
+{
+  "id": "number-combo",
+  "title": "넘버 콤보",
+  "author": "김예원",
+  "description": "60초 동안 숫자 타일로 그룹·연속 조합을 만들어 점수를 쌓으세요.",
+  "controls": "타일 탭으로 고르기 / Enter 내기 / Esc 취소",
+  "scoreOrder": "desc",
+  "scoreUnit": "점",
+  "scoreLimit": 200000,
+  "thumbnail": "thumbnail.svg"
+}

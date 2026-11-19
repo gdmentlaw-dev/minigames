@@ -1,0 +1,402 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>넘버 콤보</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+  /* 넘버 콤보 — 공통 색(배경 #16132e, 카드 #231f45, 강조 #ffc83d, 보조 #7c6cf0, 글자 #f4f2ff) */
+  :root {
+    --bg: #16132e; --card: #231f45; --line: #3a3470;
+    --gold: #ffc83d; --violet: #7c6cf0; --violet-deep: #4e40b8;
+    --ink: #f4f2ff; --ink-dim: #b9b3e6;
+    --good: #7fe0a8; --bad: #ff8a7a;
+    --ivory: #fffaf0; --ivory-edge: #e6dfc8;
+    --t-r: #d1343f; --t-b: #2160c4; --t-o: #d6860a; --t-k: #22262b;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { margin: 0; background: var(--bg); color: var(--ink); }
+  body { font-family: Pretendard, system-ui, -apple-system, "Segoe UI", sans-serif; font-size: 15px; line-height: 1.5;
+         padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) 32px max(16px, env(safe-area-inset-left, 0px));
+         -webkit-tap-highlight-color: transparent; }
+  .wrap { max-width: 1000px; margin: 0 auto; display: grid; gap: 16px; }
+  header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+  h1 { font-size: clamp(28px, 6vw, 40px); font-weight: 800; margin: 0; line-height: 1; }
+  h1 span { color: var(--gold); }
+  .top-right { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--ink-dim); flex-wrap: wrap; }
+  .top-right b { color: var(--ink); font-variant-numeric: tabular-nums; }
+  .layout { display: grid; grid-template-columns: minmax(0, 1fr) 290px; gap: 16px; align-items: start; }
+  @media (max-width: 820px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+
+  .table { position: relative; background: var(--card); border-radius: 16px; padding: 16px; display: grid; gap: 12px; min-height: 470px; }
+  .hud { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+  .stat { display: grid; gap: 2px; }
+  .stat .lbl { font-size: 12px; color: var(--ink-dim); }
+  .stat .val { font-size: 28px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+  #combo.hot { color: var(--gold); }
+  .bar { height: 8px; border-radius: 99px; background: rgba(255,255,255,.08); overflow: hidden; }
+  .bar i { display: block; height: 100%; width: 100%; background: var(--gold); transform-origin: left; }
+  .bar i.low { background: var(--bad); }
+  .meter-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 12px; color: var(--ink-dim); }
+  .meter { display: flex; gap: 3px; flex-wrap: wrap; }
+  .meter span { width: 10px; height: 14px; border-radius: 2px; background: rgba(255,255,255,.1); }
+  .meter span.on { background: var(--violet); }
+  .meter span.warn { background: var(--bad); }
+
+  .hint { min-height: 26px; font-size: 14px; color: var(--ink-dim); }
+  .hint.ok { color: var(--good); font-weight: 700; }
+  .float { position: absolute; left: 50%; top: 42%; transform: translate(-50%, 0); font-size: 34px; font-weight: 800; color: var(--gold);
+           pointer-events: none; animation: up .9s ease-out forwards; text-shadow: 0 2px 0 rgba(0,0,0,.4); white-space: nowrap; z-index: 4; }
+  .float.neg { color: var(--bad); }
+  @keyframes up { from { opacity: 1; transform: translate(-50%, 0); } to { opacity: 0; transform: translate(-50%, -60px); } }
+
+  .rack { display: flex; flex-wrap: wrap; gap: 7px; align-content: flex-start; min-height: 156px; padding: 12px; border-radius: 12px;
+          background: linear-gradient(var(--violet-deep), #3b3090); box-shadow: inset 0 2px 0 rgba(255,255,255,.12), inset 0 -3px 0 rgba(0,0,0,.25); }
+  .tile { appearance: none; border: 0; cursor: pointer; width: 46px; height: 62px; border-radius: 7px; padding: 0;
+          background: linear-gradient(180deg, #ffffff, var(--ivory)); box-shadow: 0 3px 0 var(--ivory-edge), 0 5px 8px rgba(0,0,0,.35);
+          display: grid; place-items: center; align-content: center; font-family: inherit; font-size: 26px; font-weight: 800; line-height: 1;
+          transition: transform .12s ease, box-shadow .12s ease; touch-action: manipulation; }
+  .tile small { font-size: 10px; line-height: 1; margin-top: 3px; }
+  .tile.r { color: var(--t-r); } .tile.b { color: var(--t-b); } .tile.o { color: var(--t-o); } .tile.k { color: var(--t-k); }
+  .tile.sel { transform: translateY(-8px); box-shadow: 0 0 0 3px var(--gold), 0 3px 0 var(--ivory-edge), 0 10px 14px rgba(0,0,0,.4); }
+  .tile.new { animation: drop .35s ease-out; }
+  .tile:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+  @keyframes drop { from { transform: translateY(-24px); opacity: 0; } to { transform: none; opacity: 1; } }
+  .rack.shake { animation: shake .3s; }
+  @keyframes shake { 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+
+  .controls { display: flex; flex-wrap: wrap; gap: 8px; }
+  .btn { font-family: inherit; font-weight: 800; font-size: 15px; border-radius: 12px; border: 0; background: rgba(255,255,255,.08);
+         color: var(--ink); padding: 10px 14px; cursor: pointer; min-height: 44px; }
+  .btn:hover { background: rgba(255,255,255,.14); }
+  .btn:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  .btn.primary { background: var(--gold); color: var(--bg); flex: 1 1 140px; }
+  .btn.primary:hover { filter: brightness(1.06); }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .keys { font-size: 12px; color: var(--ink-dim); }
+
+  .overlay { position: absolute; inset: 0; border-radius: 16px; background: rgba(22,19,46,.94); display: grid; place-items: center; padding: 20px; z-index: 5; }
+  .panel { max-width: 440px; width: 100%; display: grid; gap: 14px; }
+  .panel h2 { font-size: 26px; font-weight: 800; margin: 0; line-height: 1.25; }
+  .hello { color: var(--gold); font-weight: 700; margin: 0; min-height: 1.5em; }
+  .rules { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; font-size: 14px; }
+  .rules li { display: flex; gap: 10px; align-items: center; }
+  .mini { display: flex; gap: 3px; flex: none; width: 81px; }
+  .mini .tile { width: 25px; height: 33px; font-size: 15px; border-radius: 4px; box-shadow: 0 2px 0 var(--ivory-edge); cursor: default; }
+  .mini .tile small { display: none; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .row .btn { flex: 1 1 120px; }
+  .big { font-size: 64px; font-weight: 800; line-height: 1; color: var(--gold); font-variant-numeric: tabular-nums; }
+  .sub { color: var(--ink-dim); font-size: 14px; margin: 0; }
+  .result { font-weight: 700; margin: 0; min-height: 1.5em; }
+
+  aside.board { background: var(--card); border-radius: 16px; padding: 14px; display: grid; gap: 10px; min-width: 0; }
+  .board h3 { font-size: 20px; font-weight: 800; margin: 0; }
+  ol.rank { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+  ol.rank li { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 7px 8px; border-radius: 8px; font-variant-numeric: tabular-nums; }
+  ol.rank li:nth-child(-n+3) .pos { color: var(--gold); }
+  ol.rank li.me { background: rgba(255,200,61,.14); box-shadow: inset 0 0 0 1px rgba(255,200,61,.5); }
+  ol.rank .pos { font-weight: 800; text-align: center; }
+  ol.rank .nick { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  ol.rank .pts { font-weight: 800; }
+  .empty { font-size: 13px; color: var(--ink-dim); margin: 0; padding: 8px 4px; }
+  .mybest { font-size: 13px; color: var(--ink-dim); border-top: 1px solid var(--line); padding-top: 10px; }
+  .mybest b { color: var(--ink); }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>넘버 <span>콤보</span></h1>
+    <div class="top-right">
+      <span>오늘의 패 <b id="seedLabel"></b> · 모두 같은 순서로 나와요</span>
+      <button class="btn" id="exitTop">메인으로</button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <section class="table" id="table" aria-label="게임판">
+      <div class="hud">
+        <div class="stat"><span class="lbl">점수</span><span class="val" id="score">0</span></div>
+        <div class="stat"><span class="lbl">남은 시간</span><span class="val" id="time">60.0</span></div>
+        <div class="stat"><span class="lbl">콤보</span><span class="val" id="combo">×1</span></div>
+      </div>
+      <div class="bar" aria-hidden="true"><i id="timebar"></i></div>
+      <div class="meter-row">
+        <span>손패 <b id="handCount">0</b> / <span id="handMax">16</span> · 넘치면 게임 오버</span>
+        <div class="meter" id="meter" aria-hidden="true"></div>
+      </div>
+
+      <div class="hint" id="hint" aria-live="polite">타일을 골라 조합을 만드세요</div>
+      <div class="rack" id="rack" role="group" aria-label="내 손패"></div>
+
+      <div class="controls">
+        <button class="btn primary" id="playBtn" disabled>내기 (Enter)</button>
+        <button class="btn" id="clearBtn">선택 취소</button>
+        <button class="btn" id="discardBtn" disabled>버리기 −15/장</button>
+        <button class="btn" id="sortNum">숫자순</button>
+        <button class="btn" id="sortColor">색깔순</button>
+      </div>
+      <div class="keys">Enter 내기 · Esc 선택 취소 · 4초 안에 연달아 내면 콤보 배율이 올라가요</div>
+
+      <div class="overlay" id="startOv">
+        <div class="panel">
+          <p class="hello" id="hello">&nbsp;</p>
+          <h2>60초 안에 숫자 조합을 최대한 많이 내세요</h2>
+          <ul class="rules">
+            <li><span class="mini" id="exGroup"></span><span><b>그룹</b> 같은 숫자 3~4장, 색은 모두 달라야 해요</span></li>
+            <li><span class="mini" id="exRun"></span><span><b>연속</b> 같은 색으로 이어지는 숫자 3장 이상</span></li>
+            <li><span class="mini"></span><span>길게, 큰 숫자로, 빠르게 이어서 낼수록 점수가 커져요. 손패가 16장을 넘으면 끝나요.</span></li>
+          </ul>
+          <button class="btn primary" id="startBtn">시작하기</button>
+        </div>
+      </div>
+
+      <div class="overlay" id="endOv" hidden>
+        <div class="panel">
+          <p class="sub" id="endReason">시간 종료</p>
+          <div class="big" id="endScore">0</div>
+          <p class="sub" id="endDetail"></p>
+          <p class="result" id="result">&nbsp;</p>
+          <div class="row">
+            <button class="btn primary" id="againBtn">다시하기</button>
+            <button class="btn" id="exitEnd">메인으로</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <aside class="board" aria-label="랭킹">
+      <h3>넘버 콤보 랭킹</h3>
+      <ol class="rank" id="rankList"></ol>
+      <p class="empty" id="rankEmpty">랭킹을 불러오는 중이에요…</p>
+      <div class="mybest">내 최고 기록 <b id="myBest">-</b></div>
+    </aside>
+  </div>
+</div>
+
+<script src="../../shared/minihub-sdk.js"></script>
+<script>
+(() => {
+  const GAME_ID = "number-combo";
+  const COLORS = { r: { name: "빨강", mark: "●" }, b: { name: "파랑", mark: "▲" }, o: { name: "주황", mark: "■" }, k: { name: "검정", mark: "◆" } };
+  const CK = Object.keys(COLORS);
+  const DURATION = 60000, HAND_MAX = 16, START_HAND = 8;
+  const $ = id => document.getElementById(id);
+
+  // ── 허브 연결 ──
+  MiniHub.init(GAME_ID);
+  let myId = null;
+  MiniHub.onReady(p => {
+    myId = p.id;
+    $("hello").textContent = `${p.name}님, 준비되셨나요?`;
+    refreshBoard();
+  });
+
+  // ── 오늘의 패: 날짜(한국 시간)로 모두 같은 타일 순서 ──
+  const TODAY = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
+  $("seedLabel").textContent = TODAY;
+  function hashStr(s) { let h = 1779033703 ^ s.length; for (let i = 0; i < s.length; i++) { h = Math.imul(h ^ s.charCodeAt(i), 3432918353); h = h << 13 | h >>> 19; } return h >>> 0; }
+  function mulberry(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  function buildDeck() {
+    const rnd = mulberry(hashStr("numcombo:" + TODAY));
+    const deck = []; let id = 0;
+    for (let copy = 0; copy < 2; copy++) for (const c of CK) for (let n = 1; n <= 13; n++) deck.push({ id: id++, n, c });
+    for (let i = deck.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [deck[i], deck[j]] = [deck[j], deck[i]]; }
+    return deck;
+  }
+
+  const rackEl = $("rack"), hintEl = $("hint"), tableEl = $("table");
+  const playBtn = $("playBtn"), discardBtn = $("discardBtn");
+  $("handMax").textContent = HAND_MAX;
+
+  function tileEl(t) {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "tile " + t.c;
+    b.setAttribute("aria-label", `${COLORS[t.c].name} ${t.n}`);
+    b.textContent = t.n;
+    const s = document.createElement("small"); s.textContent = COLORS[t.c].mark; b.appendChild(s);
+    return b;
+  }
+  [{ n: 7, c: "r" }, { n: 7, c: "b" }, { n: 7, c: "k" }].forEach(t => { const e = tileEl(t); e.tabIndex = -1; $("exGroup").appendChild(e); });
+  [{ n: 4, c: "o" }, { n: 5, c: "o" }, { n: 6, c: "o" }].forEach(t => { const e = tileEl(t); e.tabIndex = -1; $("exRun").appendChild(e); });
+
+  // ── 게임 상태 ──
+  let deck = [], deckPos = 0, hand = [], sel = new Set(), score = 0, combo = 0, lastPlay = -1e9;
+  let t0 = 0, nextDraw = 0, running = false, paused = false, pausedAt = 0;
+  let newIds = new Set(), sortMode = "num", plays = 0, bestPlay = 0;
+
+  function evalSet(ts) {
+    if (ts.length < 3) return null;
+    const ns = ts.map(t => t.n), cs = ts.map(t => t.c);
+    if (ns.every(n => n === ns[0]) && new Set(cs).size === cs.length) return "group";
+    if (cs.every(c => c === cs[0])) { const s = [...ns].sort((a, b) => a - b); if (s.every((n, i) => !i || n === s[i - 1] + 1)) return "run"; }
+    return null;
+  }
+  const basePoints = ts => Math.round(ts.reduce((a, t) => a + t.n, 0) * 10 * (1 + 0.5 * (ts.length - 3)));
+  const comboMult = c => Math.min(2, 1 + 0.25 * (c - 1));
+
+  function sortHand() {
+    if (sortMode === "num") hand.sort((a, b) => a.n - b.n || CK.indexOf(a.c) - CK.indexOf(b.c));
+    else hand.sort((a, b) => CK.indexOf(a.c) - CK.indexOf(b.c) || a.n - b.n);
+  }
+  const selected = () => hand.filter(t => sel.has(t.id));
+
+  function render() {
+    rackEl.replaceChildren(...hand.map(t => {
+      const e = tileEl(t);
+      if (sel.has(t.id)) e.classList.add("sel");
+      if (newIds.has(t.id)) e.classList.add("new");
+      e.setAttribute("aria-pressed", sel.has(t.id));
+      e.onclick = () => { if (!running || paused) return; sel.has(t.id) ? sel.delete(t.id) : sel.add(t.id); render(); };
+      return e;
+    }));
+    newIds.clear();
+    $("handCount").textContent = hand.length;
+    const m = $("meter"); m.replaceChildren();
+    for (let i = 0; i < HAND_MAX; i++) { const s = document.createElement("span"); if (i < hand.length) s.className = hand.length >= HAND_MAX - 2 ? "warn" : "on"; m.appendChild(s); }
+    $("score").textContent = score.toLocaleString();
+    const ce = $("combo"); ce.textContent = "×" + comboMult(Math.max(1, combo)).toFixed(2).replace(/\.?0+$/, ""); ce.classList.toggle("hot", combo > 1);
+    const s = selected(), kind = evalSet(s);
+    playBtn.disabled = !running || s.length === 0; discardBtn.disabled = !running || s.length === 0;
+    hintEl.classList.toggle("ok", !!kind);
+    if (!s.length) hintEl.textContent = "타일을 골라 조합을 만드세요";
+    else if (kind) {
+      const quick = performance.now() - lastPlay < 4000;
+      const pts = Math.round(basePoints(s) * comboMult(quick ? combo + 1 : 1));
+      hintEl.textContent = `${kind === "group" ? "그룹" : "연속"} ${s.length}장 · +${pts}${quick ? " (콤보!)" : ""}`;
+    } else hintEl.textContent = `${s.length}장 선택 · 아직 조합이 아니에요`;
+  }
+
+  function floatText(txt, neg) { const f = document.createElement("div"); f.className = "float" + (neg ? " neg" : ""); f.textContent = txt; tableEl.appendChild(f); setTimeout(() => f.remove(), 900); }
+
+  function draw(n = 1) {
+    for (let i = 0; i < n; i++) {
+      if (deckPos >= deck.length) { end("타일을 모두 썼어요!"); return; }
+      const t = deck[deckPos++]; hand.push(t); newIds.add(t.id);
+      if (hand.length > HAND_MAX) { end("손패가 넘쳤어요"); return; }
+    }
+  }
+
+  function play() {
+    if (!running || paused) return;
+    const s = selected(); if (!s.length) return;
+    const kind = evalSet(s), now = performance.now();
+    if (!kind) {
+      score = Math.max(0, score - 30); combo = 0;
+      rackEl.classList.remove("shake"); void rackEl.offsetWidth; rackEl.classList.add("shake");
+      floatText("−30", true); render(); return;
+    }
+    combo = now - lastPlay < 4000 ? combo + 1 : 1; lastPlay = now;
+    let pts = Math.round(basePoints(s) * comboMult(combo));
+    hand = hand.filter(t => !sel.has(t.id)); sel.clear(); plays++; bestPlay = Math.max(bestPlay, pts);
+    if (hand.length === 0) { pts += 300; score += pts; floatText(`+${pts} 손패 비움!`); draw(4); }
+    else { score += pts; floatText("+" + pts); }
+    if (running) { sortHand(); render(); }
+  }
+  function discard() {
+    if (!running || paused || !sel.size) return;
+    const n = sel.size;
+    hand = hand.filter(t => !sel.has(t.id)); sel.clear();
+    score = Math.max(0, score - 15 * n); combo = 0;
+    floatText(`−${15 * n}`, true); render();
+  }
+
+  const interval = el => 2600 - 1200 * Math.min(1, el / DURATION);
+  function loop() {
+    if (!running || paused) return;
+    const now = performance.now(), el = now - t0, left = Math.max(0, DURATION - el);
+    $("time").textContent = (left / 1000).toFixed(1);
+    const bar = $("timebar"); bar.style.transform = `scaleX(${left / DURATION})`; bar.classList.toggle("low", left < 10000);
+    let drew = false;
+    while (running && el >= nextDraw) { draw(1); nextDraw += interval(nextDraw); drew = true; }
+    if (!running) return;
+    if (drew) { sortHand(); render(); }
+    if (left <= 0) { end("시간 종료"); return; }
+    requestAnimationFrame(loop);
+  }
+
+  function start() {
+    deck = buildDeck(); deckPos = 0; hand = []; sel.clear(); score = 0; combo = 0; lastPlay = -1e9; plays = 0; bestPlay = 0;
+    running = true; paused = false; draw(START_HAND); sortHand();
+    t0 = performance.now(); nextDraw = interval(0);
+    $("startOv").hidden = true; $("endOv").hidden = true;
+    render(); requestAnimationFrame(loop);
+  }
+
+  function end(reason) {
+    if (!running) return;
+    running = false; sel.clear(); render();
+    $("endReason").textContent = reason;
+    $("endScore").textContent = score.toLocaleString() + "점";
+    $("endDetail").textContent = `조합 ${plays}번 · 한 번에 최고 +${bestPlay}`;
+    $("endOv").hidden = false; $("againBtn").focus();
+    showResult(MiniHub.submitScore(score)); // 한 판 끝날 때마다 정확히 1번
+  }
+
+  async function showResult(promise) {
+    const el = $("result");
+    el.textContent = "기록 저장 중…";
+    const r = await promise;
+    if (!r) el.textContent = "기록을 저장하지 못했어요";
+    else if (r.improved && r.previous !== null) el.textContent = `🎉 신기록! (이전 ${r.previous.toLocaleString()}점) · ${r.rank}위`;
+    else if (r.improved) el.textContent = `첫 기록 저장! · ${r.rank}위`;
+    else el.textContent = `내 최고 ${r.best.toLocaleString()}점 · ${r.rank}위`;
+    refreshBoard();
+  }
+
+  // ── 게임 안 순위표 ──
+  async function refreshBoard() {
+    const list = $("rankList"), empty = $("rankEmpty");
+    try {
+      const [rows, best] = await Promise.all([MiniHub.getGameRanking(GAME_ID, 10), MiniHub.getMyBest()]);
+      list.replaceChildren(...(rows || []).map(r => {
+        const li = document.createElement("li"); if (myId && r.player_id === myId) li.className = "me";
+        const p = document.createElement("span"); p.className = "pos"; p.textContent = r.rank;
+        const n = document.createElement("span"); n.className = "nick"; n.textContent = r.name;
+        const s = document.createElement("span"); s.className = "pts"; s.textContent = Number(r.score).toLocaleString();
+        li.append(p, n, s); return li;
+      }));
+      empty.hidden = !!(rows && rows.length);
+      empty.textContent = "아직 기록이 없어요. 첫 기록의 주인공이 되어 보세요.";
+      $("myBest").textContent = best == null ? "-" : Number(best).toLocaleString() + "점";
+    } catch (e) {
+      empty.hidden = false; empty.textContent = "순위를 불러오지 못했어요.";
+    }
+  }
+
+  // ── 탭이 숨겨지면 일시정지 ──
+  document.addEventListener("visibilitychange", () => {
+    if (!running) return;
+    if (document.hidden) { paused = true; pausedAt = performance.now(); }
+    else if (paused) {
+      const gap = performance.now() - pausedAt;
+      t0 += gap; lastPlay += gap; paused = false;
+      requestAnimationFrame(loop);
+    }
+  });
+
+  // ── 버튼·키 ──
+  playBtn.onclick = play; discardBtn.onclick = discard;
+  $("clearBtn").onclick = () => { sel.clear(); render(); };
+  $("sortNum").onclick = () => { sortMode = "num"; sortHand(); render(); };
+  $("sortColor").onclick = () => { sortMode = "color"; sortHand(); render(); };
+  $("startBtn").onclick = start; $("againBtn").onclick = start;
+  $("exitTop").onclick = () => MiniHub.exit(); $("exitEnd").onclick = () => MiniHub.exit();
+  document.addEventListener("keydown", e => {
+    if (!running) return;
+    if (e.key === "Enter") { e.preventDefault(); play(); }
+    else if (e.key === "Escape") { sel.clear(); render(); }
+  });
+
+  // 시작 화면 뒤로 오늘의 첫 손패를 보여줌
+  deck = buildDeck(); hand = deck.slice(0, START_HAND); sortHand(); render();
+  $("timebar").style.transform = "scaleX(1)";
+})();
+</script>
+</body>
+</html>
