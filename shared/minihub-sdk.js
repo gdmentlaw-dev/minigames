@@ -1,4 +1,4 @@
-// minihub-sdk.js v4 — 게임 점수·진행 상황을 랭킹 DB에 직접 기록하는 공용 파일
+// minihub-sdk.js v5 — 게임 점수·진행 상황을 랭킹 DB에 직접 기록하는 공용 파일
 // ⚠ 게임 담당자는 수정 금지. 아래 CONFIG만 허브 담당자가 채운다.
 // 사용법: docs/SPEC.md 5장
 //
@@ -32,6 +32,53 @@
   const round1 = (x) => Math.round(x * 10) / 10;
   const esc = (s) =>
     String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+  // ───────────── 얼굴 아이콘 (12종) ─────────────
+  // 플레이어마다 번호(0~11) 하나를 고른다. DB에 아직 번호가 없는 사람은 닉네임으로 정한 임시 얼굴을 보여준다.
+  const AVATARS = [
+    { c: "#ffb3cf", ear: "bear", eye: "dot", mouth: "smile" },
+    { c: "#ffd86b", ear: "cat", eye: "dot", mouth: "cat" },
+    { c: "#cbb8ff", ear: "bunny", eye: "happy", mouth: "smile" },
+    { c: "#a8e6c8", ear: "sprout", eye: "dot", mouth: "o" },
+    { c: "#9fd8ff", ear: "bear", eye: "happy", mouth: "cat" },
+    { c: "#ffc4a3", ear: "cat", eye: "dot", mouth: "smile" },
+    { c: "#f6a5a5", ear: "bunny", eye: "dot", mouth: "o" },
+    { c: "#bfe8f2", ear: "sprout", eye: "happy", mouth: "smile" },
+    { c: "#e6c9a8", ear: "bear", eye: "dot", mouth: "o" },
+    { c: "#f3d1f0", ear: "cat", eye: "happy", mouth: "smile" },
+    { c: "#d9f08f", ear: "bunny", eye: "dot", mouth: "cat" },
+    { c: "#c9d3ff", ear: "sprout", eye: "dot", mouth: "cat" },
+  ];
+  function avatarIndex(who) {
+    const n = who !== null && typeof who === "object" ? who.avatar : who;
+    if (Number.isInteger(n) && n >= 0 && n < AVATARS.length) return n;
+    const s = who !== null && typeof who === "object" ? String(who.name ?? who.id ?? "") : "";
+    let h = 0;
+    for (const ch of s) h = (h * 31 + ch.codePointAt(0)) % 9973;
+    return h % AVATARS.length;
+  }
+  // who = 번호(0~11) 또는 { avatar, name } → 얼굴 그림(SVG 글자). size = 가로세로 픽셀
+  function avatarSvg(who, size = 40) {
+    const a = AVATARS[avatarIndex(who)], c = a.c, ink = "#3b2f45", inner = '<g fill="#fff" opacity=".55">';
+    const ears = {
+      bear: `<circle cx="14" cy="18" r="9" fill="${c}"/><circle cx="50" cy="18" r="9" fill="${c}"/>${inner}<circle cx="14" cy="18" r="4.5"/><circle cx="50" cy="18" r="4.5"/></g>`,
+      cat: `<path d="M9 31 L12 5 L31 16Z" fill="${c}"/><path d="M55 31 L52 5 L33 16Z" fill="${c}"/>${inner}<path d="M14 24 L15.5 11 L25 17Z"/><path d="M50 24 L48.5 11 L39 17Z"/></g>`,
+      bunny: `<ellipse cx="22" cy="12" rx="6.5" ry="14" fill="${c}"/><ellipse cx="42" cy="12" rx="6.5" ry="14" fill="${c}"/>${inner}<ellipse cx="22" cy="14" rx="3" ry="9"/><ellipse cx="42" cy="14" rx="3" ry="9"/></g>`,
+      sprout: `<path d="M32 14 C32 5 23 3 20 7 C25 7 29 9 32 14Z" fill="#7fcf9a"/><path d="M32 14 C32 6 41 4 44 8 C39 8 35 10 32 14Z" fill="#58b883"/>`,
+    }[a.ear];
+    const eyes = a.eye === "happy"
+      ? `<path d="M19.5 38 q3.5 -5 7 0 M37.5 38 q3.5 -5 7 0" stroke="${ink}" stroke-width="2.4" fill="none" stroke-linecap="round"/>`
+      : `<circle cx="23" cy="37" r="3.2" fill="${ink}"/><circle cx="41" cy="37" r="3.2" fill="${ink}"/>`;
+    const mouth = {
+      smile: `<path d="M27.5 45 q4.5 4.5 9 0" stroke="${ink}" stroke-width="2.2" fill="none" stroke-linecap="round"/>`,
+      o: `<ellipse cx="32" cy="46.5" rx="2.4" ry="2.9" fill="${ink}"/>`,
+      cat: `<path d="M26.5 45 q2.75 3.5 5.5 0 q2.75 3.5 5.5 0" stroke="${ink}" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`,
+    }[a.mouth];
+    return `<svg class="av" viewBox="-2 -4 68 68" width="${size}" height="${size}" aria-hidden="true" style="display:block;flex:none">` +
+      ears + `<circle cx="32" cy="37" r="25" fill="${c}"/><ellipse cx="22" cy="24" rx="9" ry="5" fill="#fff" opacity=".3" transform="rotate(-25 22 24)"/>` +
+      `<circle cx="16.5" cy="44.5" r="4.2" fill="#ff6f98" opacity=".45"/><circle cx="47.5" cy="44.5" r="4.2" fill="#ff6f98" opacity=".45"/>` +
+      eyes + mouth + "</svg>";
+  }
 
   // ───────────── 이사 안내: 옛 주소(github.io)로 들어오면 새 주소로 안내 ─────────────
   const NEW_SITE = "https://minigame63.pages.dev";
@@ -72,7 +119,7 @@
     const m = new Map();
     for (const r of rows) {
       let p = m.get(r.player_id);
-      if (!p) m.set(r.player_id, (p = { player_id: r.player_id, name: r.name, total: 0, games_played: 0, last_at: "", per_game: {} }));
+      if (!p) m.set(r.player_id, (p = { player_id: r.player_id, name: r.name, avatar: r.avatar ?? null, total: 0, games_played: 0, last_at: "", per_game: {} }));
       p.total = round1(p.total + r.points);
       p.games_played++;
       p.per_game[r.game_id] = r.points;
@@ -107,7 +154,7 @@
     const rows = (d, gid) =>
       rankGame(
         Object.entries(d.bests[gid] || {}).map(([pid, b]) => ({
-          game_id: gid, player_id: pid, name: d.players[pid]?.name || "?", score: b.score, achieved_at: b.at,
+          game_id: gid, player_id: pid, name: d.players[pid]?.name || "?", avatar: d.players[pid]?.avatar ?? null, score: b.score, achieved_at: b.at,
         })),
         d.games[gid]?.order || "desc"
       );
@@ -122,7 +169,7 @@
       },
       async me() {
         const d = db(), pid = pidOf(d);
-        return pid && d.players[pid] ? { id: pid, name: d.players[pid].name } : null;
+        return pid && d.players[pid] ? { id: pid, name: d.players[pid].name, avatar: d.players[pid].avatar ?? null } : null;
       },
       async login(rawName, pin) {
         const name = cleanName(rawName);
@@ -132,16 +179,16 @@
         const found = Object.entries(d.players).find(([, p]) => p.name.toLowerCase() === name.toLowerCase());
         if (!found) {
           const pid = "p_" + Math.random().toString(36).slice(2, 10);
-          d.players[pid] = { name, pin, failed: 0, lockedUntil: 0 }; // 로컬 테스트용이라 PIN을 그대로 저장
+          d.players[pid] = { name, pin, avatar: null, failed: 0, lockedUntil: 0 }; // 로컬 테스트용이라 PIN을 그대로 저장
           d.devices[uid] = pid;
           save(d);
-          return { status: "created", id: pid, name };
+          return { status: "created", id: pid, name, avatar: null };
         }
         const [pid, p] = found;
         if (p.lockedUntil > Date.now()) return { status: "locked", seconds: Math.ceil((p.lockedUntil - Date.now()) / 1000) };
         if (p.pin === pin) {
           p.failed = 0; p.lockedUntil = 0; d.devices[uid] = pid; save(d);
-          return { status: "login", id: pid, name: p.name };
+          return { status: "login", id: pid, name: p.name, avatar: p.avatar ?? null };
         }
         p.failed = (p.failed || 0) + 1;
         if (p.failed >= MAX_FAIL) { p.failed = 0; p.lockedUntil = Date.now() + LOCK_MS; save(d); return { status: "locked", seconds: LOCK_MS / 1000 }; }
@@ -156,6 +203,13 @@
         if (Object.entries(d.players).some(([id, p]) => id !== pid && p.name.toLowerCase() === name.toLowerCase())) return { status: "taken" };
         d.players[pid].name = name; save(d);
         return { status: "ok", name };
+      },
+      async setAvatar(n) {
+        const d = db(), pid = pidOf(d);
+        if (!pid) throw new Error("log in first");
+        if (!Number.isInteger(n) || n < 0 || n >= AVATARS.length) return { status: "bad_avatar" };
+        d.players[pid].avatar = n; save(d);
+        return { status: "ok", avatar: n };
       },
       async logout() { const d = db(); delete d.devices[uid]; save(d); },
       async loadSave(gid) { const d = db(), pid = pidOf(d); return (pid && d.saves[pid]?.[gid]) ?? null; },
@@ -222,6 +276,7 @@
       async me() { pid = null; return keep(must(await sb.rpc("me"))) || null; },
       async login(name, pin) { return keep(must(await sb.rpc("login", { p_name: name, p_pin: pin }))); },
       async rename(name) { return must(await sb.rpc("rename_player", { p_name: name })); },
+      async setAvatar(n) { return must(await sb.rpc("set_avatar", { p_avatar: n })); }, // DB에 set_avatar가 없으면 오류
       async logout() { must(await sb.rpc("logout")); pid = null; },
       async loadSave(gid) { return must(await sb.rpc("load_save", { p_game_id: gid })) ?? null; },
       async saveGame(gid, data) { must(await sb.rpc("save_game", { p_game_id: gid, p_data: data })); },
@@ -312,25 +367,28 @@
         --toast:#2d2858; --toast-line:#7c6cf0; --hi:#ffc83d; --r:20px; --r-in:12px; --shadow:rgba(0,0,0,.4)}
       /* 밝은 화면(랭킹 메인페이지)용: <html data-minihub-theme="light"> */
       :host([data-theme=light]){
-        --font:Lora,"Noto Serif KR",serif; --head:"Cormorant Garamond","Noto Serif KR",serif;
-        --card:#f3f2f2; --text:#201f1d; --sub:#605d5d; --field:#fff; --line:rgba(32,31,29,.22); --focus:#b68235;
-        --btn:#fff3e4; --btn-text:#7d5411; --ghost:transparent; --err:#b0443a; --back:rgba(45,43,43,.42);
-        --toast:#f3f2f2; --toast-line:#b68235; --hi:#7d5411; --r:4px; --r-in:4px; --shadow:rgba(45,43,43,.22)}
+        --font:"Gowun Dodum","Noto Sans KR",sans-serif; --head:Dongle,"Gowun Dodum",sans-serif;
+        --card:#fff; --text:#4a3d6e; --sub:#7a6c9e; --field:#f6f1ff; --line:rgba(143,111,224,.32); --focus:#8f6fe0;
+        --btn:linear-gradient(135deg,#ff9cc2,#b69cff); --btn-text:#fff; --ghost:#f3ecff; --err:#e0486a; --back:rgba(74,61,110,.38);
+        --toast:#fff; --toast-line:#b69cff; --hi:#e0488f; --r:28px; --r-in:16px; --shadow:rgba(143,111,224,.32)}
       *{box-sizing:border-box;font-family:var(--font)}
       .bg{position:fixed;inset:0;background:var(--back);display:flex;align-items:center;justify-content:center;padding:16px;pointer-events:auto}
       form{background:var(--card);color:var(--text);border-radius:var(--r);padding:24px;width:min(100%,340px);display:flex;flex-direction:column;gap:10px}
-      :host([data-theme=light]) form{border:1px solid #b68235;box-shadow:0 12px 32px var(--shadow);word-break:keep-all}
+      :host([data-theme=light]) form{box-shadow:0 14px 36px var(--shadow);word-break:keep-all}
       h2{margin:0;font-size:20px;font-family:var(--head)} p{margin:0;font-size:14px;color:var(--sub)}
-      :host([data-theme=light]) h2{font-size:26px;font-weight:600;line-height:1.15}
+      :host([data-theme=light]) h2{font-size:38px;font-weight:700;line-height:1}
       input{font:inherit;font-size:18px;padding:12px 14px;border-radius:var(--r-in);border:1px solid var(--line);background:var(--field);color:var(--text);outline:none}
       input:focus{border-color:var(--focus)}
       .row{display:flex;gap:8px;justify-content:flex-end;margin-top:6px}
       button{border:0;border-radius:var(--r-in);padding:12px 18px;font:inherit;font-weight:800;cursor:pointer;background:var(--btn);color:var(--btn-text)}
       button.ghost{background:var(--ghost);color:var(--text)}
-      :host([data-theme=light]) button{font-family:var(--head);font-weight:600;font-size:16px;border:1px solid #b68235;min-height:44px}
-      :host([data-theme=light]) button:hover{background:#ffe3bf}
-      :host([data-theme=light]) button.ghost{border-color:var(--line)}
-      :host([data-theme=light]) button.ghost:hover{background:rgba(32,31,29,.07)}
+      :host([data-theme=light]) button{font-family:var(--head);font-weight:700;font-size:24px;line-height:1;border-radius:999px;min-height:46px;padding:10px 22px 12px}
+      :host([data-theme=light]) button.wide{font-size:20px;font-family:var(--font);font-weight:400;border-radius:var(--r-in);padding:12px 18px}
+      :host([data-theme=light]) button.ghost:hover{background:#e9defc}
+      .avs{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:4px 0 2px}
+      .avs button.av{min-height:0;line-height:0;padding:6px;background:var(--field);border:2px solid transparent;border-radius:18px;display:grid;place-items:center;font-size:0}
+      .avs .av svg{width:100%;height:auto;max-width:56px}
+      .avs button.av.on{border-color:var(--focus);background:var(--card);box-shadow:0 0 0 3px color-mix(in srgb,var(--focus) 25%,transparent)}
       .err{color:var(--err);line-height:1.5} p b{color:var(--text)}
       label{display:block;font-size:15px;font-weight:700}
       label input{display:block;width:100%;margin-top:6px}
@@ -413,10 +471,10 @@
           switch (r && r.status) {
             case "created":
               toast(`✅ <b>${esc(r.name)}</b>님 등록 완료! PIN을 꼭 기억해 두세요`, 5000);
-              return { id: r.id, name: r.name };
+              return { id: r.id, name: r.name, avatar: r.avatar ?? null, created: true };
             case "login":
               toast(`👋 <b>${esc(r.name)}</b>님 다시 오셨네요! 기록이 이어져요`, 4000);
-              return { id: r.id, name: r.name };
+              return { id: r.id, name: r.name, avatar: r.avatar ?? null };
             case "wrong_pin":
               form.pin.value = "";
               return fail(`이미 있는 닉네임인데 PIN이 맞지 않아요 (남은 기회 ${r.left}번)<br>처음 오셨다면 다른 닉네임을 써주세요`);
@@ -430,6 +488,46 @@
         },
       }
     );
+  }
+
+  // 얼굴 고르기 창 → 고른 번호(0~11), 취소하면 null. 처음 등록할 때는 취소할 수 없다(미리 하나 골라져 있음)
+  function askAvatar(current, { cancel = false } = {}) {
+    let pick = Number.isInteger(current) ? current : Math.floor(Math.random() * AVATARS.length);
+    return dialog(
+      `<h2>${cancel ? "얼굴 바꾸기" : "내 얼굴을 골라요"}</h2>
+       <p>랭킹에서 내 닉네임 옆에 보여요.${cancel ? "" : " 나중에 내 정보에서 바꿀 수 있어요"}</p>
+       <div class="avs">${AVATARS.map((_, i) => `<button type="button" class="av${i === pick ? " on" : ""}" data-av="${i}" aria-label="얼굴 ${i + 1}">${avatarSvg(i, 56)}</button>`).join("")}</div>`,
+      {
+        cancel,
+        onReady(form) {
+          form.querySelectorAll(".av").forEach((b) =>
+            b.addEventListener("click", () => {
+              pick = +b.dataset.av;
+              form.querySelectorAll(".av").forEach((x) => x.classList.toggle("on", x === b));
+            })
+          );
+        },
+        async onSubmit(form, fail) {
+          try {
+            const r = await store.setAvatar(pick);
+            if (!r || r.status !== "ok") return fail("얼굴을 저장하지 못했어요. 다시 시도해주세요");
+          } catch (e) {
+            console.warn("[MiniHub] 얼굴 저장 실패 (DB에 set_avatar 함수가 없을 수 있어요)", e);
+            if (cancel) return fail("저장하지 못했어요. 인터넷 연결을 확인하고 다시 시도해주세요");
+          }
+          return pick;
+        },
+      }
+    );
+  }
+
+  // 새로 등록한 사람이면 얼굴을 고르게 한다
+  async function afterLogin(p) {
+    if (!p) return p;
+    const { created, ...rest } = p;
+    if (!created) return rest;
+    const a = await askAvatar(null);
+    return Number.isInteger(a) ? { ...rest, avatar: a } : rest;
   }
 
   // 닉네임 바꾸기 창 → 새 이름, 취소하면 null
@@ -457,6 +555,7 @@
     return dialog(
       `<h2>👤 ${esc(current)}</h2>
        <p>다른 기기에서도 이 닉네임과 PIN을 넣으면 같은 기록으로 이어져요</p>
+       <button type="button" class="ghost wide" data-act="avatar">🙂 얼굴 바꾸기</button>
        <button type="button" class="ghost wide" data-act="rename">✏️ 닉네임 바꾸기</button>
        <button type="button" class="ghost wide" data-act="switch">🔁 다른 닉네임으로 접속</button>`,
       {
@@ -497,7 +596,7 @@
         throw e;
       }
       let me = await store.me().catch((e) => { console.error(e); return null; });
-      if (!me && opts.askName !== false) me = await askLogin();
+      if (!me && opts.askName !== false) me = await afterLogin(await askLogin());
       player = me || { id: null, name: "Guest" };
       const cbs = readyCbs; readyCbs = [];
       cbs.forEach((cb) => { try { cb(player); } catch (e) { console.error(e); } });
@@ -589,7 +688,7 @@
   }
 
   window.MiniHub = {
-    version: 4,
+    version: 5,
     get mode() { return store.mode; },
     root: ROOT,
     siteTitle: CONFIG.siteTitle,
@@ -606,13 +705,16 @@
     // 내 정보 메뉴 (닉네임 바꾸기 / 다른 닉네임으로 접속). 바뀐 player를 돌려준다
     async changeName() {
       try { await init(gameId); } catch { return player; }
-      if (!player.id) { const p = await askLogin({ cancel: true }); if (p) player = p; return player; }
+      if (!player.id) { const p = await afterLogin(await askLogin({ cancel: true })); if (p) player = p; return player; }
       const act = await accountMenu(player.name);
-      if (act === "rename") {
+      if (act === "avatar") {
+        const a = await askAvatar(avatarIndex(player), { cancel: true });
+        if (Number.isInteger(a)) { player = { ...player, avatar: a }; toast("얼굴을 바꿨어요. 랭킹에도 바로 반영돼요"); }
+      } else if (act === "rename") {
         const n = await askRename(player.name);
         if (n && n !== player.name) { player = { ...player, name: n }; toast("닉네임을 바꿨어요. 랭킹에도 바로 반영돼요"); }
       } else if (act === "switch") {
-        const p = await askLogin({ cancel: true });
+        const p = await afterLogin(await askLogin({ cancel: true }));
         if (p) player = p;
       }
       return player;
@@ -639,6 +741,8 @@
     getOverallPrev: async (ids) => { await init(gameId); return store.getOverallPrev(ids); },
 
     // 표시 도우미
+    avatar: avatarSvg,           // MiniHub.avatar(player 또는 순위표 한 줄, 크기px) → 얼굴 그림(SVG 글자)
+    avatarCount: AVATARS.length,
     toast,
     format: fmtScore,
   };

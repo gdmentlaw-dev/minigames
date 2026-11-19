@@ -61,6 +61,8 @@ MiniHub.submitScore(점수);           // 한 판이 끝날 때마다 정확히 
 - (선택) `MiniHub.exit()` → 메인페이지로 이동. "메인으로" 버튼에 쓰면 좋다.
 - (선택) 게임 안에서 순위표를 보여주고 싶으면 `await MiniHub.getGameRanking("<게임ID>", 10)`
   → `[{ rank, name, score, ... }]`
+- (선택) 얼굴 아이콘 표시: 플레이어는 처음 접속할 때 얼굴(12종)을 고른다. `MiniHub.avatar(player 또는 순위표 한 줄, 크기px)` → 얼굴 그림(SVG 글자).
+  예: `el.innerHTML = MiniHub.avatar(player, 32)`, 순위표 줄은 `MiniHub.avatar(row, 32)` (row에 avatar·name이 들어 있음)
 - (선택) 내 최고 기록 표시: `await MiniHub.getMyBest()` → 숫자 또는 null (최고 기록은 SDK가 이미 서버에 저장한다)
 
 ### 2-1. 게임 진행 저장·불러오기 (선택)

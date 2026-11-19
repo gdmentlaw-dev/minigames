@@ -5,9 +5,15 @@
     String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const fmtP = (p) => (Math.round(Number(p) * 10) / 10).toLocaleString("ko-KR", { maximumFractionDigits: 1 });
   const num = (n) => Number(n).toLocaleString("ko-KR");
-  const short = (t) => (/^[0-9A-Za-z]+$/.test(t) ? t.slice(0, 4) : [...t].slice(0, 2).join(""));
+  // 게임 이름 줄임말: 한글은 두 글자(러시), 숫자로 시작하면 세 글자(10초), 영문은 첫 단어 4글자(Meow)
+  const short = (t) => {
+    const s = String(t).trim();
+    if (/^[A-Za-z]/.test(s)) return s.split(/\s+/)[0].slice(0, 4);
+    const c = s.replace(/\s+/g, "");
+    return /^[0-9]/.test(c) ? c.slice(0, 3) : [...c].slice(0, 2).join("");
+  };
   const PLAY = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><polygon points="6 3 20 12 6 21 6 3"/></svg>';
-  const TROPHY = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#b68235" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>';
+  const TROPHY = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8f6fe0" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>';
 
   // ?dev=1 → 숨김(예제) 게임도 보기 (메인페이지와 같은 규칙)
   const params = new URLSearchParams(location.search);
@@ -32,7 +38,7 @@
     return;
   }
   const isMe = (r) => !!player.id && r.player_id === player.id;
-  const renderName = () => ($("name-chip").textContent = player.name);
+  const renderName = () => ($("name-chip").innerHTML = `${MiniHub.avatar(player, 26)}<span class="nmtxt">${esc(player.name)}</span>`);
   renderName();
 
   const games = await MiniHub.listGames({ includeHidden: dev });
@@ -141,8 +147,11 @@
       ? { value: num(r.score), unit: g.scoreUnit, sub: `포인트 ${fmtP(r.points)}` }
       : { value: fmtP(r.total), unit: "P", sub: `${r.games_played}/${games.length} 게임 참여` };
   }
-  const bars = (r) =>
-    games.map((g) => { const p = Number((r.per_game || {})[g.id] || 0); return `<i class="${p ? "" : "z"}" style="height:${p ? Math.max(p, 6) : 6}%"></i>`; }).join("");
+  // 게임별 포인트 (이름 + 점수 + 막대). 1위 카드에는 늘 보이고, 2위부터와 하단 "내 순위"는 눌러서 펼친다
+  const gmHtml = (r) => `<div class="gm" style="grid-template-columns:repeat(${Math.min(4, games.length) || 1},1fr)">${games.map((x) => {
+    const p = Number((r.per_game || {})[x.id] || 0);
+    return `<span class="g${p ? "" : " z"}"><span class="gl">${esc(short(x.title))}<b>${p ? fmtP(p) : "-"}</b></span><i style="--w:${Math.round(p)}%"></i></span>`;
+  }).join("")}</div>`;
 
   function boardHtml(rows, g, dl) {
     if (!rows.length)
@@ -151,41 +160,37 @@
     const dSpan = (r) => { const d = dl.of(r); return d.text ? `<span class="d ${d.cls}">${d.text}</span>` : ""; };
     const c = rows[0];
     const cv = view(c, g);
+    // 1위 카드: 얼굴 · 이름 · 점수, 종합이면 게임별 포인트 막대
     const champ = `<section class="champ">
       <div class="champ-top">
-        <span class="numeral">1</span>
-        <span style="min-width:0"><span class="kicker">챔피언</span><span class="champ-name">${name(c)}</span></span>
-        ${dSpan(c)}
+        ${MiniHub.avatar(c, 68)}
+        <span class="ci"><span class="kicker">1등</span><span class="champ-name">${name(c)}</span>${dSpan(c)}</span>
+        <span class="big">${cv.value}<small>${esc(cv.unit)}</small></span>
       </div>
-      <div class="champ-val"><span class="lbl">${g ? "기록" : "포인트"}</span><span class="big">${cv.value}<small>${esc(cv.unit)}</small></span></div>
       ${g ? `<span class="champ-sub">${cv.sub}</span>`
-          : `<div class="cbars" style="grid-template-columns:repeat(${games.length},1fr)">${games.map((x) => {
-              const p = Number((c.per_game || {})[x.id] || 0);
-              return `<span class="col"><span class="b"><i class="${p ? "" : "z"}" style="height:${p ? Math.max(p, 6) : 6}%"></i></span><span>${esc(short(x.title))}</span></span>`;
-            }).join("")}</div>`}
+          : gmHtml(c)}
     </section>`;
+    // 2위부터: 순위 · 얼굴 · 이름(+등락) · 점수
     const rest = rows.slice(1).map((r) => {
-      const v = view(r, g), d = dl.of(r);
-      if (!g) // 종합: 이름 · 등락 · 게임별 막대를 한 줄에
-        return `<div class="row ov${isMe(r) ? " me" : ""}">
-          <span class="rk">${r.rank}</span>
-          <span class="nm"><span class="n">${name(r)}</span>${dSpan(r)}<span class="bars">${bars(r)}</span></span>
-          <span class="val">${v.value}<small>${esc(v.unit)}</small></span>
-        </div>`;
-      return `<div class="row${isMe(r) ? " me" : ""}">
-        <span class="rk">${r.rank}</span>
-        <span class="nm">${name(r)}${dSpan(r)}</span>
-        <span class="dt">${v.sub}</span>
+      const v = view(r, g);
+      const open = !g; // 종합은 줄을 누르면 게임별 점수가 펼쳐진다
+      return `<div class="li${isMe(r) ? " me" : ""}${open ? " exp" : ""}"${open ? ' role="button" tabindex="0" aria-expanded="false"' : ""}>
+        <span class="rk">${r.rank}</span>${MiniHub.avatar(r, 40)}
+        <span class="who"><span class="nm"><span class="n">${name(r)}</span>${dSpan(r)}</span>${g ? `<span class="dt">${v.sub}</span>` : `<span class="dt">${r.games_played}/${games.length} 게임 참여</span>`}</span>
         <span class="val">${v.value}<small>${esc(v.unit)}</small></span>
-        <span class="dc d ${d.cls}">${d.cell}</span>
+        ${open ? gmHtml(r) : ""}
       </div>`;
     }).join("");
-    const head = g
-      ? `<span>순위</span><span>닉네임</span><span>포인트</span><span class="r">기록</span><span class="r">변동</span>`
-      : `<span>순위</span><span>닉네임 · 변동 · 게임별 포인트</span><span class="r">포인트</span>`;
-    return `<div class="top3">${champ}</div>
-      ${rest ? `<div class="list"><div class="lh${g ? "" : " ov"}">${head}</div>${rest}</div>` : ""}`;
+    return `<div class="top3">${champ}</div>${rest ? `<div class="list">${rest}</div>` : ""}`;
   }
+
+  // 종합 순위 줄을 누르면 게임별 점수 펼치기/접기
+  const toggleRow = (li) => { const on = li.classList.toggle("open"); li.setAttribute("aria-expanded", on); };
+  $("board").addEventListener("click", (e) => { const li = e.target.closest(".li.exp"); if (li) toggleRow(li); });
+  $("board").addEventListener("keydown", (e) => {
+    const li = e.target.closest(".li.exp");
+    if (li && li === e.target && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); toggleRow(li); }
+  });
 
   function gapText(me, rows, g) {
     if (me.rank === 1) return "1위를 지키고 있어요";
@@ -209,7 +214,10 @@
     } else {
       body = `<span class="tag">내 순위</span><span class="mi"><span>아직 기록이 없어요</span><small>한 판만 해도 순위에 올라가요</small></span>`;
     }
-    $("mybar").innerHTML = `<div class="mybar-in">${body}${btn}</div>`;
+    // 종합이고 내 기록이 있으면: 누르면 게임별 점수가 위로 펼쳐진다
+    const open = !g && !!me;
+    const wasOpen = !!$("mybar").querySelector(".mybar-in.open");
+    $("mybar").innerHTML = `<div class="mybar-in${open ? " exp" + (wasOpen ? " open" : "") : ""}">${open ? gmHtml(me) : ""}<div class="mb-row">${body}${open ? '<span class="caret" aria-hidden="true">▴</span>' : ""}${btn}</div></div>`;
     $("mybar").hidden = !player.id;
   }
 
@@ -270,7 +278,12 @@
     $("sheet-x").focus();
   }
   const closeSheet = () => ($("sheet").hidden = true);
-  $("mybar").addEventListener("click", (e) => { if (e.target.closest("[data-pick]")) openSheet(); });
+  $("mybar").addEventListener("click", (e) => {
+    if (e.target.closest("[data-pick]")) return openSheet();
+    if (e.target.closest(".btn-play")) return;
+    const box = e.target.closest(".mybar-in.exp");
+    if (box) box.classList.toggle("open");
+  });
   $("sheet").addEventListener("click", (e) => { if (e.target === $("sheet")) closeSheet(); });
   $("sheet-x").addEventListener("click", closeSheet);
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeSheet(); });
@@ -287,9 +300,9 @@
     renderBoard();
   });
   $("name-chip").addEventListener("click", async () => {
-    const before = `${player.id}|${player.name}`;
+    const before = `${player.id}|${player.name}|${player.avatar}`;
     player = await MiniHub.changeName();
-    if (`${player.id}|${player.name}` !== before) { renderName(); refreshAll(); }
+    if (`${player.id}|${player.name}|${player.avatar}` !== before) { renderName(); refreshAll(); }
   });
   // 자동 새로고침 없음: 페이지를 열거나 새로고침할 때만 데이터를 받아온다.
   // (뒤로가기로 돌아와 캐시된 화면이 복원될 때도 새로 받아온다)
