@@ -89,14 +89,24 @@
     };
   }
 
-  // ── 썸네일 (이미지가 없으면 게임 이름 두 글자) ──
-  const thumb = (g) => `<span class="th"><img src="${esc(g.thumbnail)}" alt="" data-short="${esc(short(g.title))}" draggable="false"></span>`;
+  // ── 썸네일 (어두운 모드에는 thumbnail-dark.svg 처럼 "-dark"가 붙은 파일을 쓴다. 없으면 기본 이미지, 그것도 없으면 게임 이름 두 글자) ──
+  const isDark = () => window.MiniHubTheme && MiniHubTheme.get() === "dark";
+  const darkUrl = (u) => u.replace(/(\.[A-Za-z0-9]+)(\?.*)?$/, "-dark$1$2");
+  const thumbSrc = (base) => (isDark() ? darkUrl(base) : base);
+  const thumb = (g) => `<span class="th"><img src="${esc(thumbSrc(g.thumbnail))}" data-base="${esc(g.thumbnail)}" alt="" data-short="${esc(short(g.title))}" draggable="false"></span>`;
   function fixThumbs(root) {
     root.querySelectorAll(".th img").forEach((img) => {
-      const fail = () => { const th = img.parentNode; if (th) th.textContent = img.dataset.short; };
+      const fail = () => {
+        if (img.dataset.base && img.getAttribute("src") !== img.dataset.base) { img.src = img.dataset.base; img.addEventListener("error", fail, { once: true }); return; }
+        const th = img.parentNode; if (th) th.textContent = img.dataset.short;
+      };
       if (img.complete && !img.naturalWidth) fail(); else img.addEventListener("error", fail, { once: true });
     });
   }
+  if (window.MiniHubTheme) MiniHubTheme.onChange(() => {
+    document.querySelectorAll(".th img[data-base]").forEach((img) => { img.src = thumbSrc(img.dataset.base); });
+    fixThumbs(document);
+  });
 
   // ── 게임 스위처 ──
   function renderTiles() {

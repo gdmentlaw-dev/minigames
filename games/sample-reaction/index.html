@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>반응속도</title>
+<script src="../../shared/minihub-theme.js"></script>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=Dongle:wght@400;700&display=swap">
 <style>
   /* 반응속도: 낮을수록 좋은 점수(scoreOrder "asc"), ms 정수 — 메인페이지와 같은 소프트 파스텔 */
@@ -34,6 +35,16 @@
   #pad-small { font-size: 18px; opacity: .9; }
   .result { font-size: 17px; font-weight: 700; color: #7a6c9e; min-height: 1.5em; }
   #final { font-family: "Dongle", "Gowun Dodum", sans-serif; font-size: 100px; font-weight: 700; line-height: .9; color: #c77700; }
+  /* 어두운 모드 (메인페이지와 연동: shared/minihub-theme.js) */
+  :root[data-theme="dark"], :root[data-theme="dark"] body { background: linear-gradient(170deg, #1c1d4d 0%, #121838 55%, #0e2446 100%); color: #eef0ff; }
+  :root[data-theme="dark"] h1 { color: #b69cff; }
+  :root[data-theme="dark"] .hello { color: #ffc83d; }
+  :root[data-theme="dark"] .desc, :root[data-theme="dark"] .result { color: #b8bde6; }
+  :root[data-theme="dark"] .btn.sub { background: #272f69; color: #eef0ff; box-shadow: 0 4px 12px rgba(0,0,0,.35); }
+  :root[data-theme="dark"] #pad.wait { background: linear-gradient(#c2457f, #9c2f62); }
+  :root[data-theme="dark"] #pad.go { background: linear-gradient(#3fb584, #1f8a5e); }
+  :root[data-theme="dark"] #pad.info { background: linear-gradient(#3a3f85, #2b3170); color: #eef0ff; }
+  :root[data-theme="dark"] #final { color: #ffc83d; }
 </style>
 </head>
 <body>

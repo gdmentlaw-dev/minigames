@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>10초 연타</title>
+<script src="../../shared/minihub-theme.js"></script>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=Dongle:wght@400;700&display=swap">
 <style>
   /* 10초 연타: 높을수록 좋은 점수(scoreOrder "desc") — 메인페이지와 같은 소프트 파스텔 */
@@ -36,6 +37,15 @@
   #tap:active { transform: translateY(6px); box-shadow: inset 0 6px 0 rgba(255,255,255,.4), 0 4px 0 #6f4fc4, 0 8px 12px rgba(143,111,224,.4); }
   .result { font-size: 17px; font-weight: 700; color: #7a6c9e; min-height: 1.5em; }
   #final { font-family: "Dongle", "Gowun Dodum", sans-serif; font-size: 110px; font-weight: 700; line-height: .9; color: #c77700; }
+  /* 어두운 모드 (메인페이지와 연동: shared/minihub-theme.js) */
+  :root[data-theme="dark"], :root[data-theme="dark"] body { background: linear-gradient(170deg, #1c1d4d 0%, #121838 55%, #0e2446 100%); color: #eef0ff; }
+  :root[data-theme="dark"] h1 { color: #b69cff; }
+  :root[data-theme="dark"] .hello { color: #ffc83d; }
+  :root[data-theme="dark"] .desc, :root[data-theme="dark"] .result { color: #b8bde6; }
+  :root[data-theme="dark"] .btn.sub { background: #272f69; color: #eef0ff; box-shadow: 0 4px 12px rgba(0,0,0,.35); }
+  :root[data-theme="dark"] #timer { color: #ff8ab8; }
+  :root[data-theme="dark"] #count { color: #eef0ff; }
+  :root[data-theme="dark"] #final { color: #ffc83d; }
 </style>
 </head>
 <body>
