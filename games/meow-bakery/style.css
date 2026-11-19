@@ -1259,3 +1259,13 @@ button { font: inherit; }
   .order-slip-list { grid-template-columns: 1fr; }
   .store-empty-stock > div { justify-content: center; }
 }
+
+/* ───── 어두운 모드 (메인페이지와 연동: shared/minihub-theme.js) ─────
+   화면 색을 한 번에 뒤집어(밝은 크림 → 어두운 갈색) 어두운 모드를 만든다.
+   그림(캔버스·고양이·재료 아이콘)과 로그인 창은 한 번 더 뒤집어서 원래 색을 지킨다. */
+:root[data-theme="dark"] { filter: invert(1) hue-rotate(180deg); }
+:root[data-theme="dark"] canvas,
+:root[data-theme="dark"] img,
+:root[data-theme="dark"] .ingredient-swatch,
+:root[data-theme="dark"] #minihub-ui { filter: invert(1) hue-rotate(180deg); }
+:root[data-theme="dark"] .store-cat-art { filter: invert(1) hue-rotate(180deg) drop-shadow(2px 3px 0 rgba(96, 62, 50, .23)); }

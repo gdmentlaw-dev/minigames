@@ -87,3 +87,45 @@
 @media (max-width: 600px) {
   .balloon { --point-font: 20px; --special-point-font: 13px; --string-height: 50px; }
 }
+
+/* ───── 밝은 모드 (메인페이지와 연동: shared/minihub-theme.js) ─────
+   이 게임은 원래 어두운 화면이라 기본이 어두운 모드이고, 밝은 모드일 때만 아래를 덮어쓴다. */
+:root[data-theme="light"] { color-scheme: light; --bg: #ebe4ff; --card: #fff; --ink: #4a3d6e; --muted: #6b5c8b; }
+:root[data-theme="light"] body { background: linear-gradient(170deg, #ffe3f0, #ebe4ff 55%, #dcf1ff) fixed; }
+:root[data-theme="light"] .quiet-button, :root[data-theme="light"] .icon-button { color: #4a3d6e; border-color: #4a3d6e22; background: #ffffffa8; }
+:root[data-theme="light"] .quiet-button:hover, :root[data-theme="light"] .icon-button:hover { background: #fff; }
+:root[data-theme="light"] .best-record strong { color: #a66a00; }
+:root[data-theme="light"] .stat { background: #fff; border-color: #4a3d6e14; }
+:root[data-theme="light"] .stat-label { color: #6b5c8b; }
+:root[data-theme="light"] .stat-value > span, :root[data-theme="light"] .stat-detail { color: #7a6c9e; }
+:root[data-theme="light"] .next-milestone { color: #a66a00; }
+:root[data-theme="light"] .time-stat { border-color: #ffc83d; background: #fff6dc; }
+:root[data-theme="light"] .time-stat .stat-label { color: #8a5a00; }
+:root[data-theme="light"] .time-stat .stat-value > span { color: #9a6a10; }
+:root[data-theme="light"] .time-track { background: #4a3d6e1a; }
+:root[data-theme="light"] .combo-stat .stat-value strong { color: #6f55d6; }
+:root[data-theme="light"] .combo-stat .stat-value > span { background: #7c6cf01c; color: #6f55d6; }
+:root[data-theme="light"] .time-stat.urgent .stat-value strong { color: #d6355b; }
+:root[data-theme="light"] .arena { border-color: #8f6fe040; background: radial-gradient(circle, #8f6fe024 1px, transparent 1.5px) 0 0 / 23px 23px, #f4efff; }
+:root[data-theme="light"] .arena:after { border-color: #8f6fe030; }
+:root[data-theme="light"] .arena-top { color: #7a6c9ea0; }
+:root[data-theme="light"] .tiny-star { color: #c07ec0; }
+:root[data-theme="light"] .live-message { color: #b87400; text-shadow: 0 1px 8px #fff; }
+:root[data-theme="light"] .start-screen { background: radial-gradient(ellipse at 80% 50%, #ffd6ea66, transparent 65%), #f4efffcc; }
+:root[data-theme="light"] .eyebrow, :root[data-theme="light"] .result-screen .eyebrow { color: #7a4f9a; }
+:root[data-theme="light"] .welcome-copy h2 > span { color: #d98a00; }
+:root[data-theme="light"] .intro { color: #5f5282; }
+:root[data-theme="light"] .start-hint { color: #7a6c9e; }
+:root[data-theme="light"] .welcome-note { color: #6b5c8b; border-top-color: #4a3d6e18; }
+:root[data-theme="light"] .center-screen { background: #f4efffee; }
+:root[data-theme="light"] .center-screen p { color: #5f5282; }
+:root[data-theme="light"] .center-screen .save-status { color: #8a5a00; }
+:root[data-theme="light"] .text-button { color: #6b5c8b; }
+:root[data-theme="light"] .text-button:hover { color: #4a3d6e; }
+:root[data-theme="light"] .result-stats { border-color: #4a3d6e18; background: #ffffff90; }
+:root[data-theme="light"] .result-stats span { color: #6b5c8b; }
+:root[data-theme="light"] .legend { color: #6b5c8b; }
+:root[data-theme="light"] .legend b { color: #4a3d6e; }
+:root[data-theme="light"] .legend .legend-item { background: #ffffff90; border-color: #4a3d6e14; }
+:root[data-theme="light"] .legend-copy small { color: #7a6c9e; }
+:root[data-theme="light"] .game-footer > p { color: #7a6c9e; }

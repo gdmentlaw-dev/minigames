@@ -1419,3 +1419,41 @@ input::placeholder {
     font-size:.875rem;
   }
 }
+
+/* ───── 어두운 모드 (메인페이지와 연동: shared/minihub-theme.js) ─────
+   그림 그리는 종이(.paper)와 예시 그림(.example)은 그림이 잘 보이게 밝게 둔다. */
+:root[data-theme="dark"] {
+  color-scheme:dark;
+  --bg:#16132e;
+  --paper:#231f45;
+  --ink:#f4f2ff;
+  --muted:#b9b3e6;
+  --line:#3a3470;
+  --yellow:#54430f;
+  --blue:#1f3560;
+  --green:#1d4a38;
+  --red:#ff8a7e;
+}
+:root[data-theme="dark"] dialog::backdrop { background:rgb(5 8 24 / .7); }
+:root[data-theme="dark"] .danger { color:#ff8a7e; border-color:#7a4a50; }
+:root[data-theme="dark"] .brand-dot { color:#ffc83d; }
+:root[data-theme="dark"] .join-card { box-shadow:0 4px 0 #0000004d; }
+:root[data-theme="dark"] .place-1 { background:#4a3d12; border-color:#c69a20; }
+:root[data-theme="dark"] .place-2 { background:#2b3050; border-color:#7d84a8; }
+:root[data-theme="dark"] .place-3 { background:#40291f; border-color:#bc8560; }
+:root[data-theme="dark"] .mode-switch { background:#16132e; }
+:root[data-theme="dark"] .mode-switch button[aria-pressed=true] { border-color:#4a4380; box-shadow:none; }
+:root[data-theme="dark"] input:not([type=range]) { background:#16132e; }
+:root[data-theme="dark"] input::placeholder { color:#8e95c9; }
+:root[data-theme="dark"] .primary { background:#ffd762; color:#20231e; box-shadow:0 2px 0 #ffd762; }
+:root[data-theme="dark"] .primary:hover:not(:disabled) { background:#ffcb39; }
+:root[data-theme="dark"] .secondary:hover:not(:disabled) { background:#2d2858; }
+:root[data-theme="dark"] .form-status, :root[data-theme="dark"] .room-status { color:#7fe0b0; }
+:root[data-theme="dark"] .how article { background:#ffffff0a; }
+:root[data-theme="dark"] .color[aria-pressed=true], :root[data-theme="dark"] .tool[aria-pressed=true],
+:root[data-theme="dark"] .color.green[aria-pressed=true] { background:#2d2858; }
+:root[data-theme="dark"] .tool { background:var(--paper); }
+:root[data-theme="dark"] .room-option:hover:not(:disabled) { background:#2d2858; }
+:root[data-theme="dark"] .history-row:hover, :root[data-theme="dark"] .history-row[aria-current=true] { color:#8fc0ff; }
+/* 그림 종이/예시 위의 글자는 항상 어두운 색 */
+:root[data-theme="dark"] .paper, :root[data-theme="dark"] .example { color:#20231e; }
