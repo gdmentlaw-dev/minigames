@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#16132e">
+  <meta name="description" content="색마다 다른 속도와 점수! 풍선을 터뜨리고 100점마다 화려한 폭죽 축제를 즐겨 보세요.">
+  <title>풍선 팡팡 | 미니게임</title>
+  <link rel="icon" href="./thumbnail.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <svg class="icon-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1Z"/></symbol>
+    <symbol id="i-sound" viewBox="0 0 24 24"><path d="M11 4 6 8H3v8h3l5 4Z"/><path d="M15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/></symbol>
+    <symbol id="i-mute" viewBox="0 0 24 24"><path d="M11 4 6 8H3v8h3l5 4Zm5 5 6 6m0-6-6 6"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.3l-5.6 2.9 1.1-6.2L3 9.6l6.2-.9Z"/></symbol>
+    <symbol id="i-cup" viewBox="0 0 24 24"><path d="M7 3h10v7a5 5 0 0 1-10 0Zm10 2h4v3a4 4 0 0 1-4 4M7 5H3v3a4 4 0 0 0 4 4m5 3v6m-5 0h10"/></symbol>
+  </svg>
+
+  <main class="game-shell">
+    <header class="topbar">
+      <button class="quiet-button home-button" id="home" type="button"><svg class="icon"><use href="#i-home"/></svg><span>미니게임 홈</span></button>
+      <a class="brand" href="./" aria-label="풍선 팡팡 시작화면"><span class="brand-balloon" aria-hidden="true"></span><h1>풍선 팡팡</h1></a>
+      <div class="toolbar">
+        <button class="icon-button" id="sound" type="button" aria-label="소리 켜기" aria-pressed="false"><svg class="icon"><use id="sound-icon" href="#i-mute"/></svg></button>
+        <button class="icon-button" id="pause" type="button" aria-label="일시정지" disabled><svg class="icon"><use href="#i-pause"/></svg></button>
+      </div>
+    </header>
+
+    <div class="session-line"><span id="greeting">오늘도 신나게, 팡팡!</span><span class="best-record"><svg class="icon"><use href="#i-cup"/></svg>내 최고 <strong id="best">—</strong></span></div>
+
+    <section class="scoreboard" aria-label="현재 기록">
+      <div class="stat score-stat" id="score-card"><span class="stat-label">현재 점수</span><div class="stat-value"><strong id="score">0</strong><span>점</span></div><span class="stat-detail" id="popped">터뜨린 풍선 0개</span><span class="next-milestone" id="next-milestone">다음 폭죽 100점</span></div>
+      <div class="stat time-stat" id="time-stat"><span class="stat-label"><svg class="icon"><use href="#i-clock"/></svg>남은 시간</span><div class="stat-value"><strong id="time">30.0</strong><span>초</span></div><div class="time-track" role="progressbar" aria-label="남은 시간" aria-valuemin="0" aria-valuemax="30" aria-valuenow="30" id="time-progress"><span id="time-fill"></span></div></div>
+      <div class="stat combo-stat"><span class="stat-label">콤보 보너스</span><div class="stat-value"><strong id="multiplier">×1</strong><span id="combo">0 콤보</span></div><span class="stat-detail" id="combo-hint">5개 연속 성공마다 배수 UP!</span></div>
+    </section>
+
+    <section class="arena" id="arena" aria-label="풍선 놀이 공간">
+      <div class="arena-top" aria-hidden="true"><span><span class="tiny-star">✦</span> POP THE BALLOONS</span><span id="level">READY TO POP!</span></div>
+      <div class="balloon-layer" id="balloons"></div>
+      <div class="effect-layer" id="effects" aria-hidden="true"></div>
+      <div class="celebration-layer" id="celebrations" aria-hidden="true"></div>
+      <p class="live-message" id="live-message" role="status" aria-live="polite"></p>
+
+      <section class="overlay start-screen" id="start-screen" aria-labelledby="welcome-title">
+        <div class="welcome-copy">
+          <span class="eyebrow"><span aria-hidden="true">✦</span> 손끝에서 시작되는 작은 축제</span>
+          <h2 id="welcome-title">준비됐나요?<br><span>신나게 팡팡!</span></h2>
+          <p class="intro">색마다 다른 속도와 점수, 빠른 풍선을 잡아 봐요!<br>100점마다 화려한 폭죽 축제가 열려요.</p>
+          <button class="primary-button" id="start" type="button">게임 시작 <span class="button-spark" aria-hidden="true">✦</span></button>
+          <p class="start-hint">마우스로 클릭 · 휴대폰에서는 터치</p>
+        </div>
+        <div class="balloon-art" aria-hidden="true">
+          <div class="orbit orbit-one"></div><div class="orbit orbit-two"></div>
+          <span class="art-spark spark-one">✦</span><span class="art-spark spark-two">✧</span><span class="art-spark spark-three">✦</span><span class="art-dot dot-one"></span><span class="art-dot dot-two"></span>
+          <div class="art-balloon art-blue"><span class="balloon-shape" style="--balloon:#6bbefc;--balloon-dark:#357cdb"></span></div>
+          <div class="art-balloon art-purple"><span class="balloon-shape" style="--balloon:#ae8cfc;--balloon-dark:#7652cd"></span></div>
+          <div class="art-balloon art-pink"><span class="balloon-shape" style="--balloon:#ff8cb5;--balloon-dark:#da487c"><span class="happy-face"><i></i><i></i><b></b></span></span></div>
+          <div class="art-balloon art-yellow"><span class="balloon-shape" style="--balloon:#ffe283;--balloon-dark:#f1ab32"><svg class="balloon-symbol"><use href="#i-star"/></svg></span></div>
+          <span class="pop-sticker">POP!</span>
+        </div>
+        <div class="welcome-note"><span aria-hidden="true">✦</span> 콤보를 쌓으면 점수 배수 UP! 민트색 시간 풍선은 +3초.</div>
+      </section>
+
+      <section class="overlay center-screen" id="countdown-screen" hidden aria-label="시작 카운트다운"><span class="eyebrow">손가락 준비!</span><strong class="countdown-number" id="countdown">3</strong><p>풍선을 톡! 터뜨려 주세요.</p></section>
+
+      <section class="overlay center-screen" id="pause-screen" hidden aria-labelledby="pause-title"><div class="pause-badge" aria-hidden="true">Ⅱ</div><h2 id="pause-title">잠깐 쉬어가기</h2><p>풍선도 함께 기다리고 있어요.</p><button class="primary-button" id="resume" type="button">계속하기</button><button class="text-button" id="finish" type="button">여기까지 하고 기록 저장</button></section>
+
+      <section class="overlay center-screen result-screen" id="result-screen" hidden aria-labelledby="result-title">
+        <span class="eyebrow">NICE POPPING!</span><h2 id="result-title">오늘도 팡팡 터뜨렸어요!</h2>
+        <div class="final-score"><strong id="final-score">0</strong><span>점</span></div>
+        <p class="save-status" id="save-status" role="status">기록을 저장하고 있어요…</p>
+        <div class="result-stats"><div><span>터뜨린 풍선</span><strong id="final-popped">0개</strong></div><div><span>최대 콤보</span><strong id="final-combo">0콤보</strong></div><div><span>플레이 시간</span><strong id="final-duration">0초</strong></div></div>
+        <button class="primary-button" id="retry" type="button">한 번 더 팡팡!</button><button class="text-button" id="result-home" type="button">미니게임 홈으로</button>
+      </section>
+    </section>
+
+    <footer class="game-footer">
+      <div class="legend" id="legend" aria-label="풍선별 기본 점수와 속도"></div>
+      <p>표시된 점수에 콤보 배수가 적용돼요. 풍선을 놓치거나 폭탄을 누르면 콤보가 끊겨요.<span class="desktop-hint"> · Esc 일시정지</span></p>
+    </footer>
+  </main>
+  <noscript>풍선 팡팡은 자바스크립트를 켜야 즐길 수 있어요.</noscript>
+  <script src="../../shared/minihub-sdk.js"></script>
+  <script src="./engine.js"></script>
+  <script src="./game.js"></script>
+</body>
+</html>

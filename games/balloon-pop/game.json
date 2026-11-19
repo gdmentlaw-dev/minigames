@@ -1,0 +1,11 @@
+{
+  "id": "balloon-pop",
+  "title": "풍선 팡팡",
+  "author": "변혜민",
+  "description": "색마다 다른 속도와 점수! 풍선을 팡팡 터뜨리고 100점마다 화려한 폭죽 축제를 즐기세요.",
+  "controls": "풍선 클릭 또는 터치 · Esc 일시정지",
+  "scoreOrder": "desc",
+  "scoreUnit": "점",
+  "scoreLimit": 100000000,
+  "thumbnail": "thumbnail.svg"
+}
