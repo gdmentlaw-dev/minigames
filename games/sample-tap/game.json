@@ -1,6 +1,6 @@
 {
   "id": "sample-tap",
-  "title": "10초 연타 (예제)",
+  "title": "10초 연타",
   "author": "허브 담당",
   "description": "10초 동안 최대한 많이 누르세요",
   "controls": "화면 탭 / 스페이스바",
