@@ -1,10 +1,14 @@
-import { cleanProgress, rememberRoom, sessionScore } from "./progress.mjs";
+import { hubSessionToken } from "./identity.mjs";
+import { cleanProgress, rememberRoom } from "./progress.mjs";
 
 const GAME_ID = "geurim-relay";
 const API_BASE = "https://geurim-relay.earthy-chick-9380.chatgpt.site/api";
 const byId = (id) => document.getElementById(id);
 const roomCodePattern = /^[A-HJ-NP-Z2-9]{7}$/u;
-const colors = { black: "#20231e", red: "#e0463b", blue: "#286ee9", green: "#2b9b61" };
+const colors = {
+  red: "#e0463b", orange: "#f28c28", yellow: "#f2cb16", green: "#2b9b61",
+  blue: "#286ee9", indigo: "#353a91", purple: "#8d48bc", black: "#20231e",
+};
 const canvas = byId("drawing");
 const context = canvas.getContext("2d");
 const roomParam = (new URLSearchParams(location.search).get("room") ?? "").trim().toUpperCase();
@@ -24,8 +28,9 @@ let token = "";
 let player;
 let progress;
 let ready = false;
-let finishing = false;
-let scorePromise;
+let profile;
+let lastSubmittedScore = -1;
+let canDelete = false;
 let brush = "black";
 let strokes = [];
 let points = 0;
@@ -70,19 +75,35 @@ async function saveProgress() {
   return saved;
 }
 
-function totalWins() {
-  return state?.players.find((entry) => entry.id === state.member.id)?.wins ?? 0;
+function updateChallenge() {
+  const points = state?.myScore?.points ?? profile?.myScore?.points ?? 0;
+  byId("challenge-score").textContent = points + "점";
+  byId("my-total").textContent = "내 누적 " + points + "점 · 정답마다 5점";
+  byId("delete-room").hidden = !canDelete;
 }
 
-function updateChallenge() {
-  const room = roomRecord(code);
-  if (!room) return;
-  if (room.baselineWins === null) {
-    room.baselineWins = totalWins();
-    void saveProgress();
+async function recordGlobalScore() {
+  const score = state?.myScore?.points ?? profile?.myScore?.points ?? 0;
+  if (score <= 0 || score <= lastSubmittedScore) return;
+  const result = await MiniHub.submitScore(score, { toast: false });
+  if (result) lastSubmittedScore = score;
+}
+
+function renderRanking(result) {
+  canDelete = result.canDelete ?? profile?.player?.isAdmin ?? false;
+  if (result.myScore) {
+    profile.myScore = result.myScore;
+    updateChallenge();
   }
-  byId("challenge-score").textContent = sessionScore(room, totalWins()).toLocaleString("ko-KR") + "점";
-  byId("finish").disabled = !state || sending || finishing;
+  const rankings = result.leaderboard ?? [];
+  byId("no-rankings").hidden = rankings.length > 0;
+  byId("leaderboard").replaceChildren(...rankings.map((entry) => {
+    const row = node("li", undefined, "ranking-row");
+    if (entry.rank <= 3) row.classList.add("place-" + entry.rank);
+    const name = entry.name + (entry.id === player.id ? " (나)" : "");
+    row.append(node("span", entry.rank + "위", "rank-badge"), node("strong", name), node("span", entry.points + "점", "rank-points"));
+    return row;
+  }));
 }
 
 function status(id, message = "", error = false) {
@@ -106,7 +127,7 @@ function roomURL(value) {
 }
 
 async function api(path, body, useToken = true) {
-  const headers = {};
+  const headers = { "X-MiniHub-Token": await hubSessionToken() };
   if (useToken && token) headers.Authorization = "Bearer " + token;
   if (body) headers["Content-Type"] = "application/json";
   const response = await fetch(API_BASE + path, {
@@ -134,7 +155,11 @@ function selectMode(value) {
   byId("room-browser").hidden = !joining;
   byId("invited-room").hidden = !joining || !code;
   byId("enter").hidden = joining && !code;
-  byId("enter").firstElementChild.textContent = joining ? "방 입장하기" : "게임 시작";
+  byId("room-title-field").hidden = joining || !!profile?.owned;
+  byId("new-room-title").required = !joining && !profile?.owned;
+  byId("owned-room").hidden = joining || !profile?.owned;
+  byId("owned-room").textContent = profile?.owned ? "이미 만든 방이 있어요. 이어서 참여해 주세요." : "";
+  byId("enter").firstElementChild.textContent = joining ? "방 입장하기" : profile?.owned ? "내 방 이어하기" : "게임 시작";
   status("entry-status");
   if (joining && ready) void loadRooms();
 }
@@ -146,12 +171,19 @@ function roomOption(room) {
   button.name = "room";
   button.value = room.code;
   button.disabled = sending;
-  const title = room.host + " 님의 방";
+  const title = room.title || room.host + " 님의 방";
   const text = node("span", undefined, "room-option-text");
-  text.append(node("strong", title), node("span", room.players + "명 참여 · " + room.round + "번째 문제", "room-option-meta"));
+  text.append(node("strong", title), node("span", room.host + " · " + room.players + "명 참여 · " + room.round + "번째 문제", "room-option-meta"));
   button.append(text, node("span", room.published_at ? "맞히러 가기" : "출제 중", "room-option-state"));
   button.setAttribute("aria-label", title + " 입장, " + room.players + "명 참여, " + (room.published_at ? "풀이 중" : "출제 중"));
   item.append(button);
+  if (canDelete) {
+    const remove = node("button", "삭제", "tool danger room-delete");
+    remove.type = "button";
+    remove.setAttribute("aria-label", title + " 삭제");
+    remove.addEventListener("click", () => void deleteRoom(room.code, title));
+    item.append(remove);
+  }
   return item;
 }
 
@@ -160,7 +192,7 @@ function renderRecent() {
   byId("recent").hidden = !recentCodes.length;
   const links = recentCodes.map((value, index) => {
     const room = listedRooms.find((entry) => entry.code === value);
-    const link = node("a", room ? room.host + " 님의 방" : "참여한 방 " + (index + 1));
+    const link = node("a", room ? room.title || room.host + " 님의 방" : "참여한 방 " + (index + 1));
     link.href = roomURL(value).href;
     return link;
   });
@@ -177,6 +209,7 @@ async function loadRooms(more = false, quiet = false) {
   try {
     const cursor = more && nextRooms ? "?before=" + encodeURIComponent(nextRooms) : "";
     const result = await api("/rooms" + cursor, undefined, false);
+    renderRanking(result);
     const previous = more ? listedRooms : [];
     listedRooms = [...new Map([...previous, ...result.rooms].map((room) => [room.code, room])).values()];
     nextRooms = result.next;
@@ -217,7 +250,6 @@ byId("more-rooms").addEventListener("click", () => void loadRooms(true));
 byId("entry-form").addEventListener("submit", async (event) => {
   event.preventDefault();
   if (sending || !ready) return;
-  const name = player.name;
   const joining = mode === "join";
   const entered = event.submitter?.name === "room" ? event.submitter.value : code;
   if (joining && !roomCodePattern.test(entered)) {
@@ -234,7 +266,10 @@ byId("entry-form").addEventListener("submit", async (event) => {
   for (const button of byId("room-list").querySelectorAll("button")) button.disabled = true;
   status("entry-status", "방에 들어가는 중…");
   try {
-    const joined = await api(joining ? "/rooms/" + entered + "/join" : "/rooms", { name }, false);
+    const joined = await api(joining ? "/rooms/" + entered + "/join" : "/rooms", {
+      title: byId("new-room-title").value,
+      legacyRooms: progress.rooms,
+    }, false);
     rememberRoom(progress, joined.code, joined.token);
     const saved = await saveProgress();
     if (saved || getStored(progressKey())) location.assign(roomURL(joined.code));
@@ -411,6 +446,16 @@ function renderRoom(force = false) {
   byId("room-content").hidden = false;
   if (viewing && !state.history.some((round) => round.number === viewing)) viewing = 0;
   const round = viewing ? state.history.find((round) => round.number === viewing) : state.current;
+  const selected = viewing ? state.history.find((round) => round.number === viewing) : state.current;
+  const guesses = selected?.guesses ?? [];
+  byId("no-guesses").hidden = guesses.length > 0;
+  byId("guesses").replaceChildren(...guesses.map((guess) => {
+    const row = node("li", undefined, "guess-row");
+    row.append(node("span", guess.name, "guess-name"), node("strong", guess.answer));
+    return row;
+  }));
+  byId("room-title").firstChild.textContent = (state.title || "우리 방") + " ";
+  canDelete = state.canDelete;
   const sidebarKey = JSON.stringify([state.players, state.history, viewing]);
   if (force || sidebarKey !== countMessage) {
     countMessage = sidebarKey;
@@ -494,12 +539,12 @@ async function refresh() {
     byId("room-status").dataset.ready = "true";
     return true;
   } catch (error) {
-    if (error.status === 401) {
+    if (error.status === 401 || error.status === 404) {
       progress.rooms = progress.rooms.filter((room) => room.code !== code);
       await saveProgress();
       token = "";
       showLobby();
-      status("entry-status", "이 방에 다시 입장해 주세요.", true);
+      status("entry-status", error.status === 404 ? "운영자가 삭제했거나 존재하지 않는 방이에요." : "이 방에 다시 입장해 주세요.", true);
     } else {
       status("room-status", "방을 불러오지 못했어요. 잠시 뒤 다시 연결합니다.", true);
     }
@@ -565,7 +610,9 @@ byId("guess-form").addEventListener("submit", async (event) => {
       status("room-status", "정답! 다음 문제는 내가 내요.");
       await refresh();
       await saveProgress();
+      await recordGlobalScore();
     } else {
+      await refresh();
       status("board-status", "아쉬워요! 그림을 다시 보고 맞혀 보세요.", true);
       byId("guess").select();
     }
@@ -625,70 +672,30 @@ function drawExample() {
 
 drawExample();
 
-function showResult(result) {
-  byId("final-score").textContent = result.score.toLocaleString("ko-KR") + "점";
-  byId("result-status").textContent = "기록 저장 완료! · 내 최고 " + result.best.toLocaleString("ko-KR") + "점" + (result.rank ? " · " + result.rank + "위" : "");
-  byId("continue").disabled = false;
-  byId("result-exit").disabled = false;
-  byId("retry-score").hidden = true;
-  if (!byId("result").open) byId("result").showModal();
-}
-
-async function finishChallenge() {
-  if (finishing || sending || !state || !token) return;
-  const room = roomRecord(code);
-  if (!room) return;
-  if (room.finished) { showResult(room.finished); return; }
-  finishing = true;
-  byId("finish").disabled = true;
-  while (refreshing) await new Promise((resolve) => setTimeout(resolve, 50));
-  if (!(await refresh())) {
-    finishing = false;
-    byId("finish").disabled = false;
-    status("room-status", "방에 다시 연결한 뒤 기록해 주세요. 진행 상황은 그대로예요.", true);
-    return;
-  }
-  const score = sessionScore(room, totalWins());
-  byId("final-score").textContent = score.toLocaleString("ko-KR") + "점";
-  byId("result-status").textContent = "기록 저장 중…";
-  byId("continue").disabled = true;
-  byId("result-exit").disabled = true;
-  byId("retry-score").hidden = true;
-  if (!byId("result").open) byId("result").showModal();
-  try {
-    // Repeated clicks share one submission for this completed challenge.
-    scorePromise ??= MiniHub.submitScore(score);
-    const result = await scorePromise;
-    if (!result) throw new Error("기록을 저장하지 못했어요. 연결을 확인하고 다시 시도해 주세요.");
-    room.finished = { score, best: result.best, rank: result.rank };
-    await saveProgress();
-    showResult(room.finished);
-  } catch (error) {
-    scorePromise = undefined;
-    byId("result-status").textContent = error.message;
-    byId("retry-score").hidden = false;
-  } finally {
-    finishing = false;
-    updateChallenge();
-  }
-}
-
-byId("finish").addEventListener("click", () => void finishChallenge());
-byId("retry-score").addEventListener("click", () => void finishChallenge());
-byId("result").addEventListener("cancel", (event) => event.preventDefault());
-byId("continue").addEventListener("click", async () => {
-  if (finishing) return;
-  const room = roomRecord(code);
-  if (!room) return;
-  room.baselineWins = totalWins();
-  room.finished = null;
-  scorePromise = undefined;
-  byId("result").close();
-  updateChallenge();
-  await saveProgress();
-});
 byId("hub-exit").addEventListener("click", () => MiniHub.exit());
-byId("result-exit").addEventListener("click", () => MiniHub.exit());
+byId("change-name").addEventListener("click", async () => {
+  await MiniHub.changeName();
+  location.reload();
+});
+
+async function deleteRoom(roomCode, title) {
+  if (sending || !canDelete || !confirm("‘" + title + "’ 방을 삭제할까요? 참가자의 누적 점수는 유지됩니다.")) return;
+  sending = true;
+  try {
+    await api("/rooms/" + roomCode + "/delete", {}, false);
+    if (!byId("room").hidden) location.assign(new URL("./", location.href));
+  } catch (error) {
+    status("entry-status", error.message, true);
+  } finally {
+    sending = false;
+    if (!byId("lobby").hidden) {
+      profile = await api("/me", undefined, false);
+      selectMode(mode);
+      await loadRooms();
+    }
+  }
+}
+byId("delete-room").addEventListener("click", () => void deleteRoom(code, state?.title || "현재 방"));
 
 async function boot() {
   try {
@@ -697,7 +704,22 @@ async function boot() {
     const local = cleanProgress(storedJSON(progressKey(), null), player.id);
     const remote = cleanProgress(await MiniHub.load(), player.id);
     progress = local.updatedAt > remote.updatedAt ? local : remote;
-    ready = true;
+    profile = await api("/me", undefined, false);
+    if (profile.realNameValid) {
+      await api("/account/link", { rooms: progress.rooms }, false);
+      profile = await api("/me", undefined, false);
+    }
+    canDelete = !!profile.player.isAdmin;
+    ready = profile.realNameValid;
+    byId("real-name-warning").hidden = ready;
+    renderRanking(profile);
+    updateChallenge();
+    if (!ready) {
+      showLobby();
+      for (const id of ["enter", "create-mode"]) byId(id).disabled = true;
+      return;
+    }
+    await recordGlobalScore();
     for (const id of ["enter", "create-mode", "join-mode"]) byId(id).disabled = false;
     token = code && roomRecord(code)?.token;
     if (code && token) {
@@ -705,10 +727,9 @@ async function boot() {
       byId("room").hidden = false;
       byId("room-code").textContent = code;
       status("room-status", "방을 불러오는 중…");
-      const loaded = await refresh();
-      if (loaded && roomRecord(code)?.finished) showResult(roomRecord(code).finished);
-      setInterval(() => { if (!document.hidden && !finishing) void refresh(); }, 8000);
-      document.addEventListener("visibilitychange", () => { if (!document.hidden && !finishing) void refresh(); });
+      await refresh();
+      setInterval(() => { if (!document.hidden) void refresh(); }, 8000);
+      document.addEventListener("visibilitychange", () => { if (!document.hidden) void refresh(); });
     } else {
       showLobby();
     }
