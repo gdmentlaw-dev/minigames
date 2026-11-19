@@ -5,9 +5,9 @@
   const HEIGHT = 420;
   const DURATION = 30;
   const ITEM_SIZE = 60;
-  const BUNDLE_WIDTH = 104;
-  const ATTACHED_POOP_CHANCE = 0.1;
-  const MIN_REGULAR_DROPS_BETWEEN_BUNDLES = 3;
+  const BASKET_WIDTH = 66;
+  const POOP_SEPARATION_SECONDS = 0.5;
+  const INGREDIENT_SPEED_MULT = 1.12;
   const INGREDIENT_IDS = ["milk", "egg", "butter", "sugar", "salt", "cocoa", "strawberry", "chocolate", "cream"];
   const STANDALONE_POOP_RATE = 0.075;
   const STANDALONE_POOP_CHANCE_AFTER_OTHER_DROP = STANDALONE_POOP_RATE / (1 - STANDALONE_POOP_RATE);
@@ -436,12 +436,7 @@
     objects.forEach(object => {
       const objectWidth = object.width || ITEM_SIZE;
       rectangle(context, object.x + 8, object.y + ITEM_SIZE - 4, objectWidth - 16, 4, "rgba(91, 67, 55, .16)");
-      if (object.type === "bundle") {
-        drawItem(context, object.ingredient, object.x, object.y, true);
-        drawItem(context, "trouble", object.x + 44, object.y + 5, false);
-      } else {
-        drawItem(context, object.type, object.x, object.y, true);
-      }
+      drawItem(context, object.type, object.x, object.y, true);
     });
 
     drawBasket(context, basketX - 33, 330);
@@ -471,7 +466,8 @@
     let context;
     let callbacks;
     let lastSpawnedType = "";
-    let regularIngredientsSinceBundle = MIN_REGULAR_DROPS_BETWEEN_BUNDLES;
+    let lastSpawn = null;
+    let spawnHistory = [];
     let feedback = "";
     let feedbackTime = 0;
     let impactTime = 0;
@@ -544,19 +540,37 @@
       }
     }
 
+    function getSpawnX(type, width) {
+      const minX = 10;
+      const maxX = WIDTH - width - 10;
+      const oppositeDrops = spawnHistory.filter(drop =>
+        elapsed - drop.time <= POOP_SEPARATION_SECONDS &&
+        (type === "trouble") !== (drop.type === "trouble")
+      );
+      if (lastSpawn &&
+        (type === "trouble") !== (lastSpawn.type === "trouble") &&
+        !oppositeDrops.includes(lastSpawn)) {
+        oppositeDrops.push(lastSpawn);
+      }
+      if (oppositeDrops.length === 0) {
+        return minX + Math.random() * (maxX - minX);
+      }
+
+      const safePositions = [];
+      for (let x = minX; x <= maxX; x += 1) {
+        const centerX = x + width / 2;
+        if (oppositeDrops.every(drop => Math.abs(centerX - drop.centerX) >= BASKET_WIDTH)) {
+          safePositions.push(x);
+        }
+      }
+      return safePositions[Math.floor(Math.random() * safePositions.length)];
+    }
+
     function spawnObject() {
       const isStandalonePoop = lastSpawnedType !== "trouble" &&
         Math.random() < STANDALONE_POOP_CHANCE_AFTER_OTHER_DROP;
-      const isBundle = !isStandalonePoop &&
-        regularIngredientsSinceBundle >= MIN_REGULAR_DROPS_BETWEEN_BUNDLES &&
-        Math.random() < ATTACHED_POOP_CHANCE;
       let type;
-      let ingredient = null;
-      if (isBundle) {
-        regularIngredientsSinceBundle = 0;
-        type = "bundle";
-        ingredient = INGREDIENT_IDS[Math.floor(Math.random() * INGREDIENT_IDS.length)];
-      } else if (isStandalonePoop) {
+      if (isStandalonePoop) {
         type = "trouble";
       } else {
         type = INGREDIENT_IDS[Math.floor(Math.random() * INGREDIENT_IDS.length)];
@@ -565,34 +579,28 @@
             (INGREDIENT_IDS.indexOf(type) + 1 + Math.floor(Math.random() * (INGREDIENT_IDS.length - 1))) % INGREDIENT_IDS.length
           ];
         }
-        regularIngredientsSinceBundle = Math.min(
-          regularIngredientsSinceBundle + 1,
-          MIN_REGULAR_DROPS_BETWEEN_BUNDLES
-        );
       }
       lastSpawnedType = type;
-      const width = isBundle ? BUNDLE_WIDTH : ITEM_SIZE;
-      const baseSpeed = isBundle
-        ? 205 + Math.random() * 30 + elapsed * .7
-        : type === "trouble"
-          ? 175 + Math.random() * 20 + elapsed * .7
-          : FALL_SPEEDS[type][0] + Math.random() * (FALL_SPEEDS[type][1] - FALL_SPEEDS[type][0]) + elapsed * .7;
-      const speed = baseSpeed * 1.25;
+      const width = ITEM_SIZE;
+      const baseSpeed = type === "trouble"
+        ? 175 + Math.random() * 20 + elapsed * .7
+        : FALL_SPEEDS[type][0] + Math.random() * (FALL_SPEEDS[type][1] - FALL_SPEEDS[type][0]) + elapsed * .7;
+      const speed = baseSpeed * 1.25 * (type === "trouble" ? 1 : INGREDIENT_SPEED_MULT);
+      spawnHistory = spawnHistory.filter(drop => elapsed - drop.time <= POOP_SEPARATION_SECONDS);
+      const x = getSpawnX(type, width);
+      lastSpawn = { type, centerX: x + width / 2, time: elapsed };
+      spawnHistory.push(lastSpawn);
       objects.push({
         type,
-        ingredient,
         width,
-        x: 10 + Math.random() * (WIDTH - width - 10),
+        x,
         y: -ITEM_SIZE - 5,
         speed
       });
     }
 
     function catchObject(object) {
-      if (object.type === "bundle") {
-        roundInventory[object.ingredient] += 1;
-        resetRoundForDung();
-      } else if (object.type === "trouble") {
+      if (object.type === "trouble") {
         resetRoundForDung();
       } else {
         roundInventory[object.type] += 1;
@@ -677,7 +685,8 @@
       pointerActive = false;
       lastTimestamp = 0;
       lastSpawnedType = "";
-      regularIngredientsSinceBundle = MIN_REGULAR_DROPS_BETWEEN_BUNDLES;
+      lastSpawn = null;
+      spawnHistory = [];
       feedback = "";
       feedbackTime = 0;
       impactTime = 0;
