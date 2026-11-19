@@ -6,8 +6,12 @@
   const DURATION = 30;
   const ITEM_SIZE = 60;
   const BASKET_WIDTH = 66;
+  const POOP_MIN_X_DISTANCE = BASKET_WIDTH + ITEM_SIZE;
   const POOP_SEPARATION_SECONDS = 0.5;
-  const INGREDIENT_SPEED_MULT = 1.12;
+  const MIN_SPAWN_INTERVAL = 0.4;
+  const COMMON_SPEED_MULT = 1.25;
+  const INGREDIENT_SPEED_BASE_MULT = 1.12;
+  const INGREDIENT_SPEED_MULT = 2;
   const INGREDIENT_IDS = ["milk", "egg", "butter", "sugar", "salt", "cocoa", "strawberry", "chocolate", "cream"];
   const STANDALONE_POOP_RATE = 0.075;
   const STANDALONE_POOP_CHANCE_AFTER_OTHER_DROP = STANDALONE_POOP_RATE / (1 - STANDALONE_POOP_RATE);
@@ -543,23 +547,24 @@
     function getSpawnX(type, width) {
       const minX = 10;
       const maxX = WIDTH - width - 10;
-      const oppositeDrops = spawnHistory.filter(drop =>
+      const needsSpacingFrom = drop => type === "trouble" || drop.type === "trouble";
+      const separatedDrops = spawnHistory.filter(drop =>
         elapsed - drop.time <= POOP_SEPARATION_SECONDS &&
-        (type === "trouble") !== (drop.type === "trouble")
+        needsSpacingFrom(drop)
       );
       if (lastSpawn &&
-        (type === "trouble") !== (lastSpawn.type === "trouble") &&
-        !oppositeDrops.includes(lastSpawn)) {
-        oppositeDrops.push(lastSpawn);
+        needsSpacingFrom(lastSpawn) &&
+        !separatedDrops.includes(lastSpawn)) {
+        separatedDrops.push(lastSpawn);
       }
-      if (oppositeDrops.length === 0) {
+      if (separatedDrops.length === 0) {
         return minX + Math.random() * (maxX - minX);
       }
 
       const safePositions = [];
       for (let x = minX; x <= maxX; x += 1) {
         const centerX = x + width / 2;
-        if (oppositeDrops.every(drop => Math.abs(centerX - drop.centerX) >= BASKET_WIDTH)) {
+        if (separatedDrops.every(drop => Math.abs(centerX - drop.centerX) >= POOP_MIN_X_DISTANCE)) {
           safePositions.push(x);
         }
       }
@@ -585,7 +590,8 @@
       const baseSpeed = type === "trouble"
         ? 175 + Math.random() * 20 + elapsed * .7
         : FALL_SPEEDS[type][0] + Math.random() * (FALL_SPEEDS[type][1] - FALL_SPEEDS[type][0]) + elapsed * .7;
-      const speed = baseSpeed * 1.25 * (type === "trouble" ? 1 : INGREDIENT_SPEED_MULT);
+      const speed = baseSpeed * COMMON_SPEED_MULT *
+        (type === "trouble" ? 1 : INGREDIENT_SPEED_BASE_MULT * INGREDIENT_SPEED_MULT);
       spawnHistory = spawnHistory.filter(drop => elapsed - drop.time <= POOP_SEPARATION_SECONDS);
       const x = getSpawnX(type, width);
       lastSpawn = { type, centerX: x + width / 2, time: elapsed };
@@ -624,7 +630,7 @@
       spawnIn -= delta;
       if (spawnIn <= 0) {
         spawnObject();
-        spawnIn = Math.max(0.38, 0.78 - elapsed * 0.004) + Math.random() * 0.25;
+        spawnIn = Math.max(MIN_SPAWN_INTERVAL, 0.78 - elapsed * 0.004) + Math.random() * 0.25;
       }
 
       objects.forEach(object => {
