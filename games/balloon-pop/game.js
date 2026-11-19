@@ -106,13 +106,13 @@
 
   function position(balloon) {
     const small = dimensions.width <= 580;
-    const width = small ? 62 : 76, height = small ? 77 : 94;
+    const { width, height, scale } = getBalloonSize(balloon.profile.points, small);
     const progress = balloon.age / balloon.lifetime;
     const sway = reducedMotion ? 0 : Math.sin(balloon.age / 650 + balloon.sway) * 14;
     return {
       x: Math.max(5, Math.min(dimensions.width - width - 5, balloon.x * dimensions.width - width / 2 + sway)),
       y: dimensions.height + 10 - progress * (dimensions.height + height + 30),
-      width, height,
+      width, height, scale,
       rotation: reducedMotion ? 0 : Math.sin(balloon.age / 850 + balloon.sway) * 7,
     };
   }
@@ -156,6 +156,7 @@
       const p = position(balloon);
       node.style.transform = `translate(${p.x}px, ${p.y}px) rotate(${p.rotation}deg)`;
       node.style.width = `${p.width}px`; node.style.height = `${p.height}px`;
+      node.style.setProperty("--balloon-scale", String(p.scale));
       const offscreen = p.y + p.height < 0 || p.y > dimensions.height;
       node.tabIndex = offscreen || round.phase !== "playing" ? -1 : 0;
     }
