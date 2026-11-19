@@ -6,10 +6,11 @@
   const screens = ["start-screen", "countdown-screen", "pause-screen", "result-screen"];
   const nodes = new Map();
   const sounds = new Set();
+  const catDanceDeck = new CatDanceDeck();
   let round = null, frame = 0, lastFrame = 0, countdownTimer = 0, messageTimer = 0;
   let countdownValue = 3, countdownPaused = false, runId = 0, submitted = false;
   let soundOn = false, audio = null, dimensions = { width: 800, height: 460 };
-  let displayedScore = -1, displayedCombo = -1, displayedTime = "", displayedLevel = -1;
+  let displayedScore = -1, displayedCombo = -1, displayedTime = "", displayedLevel = -1, displayedDanger = -1;
   let celebrationTimer = 0;
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -88,10 +89,10 @@
       balloon.setAttribute("aria-hidden", "true"); balloon.textContent = symbol;
       const copy = document.createElement("span"); copy.className = "legend-copy";
       const title = document.createElement("span"); title.textContent = `${profile.name} `;
-      const value = document.createElement("b"); value.textContent = type === "bomb" ? "−3초" : `${profile.points}점`;
+      const value = document.createElement("b"); value.textContent = type === "bomb" ? `−${profile.penalty}점` : `${profile.points}점`;
       title.appendChild(value);
       const speed = document.createElement("small");
-      speed.textContent = `${profile.speedLabel}${type === "clock" ? " · +3초" : ""}`;
+      speed.textContent = `${profile.speedLabel}${type === "clock" ? " · +3초" : type === "bomb" ? " · −3초" : profile.points >= 40 ? " · 좌우" : ""}`;
       copy.append(title, speed); item.append(balloon, copy); fragment.appendChild(item);
     }
     $("legend").replaceChildren(fragment);
@@ -105,16 +106,7 @@
   }
 
   function position(balloon) {
-    const small = dimensions.width <= 580;
-    const { width, height, scale } = getBalloonSize(balloon.profile.points, small);
-    const progress = balloon.age / balloon.lifetime;
-    const sway = reducedMotion ? 0 : Math.sin(balloon.age / 650 + balloon.sway) * 14;
-    return {
-      x: Math.max(5, Math.min(dimensions.width - width - 5, balloon.x * dimensions.width - width / 2 + sway)),
-      y: dimensions.height + 10 - progress * (dimensions.height + height + 30),
-      width, height, scale,
-      rotation: reducedMotion ? 0 : Math.sin(balloon.age / 850 + balloon.sway) * 7,
-    };
+    return getBalloonPosition(balloon, dimensions, reducedMotion);
   }
 
   function createBalloon(balloon) {
@@ -125,14 +117,15 @@
     let label = `${profile.name} 풍선, 기본 ${profile.points}점, ${profile.speedLabel}`, symbol = "";
     if (balloon.type === "gold") symbol = '<svg class="balloon-symbol" aria-hidden="true"><use href="#i-star"/></svg>';
     if (balloon.type === "clock") { label += ", 3초 추가"; symbol = '<svg class="balloon-symbol" aria-hidden="true"><use href="#i-clock"/></svg>'; }
-    if (balloon.type === "bomb") { label = "회색 폭탄, 누르면 3초 감소"; symbol = '<svg class="balloon-symbol" aria-hidden="true" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg>'; }
+    if (balloon.type === "bomb") { label = `감점 폭탄, 누르면 ${profile.penalty}점과 3초 감소, 좌우 이동`; symbol = '<svg class="balloon-symbol" aria-hidden="true" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg>'; }
+    else if (balloon.sideways) label += ", 좌우 이동";
     element.style.setProperty("--balloon", profile.light);
     element.style.setProperty("--balloon-dark", profile.dark);
     element.setAttribute("aria-label", label);
     element.innerHTML = `<span class="balloon-shape">${symbol}</span>`;
-    if (balloon.type !== "bomb") {
+    {
       const badge = document.createElement("span"); badge.className = "balloon-points";
-      badge.setAttribute("aria-hidden", "true"); badge.textContent = `+${profile.points}`;
+      badge.setAttribute("aria-hidden", "true"); badge.textContent = balloon.type === "bomb" ? `−${profile.penalty}` : `+${profile.points}`;
       element.appendChild(badge);
     }
     element.addEventListener("pointerdown", event => {
@@ -167,7 +160,7 @@
     if (force || displayedScore !== round.score) {
       $("score").textContent = round.score.toLocaleString("ko-KR");
       $("popped").textContent = `터뜨린 풍선 ${round.popped}개`;
-      $("next-milestone").textContent = `다음 폭죽 ${(Math.floor(round.score / 100) * 100 + 100).toLocaleString("ko-KR")}점`;
+      $("next-milestone").textContent = `다음 고양이 ${(Math.floor(round.peakScore / PARTY_STEP) * PARTY_STEP + PARTY_STEP).toLocaleString("ko-KR")}점`;
       displayedScore = round.score;
     }
     if (force || displayedCombo !== round.combo) {
@@ -185,10 +178,11 @@
       $("time-stat").classList.toggle("urgent", round.remaining <= 7000);
       displayedTime = seconds;
     }
-    if (force || displayedLevel !== round.level) {
-      $("level").textContent = `LEVEL ${round.level}`;
-      if (round.level > 1 && displayedLevel >= 1) announce(`LEVEL ${round.level} · 풍선이 더 빨라져요!`);
+    if (force || displayedLevel !== round.level || displayedDanger !== round.hazardTier) {
+      $("level").textContent = `LEVEL ${round.level} · 폭탄 ${round.hazardTier + 1}단계`;
+      if (round.level > displayedLevel && round.level > 1 && displayedLevel >= 1) announce(`LEVEL ${round.level} · 풍선이 더 빨라져요!`);
       displayedLevel = round.level;
+      displayedDanger = round.hazardTier;
     }
   }
 
@@ -210,9 +204,10 @@
     const text = document.createElement("span"); text.className = "score-float";
     text.style.left = `${Math.max(42, Math.min(dimensions.width - 42, x))}px`;
     text.style.top = `${Math.max(42, y)}px`;
-    text.style.color = event.balloon.type === "bomb" ? "#ff97ad" : event.balloon.type === "clock" ? "#9ae9c8" : "#ffe091";
-    text.textContent = event.balloon.type === "bomb" ? "−3초" : `+${event.points}`;
+    text.style.color = event.balloon.type === "bomb" ? "#c34f50" : event.balloon.type === "clock" ? "#33765b" : "#a6621b";
+    text.textContent = event.balloon.type === "bomb" ? `−${Math.abs(event.points)}점` : `+${event.points}`;
     if (event.balloon.type === "clock") { const extra = document.createElement("small"); extra.textContent = "+3초"; text.appendChild(extra); }
+    if (event.balloon.type === "bomb") { const extra = document.createElement("small"); extra.textContent = "−3초"; text.appendChild(extra); }
     fragment.appendChild(text); $("effects").appendChild(fragment);
     setTimeout(() => text.remove(), 900);
   }
@@ -225,8 +220,10 @@
 
   function celebrateMilestones({ first, last, count }) {
     clearCelebration();
-    const celebration = document.createElement("div"); celebration.className = "milestone-party";
-    celebration.style.setProperty("--party-hue", String((last / 100 * 47) % 360));
+    const dance = catDanceDeck.next();
+    const celebration = document.createElement("div"); celebration.className = `milestone-party party-${dance.id}`;
+    celebration.style.setProperty("--party-hue", String((last / PARTY_STEP * 47) % 360));
+    celebration.style.setProperty("--dance-color", dance.color);
     const glow = document.createElement("div"); glow.className = "party-glow";
     const rays = document.createElement("div"); rays.className = "party-rays";
     celebration.append(glow, rays);
@@ -237,13 +234,14 @@
 
     const caption = document.createElement("div"); caption.className = "milestone-banner";
     const cheer = document.createElement("span"); cheer.className = "milestone-cheer";
-    cheer.textContent = count > 1 ? `${count.toLocaleString("ko-KR")}개 구간 연속 돌파!` : "팡팡! 축하해요!";
+    cheer.textContent = count > 1 ? `${count.toLocaleString("ko-KR")}개 구간 연속 돌파!` : "고양이 댄스 타임!";
     const score = document.createElement("strong"); score.textContent = `${last.toLocaleString("ko-KR")}점 돌파!`;
     const reached = document.createElement("span"); reached.className = "milestone-reached";
-    if (count === 1) reached.textContent = "✦ POP! POP! PARTY! ✦";
-    else if (count <= 4) reached.textContent = Array.from({ length: count }, (_, i) => `${(first + i * 100).toLocaleString("ko-KR")}점`).join(" · ");
-    else reached.textContent = `${first.toLocaleString("ko-KR")}~${last.toLocaleString("ko-KR")}점 · 모든 100점 구간 달성!`;
+    if (count === 1) reached.textContent = "폭탄이 더 빠르게, 더 자주 등장해요!";
+    else if (count <= 4) reached.textContent = Array.from({ length: count }, (_, i) => `${(first + i * PARTY_STEP).toLocaleString("ko-KR")}점`).join(" · ");
+    else reached.textContent = `${first.toLocaleString("ko-KR")}~${last.toLocaleString("ko-KR")}점 · 모든 500점 구간 달성!`;
     caption.append(cheer, score, reached); celebration.appendChild(caption);
+    const cat = document.createElement("div"); cat.className = "cat-show"; cat.innerHTML = catDanceMarkup(dance); celebration.appendChild(cat);
 
     if (!reducedMotion) {
       const colors = ["#ffd44d", "#ff7ab5", "#79ddff", "#c599ff", "#8dffd1", "#ffab76"];
@@ -280,9 +278,9 @@
     $("celebrations").appendChild(celebration);
     void $("score-card").offsetWidth;
     $("score-card").classList.add("celebrating");
-    announce(count > 1 ? `${first}점부터 ${last}점까지, ${count}개 구간 돌파!` : `${last}점 돌파! 축하해요!`);
-    [523.25, 659.25, 783.99, 1046.5, 1318.5].forEach((frequency, i) => tone(frequency, 0.16, "triangle", 0.045, i * 0.07));
-    celebrationTimer = setTimeout(clearCelebration, 2100);
+    announce(`${last}점 돌파! ${dance.name}, 폭탄 ${round.hazardTier + 1}단계!`);
+    [523.25, 659.25, 783.99, 1046.5, 1318.5].forEach((frequency, i) => tone(frequency * dance.pitch, 0.16, "triangle", 0.045, i * 0.07));
+    celebrationTimer = setTimeout(clearCelebration, 3300);
   }
 
   function onRoundEvent(event) {
@@ -293,7 +291,7 @@
     burst(event);
     if (event.balloon.type === "bomb") {
       tone(110, 0.16, "triangle", 0.07);
-      announce("앗, 폭탄! −3초");
+      announce(`앗, 폭탄! −${Math.abs(event.points)}점 · −3초`);
       $("arena").classList.remove("boom");
       void $("arena").offsetWidth;
       $("arena").classList.add("boom");
@@ -353,7 +351,7 @@
     $("live-message").textContent = "";
     $("arena").classList.remove("boom");
     round = new BalloonRound({ onEvent: onRoundEvent });
-    displayedScore = -1; displayedCombo = -1; displayedTime = ""; displayedLevel = -1;
+    displayedScore = -1; displayedCombo = -1; displayedTime = ""; displayedLevel = -1; displayedDanger = -1;
     updateHUD(true);
     $("pause").disabled = true;
     showScreen("countdown-screen");

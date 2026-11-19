@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600" viewBox="0 0 600 600" role="img" aria-labelledby="title desc">
+  <title id="title">풍선 팡팡</title><desc id="desc">따뜻한 코코아색 배경에 떠 있는 분홍색, 파란색, 노란색 풍선</desc>
+  <defs>
+    <radialGradient id="bg"><stop stop-color="#5c4532"/><stop offset="1" stop-color="#2d241d"/></radialGradient>
+    <radialGradient id="pink" cx=".3" cy=".25" r=".8"><stop stop-color="#ffbad2"/><stop offset=".55" stop-color="#ff8db7"/><stop offset="1" stop-color="#d84c80"/></radialGradient>
+    <radialGradient id="blue" cx=".3" cy=".25" r=".8"><stop stop-color="#b8e0ff"/><stop offset=".55" stop-color="#7cc3f9"/><stop offset="1" stop-color="#478bda"/></radialGradient>
+    <radialGradient id="gold" cx=".3" cy=".25" r=".8"><stop stop-color="#fff0b7"/><stop offset=".55" stop-color="#ffdc7b"/><stop offset="1" stop-color="#e6a52e"/></radialGradient>
+    <pattern id="dots" width="26" height="26" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.2" fill="#ad8b4d" opacity=".2"/></pattern>
+  </defs>
+  <rect width="600" height="600" rx="48" fill="url(#bg)"/><rect width="600" height="600" rx="48" fill="url(#dots)"/>
+  <circle cx="305" cy="243" r="181" fill="none" stroke="#bd9650" stroke-dasharray="5 8" opacity=".35"/>
+  <g fill="none" stroke="#b9966b" stroke-width="2" opacity=".6"><path d="M183 304c-45 37 35 72 8 117"/><path d="M294 273c30 63-35 74-6 133"/><path d="M414 344c-32 33 15 59-7 93"/></g>
+  <g transform="rotate(-20 180 237)"><ellipse cx="180" cy="225" rx="66" ry="83" fill="url(#blue)"/><path d="m180 304-8 12h16Z" fill="#478bda"/><ellipse cx="155" cy="187" rx="9" ry="22" fill="#fff" opacity=".65" transform="rotate(24 155 187)"/></g>
+  <g transform="rotate(-5 292 188)"><ellipse cx="292" cy="183" rx="83" ry="103" fill="url(#pink)"/><path d="m292 282-9 14h18Z" fill="#d84c80"/><ellipse cx="258" cy="139" rx="12" ry="29" fill="#fff" opacity=".7" transform="rotate(24 258 139)"/><g fill="#7d3553"><ellipse cx="272" cy="202" rx="4" ry="6"/><ellipse cx="310" cy="202" rx="4" ry="6"/></g><path d="M283 218q9 12 18 0" fill="none" stroke="#7d3553" stroke-width="4" stroke-linecap="round"/></g>
+  <g transform="rotate(17 406 267)"><ellipse cx="406" cy="259" rx="71" ry="90" fill="url(#gold)"/><path d="m406 346-8 13h16Z" fill="#e6a52e"/><ellipse cx="379" cy="219" rx="10" ry="24" fill="#fff" opacity=".7" transform="rotate(24 379 219)"/><path d="m406 237 8 16 18 3-13 13 3 18-16-9-16 9 3-18-13-13 18-3Z" fill="#b47a2c"/></g>
+  <g fill="#ffce65"><path d="m129 83 5 14 14 5-14 5-5 14-5-14-14-5 14-5Z"/><path d="m472 127 4 11 11 4-11 4-4 11-4-11-11-4 11-4Z"/><path d="m94 326 4 10 10 4-10 4-4 10-4-10-10-4 10-4Z"/></g>
+  <g fill="#bd99f0"><rect x="433" y="70" width="8" height="13" rx="2" transform="rotate(30 433 70)"/><rect x="492" y="326" width="7" height="12" rx="2" transform="rotate(-20 492 326)"/><circle cx="111" cy="218" r="4"/></g>
+  <text x="300" y="491" text-anchor="middle" font-family="Pretendard,'Malgun Gothic',sans-serif" font-size="70" font-weight="900" letter-spacing="-4" fill="#f0cf83">풍선 팡팡</text>
+  <text x="300" y="539" text-anchor="middle" font-family="Pretendard,'Malgun Gothic',sans-serif" font-size="21" font-weight="600" fill="#d6b98b">500점마다 고양이 댄스 타임!</text>
+</svg>

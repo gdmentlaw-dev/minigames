@@ -87,3 +87,5 @@
 @media (max-width: 600px) {
   .balloon { --point-font: 20px; --special-point-font: 13px; --string-height: 50px; }
 }
+
+/* 공용 data-theme의 색상은 butter.css의 버터색 테마에서 정의한다. */

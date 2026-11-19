@@ -1,5 +1,8 @@
 "use strict";
 
+const PARTY_STEP = 500;
+const BALLOON_SPEED_MULTIPLIER = 2.2;
+
 // 화면의 색·안내와 실제 점수·속도가 항상 같은 규칙을 쓰도록 한 곳에 둔다.
 const BALLOON_RULES = Object.freeze({
   colors: Object.freeze([
@@ -10,7 +13,7 @@ const BALLOON_RULES = Object.freeze({
   ]),
   gold: Object.freeze({ name: "노랑 별", light: "#ffe394", dark: "#edb441", points: 60, speed: 1.85, speedLabel: "가장 빠름" }),
   clock: Object.freeze({ name: "민트 시간", light: "#9ae9c8", dark: "#4eb89b", points: 15, speed: 0.9, speedLabel: "조금 느림" }),
-  bomb: Object.freeze({ name: "회색 폭탄", light: "#8a859e", dark: "#4c4965", points: 0, speed: 1.1, speedLabel: "조금 빠름" }),
+  bomb: Object.freeze({ name: "감점 폭탄", light: "#93879f", dark: "#51455f", points: 0, penalty: 100, speed: 1.1, speedLabel: "좌우 이동" }),
 });
 
 function getBalloonSize(points, small = false) {
@@ -23,6 +26,27 @@ function getBalloonSize(points, small = false) {
   return { width: baseWidth * scale, height: baseHeight * scale, scale };
 }
 
+function getBalloonPosition(balloon, dimensions, reducedMotion = false) {
+  const { width, height, scale } = getBalloonSize(balloon.profile.points, dimensions.width <= 580);
+  const progress = balloon.age / balloon.lifetime;
+  const available = Math.max(0, dimensions.width - width - 10);
+  let x;
+  if (balloon.sideways) {
+    // 좌우 이동은 실제 게임 규칙이므로 동작 줄이기 설정에서도 유지한다.
+    const travel = balloon.x + Math.sin(balloon.age / balloon.wavePeriod * Math.PI * 2 + balloon.sway) * balloon.waveWidth;
+    const reflected = 1 - Math.abs(((travel % 2 + 2) % 2) - 1);
+    x = 5 + reflected * available;
+  } else {
+    const sway = reducedMotion ? 0 : Math.sin(balloon.age / 650 + balloon.sway) * 9;
+    x = Math.max(5, Math.min(dimensions.width - width - 5, balloon.x * dimensions.width - width / 2 + sway));
+  }
+  return {
+    x, y: dimensions.height + 10 - progress * (dimensions.height + height + 30),
+    width, height, scale,
+    rotation: reducedMotion ? 0 : Math.sin(balloon.age / 850 + balloon.sway) * 7,
+  };
+}
+
 // 화면과 분리한 한 판의 규칙. 점수 저장은 game.js에서 공용 SDK로만 한다.
 class BalloonRound {
   constructor({ random = Math.random, onEvent = () => {} } = {}) {
@@ -32,6 +56,7 @@ class BalloonRound {
     this.remaining = 30000;
     this.elapsed = 0;
     this.score = 0;
+    this.peakScore = 0;
     this.combo = 0;
     this.maxCombo = 0;
     this.popped = 0;
@@ -39,24 +64,34 @@ class BalloonRound {
     this.spawned = 0;
     this.nextSpawn = 0;
     this.nextId = 1;
+    this.sinceBomb = 0;
+    this.sinceClock = 0;
   }
 
   get level() { return 1 + Math.floor(this.elapsed / 15000); }
   get multiplier() { return 1 + Math.floor(this.combo / 5); }
+  get hazardTier() { return Math.floor(this.peakScore / PARTY_STEP); }
+  get bombEvery() { return Math.max(3, 9 - this.hazardTier); }
+  get bombSpeedBoost() { return 1 + this.hazardTier * 0.18; }
 
   start() {
     if (this.phase !== "idle") return;
     this.phase = "playing";
-    for (let i = 0; i < 4; i++) this.spawn(450 + i * 420);
-    this.nextSpawn = 650;
+    for (let i = 0; i < 4; i++) {
+      const balloon = this.spawn();
+      balloon.age = balloon.lifetime * (0.12 + i * 0.14);
+    }
+    this.nextSpawn = 550;
   }
 
   spawn(age = 0) {
     if (this.balloons.size >= 9) return;
     this.spawned++;
+    this.sinceBomb++;
+    this.sinceClock++;
     let type = "normal";
-    if (this.spawned % 7 === 0) type = "clock";
-    else if (this.spawned % 9 === 0) type = "bomb";
+    if (this.sinceClock >= 7) { type = "clock"; this.sinceClock = 0; }
+    else if (this.sinceBomb >= this.bombEvery) { type = "bomb"; this.sinceBomb = 0; }
     else if (this.random() < 0.16) type = "gold";
     let x = 0.09 + this.random() * 0.82;
     for (let i = 0; i < 8; i++) {
@@ -65,10 +100,15 @@ class BalloonRound {
     }
     const color = Math.floor(this.random() * BALLOON_RULES.colors.length);
     const profile = type === "normal" ? BALLOON_RULES.colors[color] : BALLOON_RULES[type];
+    const baseLifetime = (Math.max(2100, 5400 - this.level * 240) + this.random() * 600) / profile.speed / BALLOON_SPEED_MULTIPLIER;
+    const speedBoost = type === "bomb" ? this.bombSpeedBoost : 1;
     const balloon = {
       id: this.nextId++, type, x, age,
-      lifetime: (Math.max(2100, 5400 - this.level * 240) + this.random() * 600) / profile.speed,
+      baseLifetime, lifetime: Math.max(650, baseLifetime / speedBoost),
       color, profile, sway: this.random() * Math.PI * 2,
+      sideways: type === "bomb" || profile.points >= 40,
+      waveWidth: type === "bomb" ? 0.34 : 0.27,
+      wavePeriod: (type === "bomb" ? 1500 : 1850) / speedBoost,
     };
     this.balloons.set(balloon.id, balloon);
     return balloon;
@@ -106,9 +146,12 @@ class BalloonRound {
     // 먼저 제거하여 한 풍선을 빠르게 여러 번 눌러도 한 번만 센다.
     this.balloons.delete(id);
     const previousScore = this.score;
+    const previousPeak = this.peakScore;
     let points = 0;
     if (balloon.type === "bomb") {
       this.combo = 0;
+      points = -Math.min(this.score, balloon.profile.penalty);
+      this.score += points;
       this.remaining = Math.max(0, this.remaining - 3000);
     } else {
       points = balloon.profile.points * this.multiplier;
@@ -118,12 +161,23 @@ class BalloonRound {
       this.maxCombo = Math.max(this.maxCombo, this.combo);
       if (balloon.type === "clock") this.remaining += 3000;
     }
-    const first = Math.floor(previousScore / 100) + 1;
-    const last = Math.floor(this.score / 100);
-    // 90→210처럼 딱 100점을 찍지 않아도, 지나친 모든 100점 구간을 전달한다.
-    // 배열 대신 범위로 보내 높은 콤보에서도 메모리 사용이 늘어나지 않게 한다.
-    const milestones = last >= first ? { first: first * 100, last: last * 100, count: last - first + 1 } : null;
-    const event = { type: "pop", balloon, points, combo: this.combo, milestones };
+    this.peakScore = Math.max(this.peakScore, this.score);
+    const first = Math.floor(previousPeak / PARTY_STEP) + 1;
+    const last = this.hazardTier;
+    // 감점 후 같은 구간을 다시 넘어도 축하·난이도 상승은 중복하지 않는다.
+    const milestones = last >= first ? { first: first * PARTY_STEP, last: last * PARTY_STEP, count: last - first + 1 } : null;
+    if (milestones) {
+      for (const active of this.balloons.values()) {
+        if (active.type !== "bomb") continue;
+        const progress = active.age / active.lifetime;
+        const wavePhase = active.age / active.wavePeriod * Math.PI * 2 + active.sway;
+        active.lifetime = Math.max(650, active.baseLifetime / this.bombSpeedBoost);
+        active.age = progress * active.lifetime;
+        active.wavePeriod = 1500 / this.bombSpeedBoost;
+        active.sway = wavePhase - active.age / active.wavePeriod * Math.PI * 2;
+      }
+    }
+    const event = { type: "pop", balloon, points, combo: this.combo, milestones, previousScore };
     this.onEvent(event);
     if (this.remaining <= 0) this.end();
     return event;
