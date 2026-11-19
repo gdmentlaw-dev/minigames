@@ -104,7 +104,17 @@ button { font: inherit; color: inherit; }
 
 /* 하단 고정: 내 순위 + 플레이 (떠 있는 알약) */
 .mybar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; padding: 0 14px calc(14px + env(safe-area-inset-bottom)); pointer-events: none; }
-.mybar-in { pointer-events: auto; display: flex; align-items: center; gap: 12px; max-width: 1040px; margin: 0 auto; background: #fff; border-radius: 32px; padding: 9px 9px 9px 18px; box-shadow: 0 10px 26px rgba(143, 111, 224, .3); }
+.mybar-in { pointer-events: auto; display: flex; flex-direction: column; max-width: 1040px; margin: 0 auto; background: #fff; border-radius: 32px; padding: 9px 9px 9px 18px; box-shadow: 0 10px 26px rgba(143, 111, 224, .3); }
+.mb-row { display: flex; align-items: center; gap: 12px; }
+.mybar-in.exp { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.mybar-in.open { border-radius: 28px; }
+.mybar-in .gm { display: none; order: -1; margin: 2px 9px 10px 0; }
+.mybar-in.open .gm { display: grid; }
+.mybar-in .gm .g { background: var(--lav); }
+.mybar-in .gm .g i { background: linear-gradient(90deg, #b69cff var(--w), #e6dcfb var(--w)); }
+.mybar-in .gm .g.z i { background: #e6dcfb; }
+.caret { flex: none; font-size: 11px; color: #b3a5d6; transition: transform .15s; }
+.mybar-in.open .caret { transform: rotate(180deg); }
 .mybar .tag { display: none; font-size: 11px; padding: 1px 10px; background: var(--lav); color: var(--violet); border-radius: 999px; white-space: nowrap; }
 .mr { font-family: var(--head); font-weight: 700; font-size: 40px; line-height: .9; color: var(--pink); min-width: 44px; padding-top: 4px; }
 .mi { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.35; }
@@ -153,7 +163,7 @@ button { font: inherit; color: inherit; }
   .champ-name { font-size: 52px; }
   .big { font-size: 56px; }
   .champ .gm { grid-template-columns: repeat(8, 1fr) !important; }
-  .li .gm { grid-template-columns: repeat(4, 1fr) !important; }
+  .li .gm, .mybar-in .gm { grid-template-columns: repeat(4, 1fr) !important; }
   .li { grid-template-columns: 40px 44px minmax(0, 1fr) auto; min-height: 62px; }
   .mybar { left: var(--side); padding: 0 37px 18px; }
   .mybar .tag { display: inline-flex; }

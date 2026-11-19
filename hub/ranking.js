@@ -147,6 +147,12 @@
       ? { value: num(r.score), unit: g.scoreUnit, sub: `포인트 ${fmtP(r.points)}` }
       : { value: fmtP(r.total), unit: "P", sub: `${r.games_played}/${games.length} 게임 참여` };
   }
+  // 게임별 포인트 (이름 + 점수 + 막대). 1위 카드에는 늘 보이고, 2위부터와 하단 "내 순위"는 눌러서 펼친다
+  const gmHtml = (r) => `<div class="gm" style="grid-template-columns:repeat(${Math.min(4, games.length) || 1},1fr)">${games.map((x) => {
+    const p = Number((r.per_game || {})[x.id] || 0);
+    return `<span class="g${p ? "" : " z"}"><span class="gl">${esc(short(x.title))}<b>${p ? fmtP(p) : "-"}</b></span><i style="--w:${Math.round(p)}%"></i></span>`;
+  }).join("")}</div>`;
+
   function boardHtml(rows, g, dl) {
     if (!rows.length)
       return `<p class="empty">아직 기록이 없어요.${g ? ` <a href="${esc(g.url)}">첫 도전하기 →</a>` : ""}</p>`;
@@ -155,12 +161,6 @@
     const c = rows[0];
     const cv = view(c, g);
     // 1위 카드: 얼굴 · 이름 · 점수, 종합이면 게임별 포인트 막대
-    const gmCols = Math.min(4, games.length) || 1;
-    // 게임별 포인트 (이름 + 점수 + 막대). 1위 카드에는 늘 보이고, 2위부터는 줄을 눌러서 펼친다
-    const gmHtml = (r) => `<div class="gm" style="grid-template-columns:repeat(${gmCols},1fr)">${games.map((x) => {
-      const p = Number((r.per_game || {})[x.id] || 0);
-      return `<span class="g${p ? "" : " z"}"><span class="gl">${esc(short(x.title))}<b>${p ? fmtP(p) : "-"}</b></span><i style="--w:${Math.round(p)}%"></i></span>`;
-    }).join("")}</div>`;
     const champ = `<section class="champ">
       <div class="champ-top">
         ${MiniHub.avatar(c, 68)}
@@ -214,7 +214,10 @@
     } else {
       body = `<span class="tag">내 순위</span><span class="mi"><span>아직 기록이 없어요</span><small>한 판만 해도 순위에 올라가요</small></span>`;
     }
-    $("mybar").innerHTML = `<div class="mybar-in">${body}${btn}</div>`;
+    // 종합이고 내 기록이 있으면: 누르면 게임별 점수가 위로 펼쳐진다
+    const open = !g && !!me;
+    const wasOpen = !!$("mybar").querySelector(".mybar-in.open");
+    $("mybar").innerHTML = `<div class="mybar-in${open ? " exp" + (wasOpen ? " open" : "") : ""}">${open ? gmHtml(me) : ""}<div class="mb-row">${body}${open ? '<span class="caret" aria-hidden="true">▴</span>' : ""}${btn}</div></div>`;
     $("mybar").hidden = !player.id;
   }
 
@@ -275,7 +278,12 @@
     $("sheet-x").focus();
   }
   const closeSheet = () => ($("sheet").hidden = true);
-  $("mybar").addEventListener("click", (e) => { if (e.target.closest("[data-pick]")) openSheet(); });
+  $("mybar").addEventListener("click", (e) => {
+    if (e.target.closest("[data-pick]")) return openSheet();
+    if (e.target.closest(".btn-play")) return;
+    const box = e.target.closest(".mybar-in.exp");
+    if (box) box.classList.toggle("open");
+  });
   $("sheet").addEventListener("click", (e) => { if (e.target === $("sheet")) closeSheet(); });
   $("sheet-x").addEventListener("click", closeSheet);
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeSheet(); });
