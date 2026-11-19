@@ -10,11 +10,7 @@
     { id: "strawberryCake", name: "딸기 케이크", price: 8 },
     { id: "sourdough", name: "사워도우", price: 5 }
   ];
-  const CAT_COLORS = [
-    { fur: "#e5aa6b", shade: "#c78050", inner: "#f7d8b8", shirt: "#e8896f" },
-    { fur: "#91a5a1", shade: "#667f7d", inner: "#d7e3da", shirt: "#7f9ec6" },
-    { fur: "#d995a8", shade: "#aa657a", inner: "#f3d9d9", shirt: "#a685bd" }
-  ];
+  const CAT_TYPES = ["cheese", "mackerel", "tuxedo", "white", "gray", "calico", "black", "siamese"];
 
   function readStock(stock, id) {
     const item = stock[id];
@@ -32,6 +28,7 @@
       secondsLeft: SALES_DURATION,
       seats: Array(SEAT_COUNT).fill(null),
       respawnTimers: Array(SEAT_COUNT).fill(null),
+      departures: Array(SEAT_COUNT).fill(null),
       selectedCustomerId: null,
       nextCustomerId: 1,
       sales: Object.fromEntries(RECIPES.map(recipe => [recipe.id, { perfect: 0, normal: 0, revenue: 0 }])),
@@ -67,13 +64,20 @@
         .join(", ");
     }
 
+    function chooseCatType() {
+      const occupied = new Set(sale.seats.filter(Boolean).map(customer => customer.type));
+      sale.departures.filter(Boolean).forEach(departure => occupied.add(departure.type));
+      const available = CAT_TYPES.filter(type => !occupied.has(type));
+      return available[Math.floor(Math.random() * available.length)];
+    }
+
     function createCustomer(seat) {
       const shuffled = RECIPES.map(recipe => recipe.id).sort(() => Math.random() - .5);
       const orderCount = Math.random() < .5 ? 1 : 2;
       return {
         id: sale.nextCustomerId++,
         seat,
-        color: Math.floor(Math.random() * CAT_COLORS.length),
+        type: chooseCatType(),
         patienceMax: 38 + Math.floor(Math.random() * 17),
         patience: 0,
         order: shuffled.slice(0, orderCount).map(id => {
@@ -87,12 +91,18 @@
       sale.seats[seat] = createCustomer(seat);
       sale.seats[seat].patience = sale.seats[seat].patienceMax;
       sale.respawnTimers[seat] = null;
+      sale.departures[seat] = null;
     }
 
     function leaveSeat(customer, reason) {
       if (sale.seats[customer.seat] !== customer) return;
       sale.seats[customer.seat] = null;
       sale.respawnTimers[customer.seat] = 5 + Math.random() * 5;
+      sale.departures[customer.seat] = {
+        type: customer.type,
+        expression: reason === "missed" ? "angry" : "happy",
+        remaining: .85
+      };
       if (sale.selectedCustomerId === customer.id) sale.selectedCustomerId = null;
       if (reason === "missed") {
         sale.missed += 1;
@@ -103,31 +113,12 @@
       }
     }
 
-    function drawCat(context, colorIndex) {
-      const colors = CAT_COLORS[colorIndex] || CAT_COLORS[0];
-      const block = (x, y, width, height, color) => {
-        context.fillStyle = color;
-        context.fillRect(x, y, width, height);
-      };
+    function customerExpression(customer) {
+      return customer.patience / customer.patienceMax <= .3 ? "worried" : "normal";
+    }
 
-      context.clearRect(0, 0, context.canvas.width, context.canvas.height);
-      context.imageSmoothingEnabled = false;
-      block(25, 59, 50, 29, colors.shirt);
-      block(19, 17, 26, 29, "#63483c");
-      block(55, 17, 26, 29, "#63483c");
-      block(24, 21, 17, 19, colors.fur);
-      block(59, 21, 17, 19, colors.fur);
-      block(28, 25, 9, 11, colors.inner);
-      block(63, 25, 9, 11, colors.inner);
-      block(17, 31, 66, 48, "#63483c");
-      block(21, 35, 58, 40, colors.fur);
-      block(28, 47, 5, 7, "#49352f");
-      block(65, 47, 5, 7, "#49352f");
-      block(45, 57, 8, 5, "#c56c70");
-      block(40, 63, 18, 3, colors.shade);
-      block(7, 55, 14, 2, "#63483c");
-      block(79, 55, 14, 2, "#63483c");
-      block(37, 70, 28, 5, colors.shade);
+    function catImagePath(type, expression) {
+      return `assets/cats/cat_${type}_${expression}.png`;
     }
 
     function drawBread(context, id, x, y, scale) {
@@ -179,7 +170,7 @@
           <button type="button" class="store-bread-button ${canServe ? "" : "is-disabled"}"
             data-bread="${recipe.id}" aria-label="${recipe.name} 건네기, 재고 ${total}"
             ${canServe ? "" : "disabled"}>
-            <canvas class="store-bread-art" width="44" height="36" data-bread="${recipe.id}" aria-hidden="true"></canvas>
+            <canvas class="store-bread-art" width="80" height="64" data-bread="${recipe.id}" aria-hidden="true"></canvas>
             <span class="store-bread-name">${recipe.name}</span>
             <strong>${total}</strong>
             <small>완벽 ${amount.perfect} · 보통 ${amount.normal}</small>
@@ -195,6 +186,15 @@
 
     function renderSeat(customer, seat, isActive) {
       if (!customer) {
+        const departure = sale && sale.departures[seat];
+        if (departure) {
+          const message = departure.expression === "angry" ? "화나서 떠났어요" : "기뻐하며 떠났어요";
+          return `
+            <div class="store-empty-seat has-departure" aria-label="${seat + 1}번 손님 ${message}">
+              <img class="store-cat-art" src="${catImagePath(departure.type, departure.expression)}" alt="" aria-hidden="true">
+              <span>${message}</span>
+            </div>`;
+        }
         const wait = sale && sale.respawnTimers[seat] !== null
           ? `${Math.ceil(sale.respawnTimers[seat])}초 후 새 손님`
           : isActive ? "손님을 기다리는 중" : "영업 전";
@@ -202,6 +202,7 @@
       }
       const selected = sale.selectedCustomerId === customer.id;
       const urgent = customer.patience / customer.patienceMax <= .3;
+      const expression = customerExpression(customer);
       const description = orderDescription(customer);
       return `
         <button type="button" class="store-customer-seat ${selected ? "is-selected" : ""} ${urgent ? "is-urgent" : ""}"
@@ -212,14 +213,14 @@
             <span class="store-bubble-items">
               ${customer.order.filter(item => item.remaining > 0).map(item => `
                 <span class="store-order-item">
-                  <canvas class="store-order-art" width="80" height="64" data-bread="${item.id}" aria-hidden="true"></canvas>
+                  <canvas class="store-order-art" width="160" height="128" data-bread="${item.id}" aria-hidden="true"></canvas>
                   <b>×${item.remaining}</b>
                 </span>`).join("")}
             </span>
             <span class="store-seat-gauge"><i style="width:${customer.patience / customer.patienceMax * 100}%"></i></span>
             <span class="store-seat-time">${Math.ceil(customer.patience)}초</span>
           </span>
-          <canvas class="store-cat-art" width="100" height="90" data-cat="${customer.color}" aria-hidden="true"></canvas>
+          <img class="store-cat-art" src="${catImagePath(customer.type, expression)}" alt="" aria-hidden="true">
         </button>`;
     }
 
@@ -238,16 +239,17 @@
     function renderOrderRow(customer) {
       const urgency = customer.patience / customer.patienceMax <= .3;
       const selected = sale.selectedCustomerId === customer.id;
+      const expression = customerExpression(customer);
       return `
         <button type="button" class="order-slip-row ${urgency ? "is-urgent" : ""} ${selected ? "is-selected" : ""}"
           data-customer-id="${customer.id}">
-          <canvas class="order-slip-cat" width="100" height="90" data-cat="${customer.color}" aria-hidden="true"></canvas>
+          <img class="order-slip-cat" src="${catImagePath(customer.type, expression)}" alt="" aria-hidden="true">
           <span class="order-slip-content">
             <span class="order-slip-seat">${customer.seat + 1}번 손님</span>
             <span class="order-slip-items">
               ${customer.order.filter(item => item.remaining > 0).map(item => `
                 <span class="order-slip-item">
-                  <canvas class="order-slip-bread" width="80" height="64" data-bread="${item.id}" aria-hidden="true"></canvas>
+                  <canvas class="order-slip-bread" width="160" height="128" data-bread="${item.id}" aria-hidden="true"></canvas>
                   <span>${recipeFor(item.id).name} ×${item.remaining}</span>
                 </span>`).join("")}
             </span>
@@ -347,14 +349,11 @@
     }
 
     function drawArtwork() {
-      root.querySelectorAll(".store-cat-art, .order-slip-cat").forEach(canvas => {
-        drawCat(canvas.getContext("2d"), Number(canvas.dataset.cat));
-      });
       root.querySelectorAll(".store-order-art, .order-slip-bread, .store-bread-art").forEach(canvas => {
         const context = canvas.getContext("2d");
         context.imageSmoothingEnabled = false;
         const enlarged = canvas.classList.contains("store-order-art") || canvas.classList.contains("order-slip-bread");
-        drawBread(context, canvas.dataset.bread, enlarged ? 0 : 4, enlarged ? 0 : 2, enlarged ? 2 : 1);
+        drawBread(context, canvas.dataset.bread, 0, 0, enlarged ? 2 : 1);
       });
     }
 
@@ -455,6 +454,14 @@
             fillSeat(seat);
             shouldRender = true;
           }
+        }
+      });
+      sale.departures.forEach((departure, seat) => {
+        if (!departure) return;
+        departure.remaining = Math.max(0, departure.remaining - delta);
+        if (departure.remaining <= 0) {
+          sale.departures[seat] = null;
+          shouldRender = true;
         }
       });
 

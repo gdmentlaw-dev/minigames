@@ -6,8 +6,11 @@
   const DURATION = 30;
   const ITEM_SIZE = 60;
   const BUNDLE_WIDTH = 104;
+  const ATTACHED_POOP_CHANCE = 0.1;
+  const MIN_REGULAR_DROPS_BETWEEN_BUNDLES = 3;
   const INGREDIENT_IDS = ["milk", "egg", "butter", "sugar", "salt", "cocoa", "strawberry", "chocolate", "cream"];
-  const ITEM_TYPES = [...INGREDIENT_IDS, "trouble"];
+  const STANDALONE_POOP_RATE = 0.075;
+  const STANDALONE_POOP_CHANCE_AFTER_OTHER_DROP = STANDALONE_POOP_RATE / (1 - STANDALONE_POOP_RATE);
   const FALL_SPEEDS = {
     milk: [70, 96], butter: [70, 96], cream: [70, 96],
     sugar: [108, 138], salt: [108, 138], cocoa: [108, 138],
@@ -65,6 +68,8 @@
     context.fillStyle = "#684536";
     context.fillRect(x + 12, y, 36, 5);
     context.fillRect(x + 8, y + 5, 44, 5);
+    context.fillStyle = "#8a6045";
+    context.fillRect(x + 15, y + 2, 28, 2);
     context.beginPath();
     context.moveTo(x + 8, y + 10);
     context.lineTo(x + 30, y - 6);
@@ -74,17 +79,27 @@
     context.fillStyle = bodyColor;
     context.fillRect(x + 10, y + 10, 40, 44);
     context.fillRect(x + 15, y + 5, 30, 12);
+    context.fillStyle = "#ffffff";
+    context.fillRect(x + 12, y + 18, 3, 28);
+    context.fillStyle = "rgba(54, 72, 59, .18)";
+    context.fillRect(x + 45, y + 18, 3, 31);
     context.fillStyle = labelColor;
     context.fillRect(x + 14, y + 24, 32, 17);
+    context.fillStyle = "rgba(255, 255, 255, .55)";
+    context.fillRect(x + 16, y + 26, 28, 2);
     if (withLabel) pixelTextCentered(context, label, x + 30, y + 32.5, 0.8, "#55483f");
     context.fillStyle = cream ? "#fff7e7" : "#e7f7f4";
     context.fillRect(x + 18, y + 12, 24, 7);
+    context.fillStyle = "rgba(255, 255, 255, .5)";
+    context.fillRect(x + 20, y + 13, 17, 2);
   }
 
   function drawJar(context, x, y, powderColor, label, withLabel) {
     context.fillStyle = "#684536";
     context.fillRect(x + 15, y + 3, 30, 5);
     context.fillRect(x + 12, y + 8, 36, 6);
+    context.fillStyle = "#a27758";
+    context.fillRect(x + 16, y + 4, 20, 2);
     context.fillStyle = "#dff5ef";
     context.fillRect(x + 12, y + 14, 36, 38);
     context.fillStyle = "#ffffff";
@@ -95,6 +110,10 @@
     context.fillRect(x + 44, y + 20, 4, 28);
     context.fillStyle = powderColor;
     context.fillRect(x + 16, y + 31, 28, 17);
+    context.fillStyle = "rgba(255, 255, 255, .42)";
+    context.fillRect(x + 18, y + 33, 3, 12);
+    context.fillRect(x + 23, y + 35, 2, 2);
+    context.fillRect(x + 34, y + 38, 2, 2);
     context.fillStyle = "#fff7df";
     context.fillRect(x + 17, y + 24, 26, 7);
     context.fillStyle = "#fff6dd";
@@ -121,8 +140,13 @@
       context.fill();
       context.fillStyle = "#fff0a6";
       context.fillRect(20, 17, 5, 10);
+      context.fillRect(25, 13, 3, 3);
       context.fillStyle = "#d9c36a";
-      context.fillRect(18, 48, 24, 4);
+      context.fillRect(18, 46, 24, 4);
+      context.fillRect(22, 50, 16, 2);
+      context.fillStyle = "#fff7cc";
+      context.fillRect(39, 20, 2, 2);
+      context.fillRect(35, 27, 2, 2);
     } else if (id === "butter") {
       context.save();
       context.translate(3, 8);
@@ -132,7 +156,12 @@
       context.fillStyle = "#f7cf56";
       context.fillRect(8, 8, 44, 32);
       context.fillStyle = "#ffe98a";
-      context.fillRect(8, 8, 44, 8);
+      context.fillRect(8, 8, 44, 5);
+      context.fillRect(12, 14, 29, 2);
+      context.fillStyle = "#eab83c";
+      context.fillRect(47, 15, 5, 23);
+      context.fillStyle = "#fff1a7";
+      context.fillRect(13, 22, 3, 12);
       if (withLabel) pixelText(context, "BUTTER", 11, 23, 1, "#68523a");
       context.restore();
     } else if (id === "sugar") {
@@ -166,11 +195,19 @@
       context.fillRect(22, 18, 6, 12);
       context.fillRect(32, 18, 6, 12);
       context.fillRect(27, 13, 6, 14);
+      context.fillStyle = "#a6c76b";
+      context.fillRect(28, 15, 3, 8);
+      context.fillRect(23, 20, 3, 2);
+      context.fillRect(34, 20, 3, 2);
       context.fillStyle = "#fff1b5";
       context.fillRect(22, 32, 3, 3);
       context.fillRect(35, 34, 3, 3);
       context.fillRect(28, 40, 3, 3);
       context.fillRect(38, 43, 3, 3);
+      context.fillRect(20, 40, 2, 2);
+      context.fillRect(32, 47, 2, 2);
+      context.fillStyle = "#f77a79";
+      context.fillRect(18, 29, 3, 5);
     } else if (id === "chocolate") {
       context.fillStyle = "#684536";
       context.fillRect(8, 24, 44, 22);
@@ -182,9 +219,12 @@
       context.fillRect(20, 43, 24, 8);
       context.fillStyle = "#402a24";
       context.fillRect(16, 24, 5, 5);
-      context.fillRect(28, 18, 5, 5);
-      context.fillRect(39, 30, 5, 5);
-      context.fillRect(25, 38, 5, 5);
+      context.fillRect(38, 26, 5, 5);
+      context.fillRect(26, 38, 5, 5);
+      context.fillStyle = "#a87558";
+      context.fillRect(17, 24, 2, 2);
+      context.fillRect(39, 26, 2, 2);
+      context.fillRect(27, 38, 2, 2);
     } else if (id === "trouble") {
       context.fillStyle = "#5a3828";
       context.fillRect(12, 48, 36, 8);
@@ -200,10 +240,18 @@
       context.fillRect(20, 43, 5, 5);
       context.fillRect(30, 34, 5, 5);
       context.fillRect(38, 48, 4, 4);
+      context.fillStyle = "#9c6b50";
+      context.fillRect(20, 43, 2, 2);
+      context.fillRect(31, 34, 2, 2);
+      context.fillRect(38, 48, 2, 2);
       context.fillStyle = "#a27a62";
       context.fillRect(18, 18, 3, 8);
       context.fillRect(27, 10, 3, 7);
       context.fillRect(39, 17, 3, 9);
+      context.fillStyle = "#c29a78";
+      context.fillRect(19, 18, 1, 4);
+      context.fillRect(28, 10, 1, 3);
+      context.fillRect(40, 17, 1, 5);
     }
     context.restore();
   }
@@ -256,24 +304,40 @@
 
   function drawBackground(context) {
     rectangle(context, 0, 0, WIDTH, HEIGHT, "#b7dfe1");
+    rectangle(context, 0, 0, WIDTH, 11, "#a4d3d5");
+    rectangle(context, 0, 271, WIDTH, 6, "#a9d1cf");
     rectangle(context, 0, 281, WIDTH, 139, "#e8c99e");
     rectangle(context, 0, 277, WIDTH, 10, "#9f6b4c");
 
     rectangle(context, 42, 42, 117, 93, "#fff6df");
+    rectangle(context, 42, 42, 117, 5, "#f5e6c6");
     rectangle(context, 51, 51, 99, 75, "#79b8c2");
     rectangle(context, 98, 51, 7, 75, "#fff6df");
     rectangle(context, 51, 85, 99, 7, "#fff6df");
     rectangle(context, 60, 61, 20, 7, "#a9d8d6");
     rectangle(context, 121, 104, 20, 7, "#a9d8d6");
+    rectangle(context, 55, 55, 3, 25, "#c2e5df");
+    rectangle(context, 110, 56, 23, 3, "#c2e5df");
+    rectangle(context, 128, 97, 13, 3, "#c2e5df");
 
     rectangle(context, 190, 47, 124, 9, "#fff1d2");
+    rectangle(context, 190, 47, 124, 3, "#fff9e8");
     rectangle(context, 196, 56, 10, 59, "#b97950");
     rectangle(context, 284, 56, 10, 59, "#b97950");
     rectangle(context, 184, 112, 137, 8, "#8d5943");
+    rectangle(context, 187, 120, 132, 3, "#6e493a");
     rectangle(context, 197, 78, 20, 28, "#f5d17b");
+    rectangle(context, 200, 81, 3, 19, "#ffe9a8");
+    rectangle(context, 211, 81, 3, 20, "#d4a84e");
     rectangle(context, 222, 68, 23, 38, "#fff8e9");
+    rectangle(context, 226, 72, 15, 3, "#e4d4b8");
+    rectangle(context, 227, 80, 2, 20, "#e8dec9");
     rectangle(context, 250, 85, 25, 21, "#b97850");
+    rectangle(context, 253, 89, 19, 3, "#d99a68");
+    rectangle(context, 253, 96, 3, 7, "#986044");
     rectangle(context, 302, 70, 18, 30, "#789c73");
+    rectangle(context, 305, 66, 11, 6, "#a4bd7d");
+    rectangle(context, 306, 74, 3, 20, "#d3d8b0");
 
     rectangle(context, 0, 340, WIDTH, 8, "#d5a77b");
     for (let x = -20; x < WIDTH; x += 64) {
@@ -285,6 +349,10 @@
       rectangle(context, x + 32, 388, 32, 8, "#d5a77b");
       rectangle(context, x, 396, 32, 8, "#d5a77b");
       rectangle(context, x + 32, 404, 32, 8, "#d5a77b");
+    }
+    for (let x = 8; x < WIDTH; x += 64) {
+      rectangle(context, x, 350, 2, 48, "rgba(151, 105, 70, .12)");
+      rectangle(context, x + 22, 370, 2, 2, "rgba(151, 105, 70, .28)");
     }
   }
 
@@ -314,21 +382,43 @@
     rectangle(context, x + 24, y + 12, 42, 3, light);
     rectangle(context, x + 18, y + 64, 42, 15, "#fff2d6");
     rectangle(context, x + 35, y + 64, 8, 12, "#d97768");
+    rectangle(context, x + 23, y + 66, 8, 3, "#fff9ec");
+    rectangle(context, x + 48, y + 66, 7, 3, "#dfc7a6");
     rectangle(context, x + 4, y + 78, 70, 9, dark);
     rectangle(context, x + 10, y + 82, 58, 18, "#c67d50");
     rectangle(context, x + 15, y + 85, 48, 11, "#e5aa6b");
     rectangle(context, x + 20, y + 90, 38, 3, dark);
     rectangle(context, x + 10, y + 98, 58, 6, dark);
+    rectangle(context, x + 12, y + 83, 4, 12, "#e4a16d");
+    rectangle(context, x + 59, y + 84, 5, 11, "#ad6848");
+    rectangle(context, x + 19, y + 86, 4, 2, "#f2c184");
+    rectangle(context, x + 54, y + 89, 5, 2, "#f2c184");
+    rectangle(context, x + 27, y + 40, 2, 2, "#fff6e2");
+    rectangle(context, x + 48, y + 40, 2, 2, "#fff6e2");
+    rectangle(context, x + 23, y + 49, 5, 2, "#efb29f");
+    rectangle(context, x + 51, y + 49, 5, 2, "#efb29f");
+    rectangle(context, x + 38, y + 48, 2, 2, "#f3a5a1");
+    rectangle(context, x + 40, y + 54, 2, 3, "#fff0d6");
+    rectangle(context, x + 19, y + 51, 7, 1, "#fff2d6");
+    rectangle(context, x + 54, y + 51, 7, 1, "#fff2d6");
+    rectangle(context, x + 28, y + 17, 7, 2, "#fffdf3");
+    rectangle(context, x + 51, y + 17, 7, 2, "#e7d8bd");
+    rectangle(context, x + 33, y + 5, 16, 2, "#fffdf3");
   }
 
   function drawBasket(context, x, y) {
     rectangle(context, x + 5, y, 56, 5, "#684536");
     rectangle(context, x, y + 5, 66, 27, "#684536");
     rectangle(context, x + 5, y + 10, 56, 17, "#d18b51");
+    rectangle(context, x + 7, y + 11, 52, 2, "#e2a261");
     rectangle(context, x + 14, y + 10, 5, 17, "#8b583e");
     rectangle(context, x + 29, y + 10, 5, 17, "#8b583e");
     rectangle(context, x + 44, y + 10, 5, 17, "#8b583e");
+    rectangle(context, x + 15, y + 13, 2, 11, "#b97746");
+    rectangle(context, x + 30, y + 13, 2, 11, "#b97746");
+    rectangle(context, x + 45, y + 13, 2, 11, "#b97746");
     rectangle(context, x + 6, y + 27, 55, 5, "#684536");
+    rectangle(context, x + 8, y + 28, 51, 2, "#ad7048");
   }
 
   function drawScene(context, objects, basketX, timeLeft, impactTime) {
@@ -381,6 +471,7 @@
     let context;
     let callbacks;
     let lastSpawnedType = "";
+    let regularIngredientsSinceBundle = MIN_REGULAR_DROPS_BETWEEN_BUNDLES;
     let feedback = "";
     let feedbackTime = 0;
     let impactTime = 0;
@@ -454,25 +545,39 @@
     }
 
     function spawnObject() {
-      const isBundle = Math.random() < .25;
+      const isStandalonePoop = lastSpawnedType !== "trouble" &&
+        Math.random() < STANDALONE_POOP_CHANCE_AFTER_OTHER_DROP;
+      const isBundle = !isStandalonePoop &&
+        regularIngredientsSinceBundle >= MIN_REGULAR_DROPS_BETWEEN_BUNDLES &&
+        Math.random() < ATTACHED_POOP_CHANCE;
       let type;
       let ingredient = null;
       if (isBundle) {
+        regularIngredientsSinceBundle = 0;
         type = "bundle";
         ingredient = INGREDIENT_IDS[Math.floor(Math.random() * INGREDIENT_IDS.length)];
+      } else if (isStandalonePoop) {
+        type = "trouble";
       } else {
-        type = ITEM_TYPES[Math.floor(Math.random() * ITEM_TYPES.length)];
+        type = INGREDIENT_IDS[Math.floor(Math.random() * INGREDIENT_IDS.length)];
         if (type === lastSpawnedType && Math.random() < 0.65) {
-          type = ITEM_TYPES[(ITEM_TYPES.indexOf(type) + 1 + Math.floor(Math.random() * (ITEM_TYPES.length - 1))) % ITEM_TYPES.length];
+          type = INGREDIENT_IDS[
+            (INGREDIENT_IDS.indexOf(type) + 1 + Math.floor(Math.random() * (INGREDIENT_IDS.length - 1))) % INGREDIENT_IDS.length
+          ];
         }
+        regularIngredientsSinceBundle = Math.min(
+          regularIngredientsSinceBundle + 1,
+          MIN_REGULAR_DROPS_BETWEEN_BUNDLES
+        );
       }
       lastSpawnedType = type;
       const width = isBundle ? BUNDLE_WIDTH : ITEM_SIZE;
-      const speed = isBundle
+      const baseSpeed = isBundle
         ? 205 + Math.random() * 30 + elapsed * .7
         : type === "trouble"
           ? 175 + Math.random() * 20 + elapsed * .7
           : FALL_SPEEDS[type][0] + Math.random() * (FALL_SPEEDS[type][1] - FALL_SPEEDS[type][0]) + elapsed * .7;
+      const speed = baseSpeed * 1.25;
       objects.push({
         type,
         ingredient,
@@ -572,6 +677,7 @@
       pointerActive = false;
       lastTimestamp = 0;
       lastSpawnedType = "";
+      regularIngredientsSinceBundle = MIN_REGULAR_DROPS_BETWEEN_BUNDLES;
       feedback = "";
       feedbackTime = 0;
       impactTime = 0;
