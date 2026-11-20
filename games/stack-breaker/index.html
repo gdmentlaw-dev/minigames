@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="ko">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>스택 브레이커</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#10111a;color:#f6f4ff;font:16px system-ui,sans-serif;min-height:100dvh;display:grid;grid-template-columns:minmax(0,1fr);place-items:center;padding:16px}
+main{width:min(100%,700px);min-width:0}
+h1{font-size:clamp(2rem,8vw,3.4rem);letter-spacing:-.08em;margin:0}
+p{margin:8px 0 18px;color:#c5c2d9;line-height:1.5}
+.hud,.controls{display:flex;gap:8px;justify-content:space-between}
+.hud{padding:12px 0;font-weight:750;flex-wrap:wrap}
+.coins{color:#ffda70;letter-spacing:3px}
+#time{font-variant-numeric:tabular-nums}
+#time.low{color:#ff8895}
+.board{position:relative;height:clamp(150px,25dvh,205px);border:1px solid #383851;border-radius:20px;background-color:#191a29;background-image:linear-gradient(#ffffff08 1px,transparent 1px),linear-gradient(90deg,#ffffff08 1px,transparent 1px);background-size:22px 22px;display:grid;align-items:center;grid-template-columns:58px minmax(0,1fr);overflow:hidden}
+.lane{min-width:0;overflow:hidden;contain:inline-size;display:grid;align-items:center;height:100%;grid-template-columns:minmax(0,1fr)}
+.robot{position:relative;justify-self:center;width:34px;height:40px;z-index:1;pointer-events:none}
+.robot-head{position:absolute;inset:0 1px auto;height:22px;background:#e2dcff;border-radius:7px;border:2px solid #8779ba}
+.robot-head::after{content:"";position:absolute;top:6px;left:7px;width:4px;height:5px;border-radius:1px;background:#242034;box-shadow:9px 0 #242034}
+.robot-body{position:absolute;top:23px;left:7px;width:21px;height:13px;border-radius:4px;background:#a89af2}
+.robot-body::after{content:"";position:absolute;top:11px;left:2px;width:6px;height:6px;border-radius:2px;background:#a89af2;box-shadow:11px 0 #a89af2}
+.robot-arm{position:absolute;top:24px;right:-9px;width:17px;height:7px;border-radius:4px;background:#e2dcff;transform:rotate(-22deg);transform-origin:left center}
+.board.bonus .robot-head,.board.bonus .robot-arm{background:#ffda70}
+.track{display:flex;align-items:center;gap:8px;padding-inline:12px;width:max-content}
+.tile{--width:clamp(46px,10vw,72px);width:var(--width);height:var(--width);border-radius:8px;display:grid;place-content:center;text-align:center;border:1px solid #ffffff6b;box-shadow:inset 0 -4px #0002;font-size:1.2rem}
+.tile:first-child{outline:2px solid white;outline-offset:2px}
+.tile.large{width:calc(var(--width) * 1.75);height:calc(var(--width) * 1.75);font-size:1.6rem}
+.board.bonus{border-color:#ffda70;box-shadow:inset 0 0 24px #ffda7029}
+.gauge{margin:0 0 12px;display:grid;grid-template-columns:1fr auto;gap:4px 8px;color:#e3daff;font-size:.875rem;font-weight:750}
+.gauge progress{grid-column:1/-1;width:100%;height:12px;accent-color:#c3a0ff}
+.gauge.active{color:#ffda70}
+.gauge.active progress{accent-color:#ffda70}
+.hp{font-size:.77rem;white-space:nowrap}
+.red{background:#ff6879}.green{background:#67e6a1}.blue{background:#77aaff}.yellow{background:#ffda70}
+.tile,button.color{color:#121622;font-weight:850}
+button{cursor:pointer;touch-action:manipulation;border:0;border-radius:12px;font:inherit;padding:12px}
+button.color{flex:1;min-height:57px}
+button.color:active{transform:scale(.96)}
+button:disabled{opacity:.42;cursor:default}
+button:focus-visible{outline:3px solid white;outline-offset:3px}
+small{display:block;font-size:.8rem}
+#status{min-height:2.8em;margin:10px 0;text-align:center;display:grid;align-items:center}
+form{display:flex;gap:8px;justify-content:center;margin-top:12px}
+#start{background:#ece9ff;color:#221b43;font-weight:750;white-space:nowrap}
+#exit{background:#28243e;color:inherit}
+</style>
+<main>
+<h1>스택 브레이커</h1>
+<p>맨 왼쪽과 같은 색을 누르세요. 노랑은 아무 색이나 눌러 +5초, 큰 블록은 같은 색으로 3번! 색을 30번 맞히면 5초간 아무 색으로 깨고 2점을 얻어요.</p>
+<div class="hud"><span id="time">1:00</span><span id="score">점수 0</span><span class="coins" id="coins"></span></div>
+<div class="gauge" id="gauge">
+<label for="charge">보너스 게이지</label><span id="charge-text"></span>
+<progress id="charge" max="30" value="0"></progress>
+</div>
+<div class="board" id="board" tabindex="-1" aria-label="게임판">
+  <div class="robot" aria-hidden="true"><span class="robot-head"></span><span class="robot-body"></span><span class="robot-arm" id="robot-arm"></span></div>
+  <div class="lane"><div class="track" id="track"></div></div>
+</div>
+<p id="status" role="status">60초 동안 블록을 최대한 많이 깨세요.</p>
+<div class="controls">
+<button class="color red" data-color="0" aria-keyshortcuts="ArrowLeft" disabled>빨강<small aria-hidden="true">←</small></button>
+<button class="color green" data-color="1" aria-keyshortcuts="ArrowUp" disabled>초록<small aria-hidden="true">↑</small></button>
+<button class="color blue" data-color="2" aria-keyshortcuts="ArrowRight" disabled>파랑<small aria-hidden="true">→</small></button>
+</div>
+<form id="game-form"><button id="start" disabled>게임 시작</button><button id="exit" type="button">메인으로</button></form>
+</main>
+<script src="../../shared/minihub-sdk.js"></script>
+<script>
+const colors = ['red', 'green', 'blue', 'yellow'];
+const names = ['빨강', '초록', '파랑', '노랑'];
+const symbols = ['←', '↑', '→', '+5초'];
+const yellow = 3;
+const chargeTarget = 30;
+const bonusDuration = 5000;
+const $ = id => document.getElementById(id);
+const buttons = [...document.querySelectorAll('[data-color]')];
+const track = $('track');
+let blocks = [];
+let lives = 3;
+let score = 0;
+let charge = 0;
+let bonusUntil = 0;
+let deadline = 0;
+let timer = null;
+let slide = null;
+let swing = null;
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
+function makeBlock(specialsAllowed) {
+  const roll = specialsAllowed ? Math.random() : 1;
+  const isYellow = roll < 0.04;
+  const large = !isYellow && roll < 0.20;
+  return {
+    color: isYellow ? yellow : Math.floor(Math.random() * 3),
+    hits: large ? 3 : 1,
+    large
+  };
+}
+function drawBlocks() {
+  track.replaceChildren(...blocks.map(block => {
+    const tile = document.createElement('div');
+    tile.className = 'tile ' + colors[block.color] + (block.large ? ' large' : '');
+    tile.setAttribute('aria-label', block.large ? names[block.color] + ' 큰 블록, ' + block.hits + '번 남음' : names[block.color]);
+    tile.textContent = symbols[block.color];
+    if (block.large) {
+      const hp = document.createElement('span');
+      hp.className = 'hp';
+      hp.textContent = block.hits + '타 남음';
+      tile.append(hp);
+    }
+    return tile;
+  }));
+}
+function showScore() {
+  $('score').textContent = '점수 ' + score;
+  $('coins').textContent = '●'.repeat(lives) + '○'.repeat(3 - lives);
+  $('coins').setAttribute('aria-label', '목숨 코인 ' + lives + '개');
+}
+function showTime(remaining) {
+  const seconds = Math.ceil(Math.max(remaining, 0) / 1000);
+  $('time').textContent = Math.floor(seconds / 60) + ':' + String(seconds % 60).padStart(2, '0');
+  $('time').classList.toggle('low', seconds <= 10);
+}
+function showBonus(now) {
+  const remaining = Math.max(0, bonusUntil - now);
+  $('gauge').classList.toggle('active', remaining > 0);
+  $('board').classList.toggle('bonus', remaining > 0);
+  $('charge').value = remaining ? chargeTarget * (remaining / bonusDuration) : charge;
+  $('charge-text').textContent = remaining ? '×2 보너스 · ' + Math.ceil(remaining / 1000) + '초' : charge + ' / ' + chargeTarget;
+}
+function finish(reason) {
+  if (timer === null) return;
+  clearInterval(timer);
+  timer = null;
+  bonusUntil = 0;
+  showBonus(performance.now());
+  buttons.forEach(button => { button.disabled = true; });
+  $('start').disabled = false;
+  $('start').textContent = '다시 시작';
+  $('status').textContent = reason + ' 최종 ' + score + '점';
+  void MiniHub.submitScore(score);
+}
+function tick() {
+  const now = performance.now();
+  const remaining = deadline - now;
+  showTime(remaining);
+  showBonus(now);
+  if (remaining <= 0) finish('시간 종료!');
+}
+function start(event) {
+  event.preventDefault();
+  if (timer !== null || $('start').disabled) return;
+  slide?.cancel();
+  swing?.cancel();
+  blocks = Array.from({length: 14}, (_, index) => makeBlock(index > 2));
+  score = 0;
+  charge = 0;
+  bonusUntil = 0;
+  showBonus(performance.now());
+  lives = 3;
+  deadline = performance.now() + 60000;
+  drawBlocks();
+  showScore();
+  showTime(60000);
+  $('status').textContent = '맨 왼쪽 블록부터!';
+  $('start').disabled = true;
+  buttons.forEach(button => { button.disabled = false; });
+  timer = setInterval(tick, 100);
+  $('board').focus({preventScroll: true});
+}
+function hit(color) {
+  if (timer === null) return;
+  tick();
+  if (timer === null) return;
+  const block = blocks[0];
+  const now = performance.now();
+  const inBonus = now < bonusUntil;
+  if (!inBonus && block.color !== yellow && block.color !== color) {
+    lives--;
+    showScore();
+    if (!lives) finish('목숨 코인 소진!');
+    else $('status').textContent = '색이 달라요. 목숨 코인 −1';
+    return;
+  }
+  if (!reduceMotion.matches) {
+    swing?.cancel();
+    swing = $('robot-arm').animate(
+      [{transform: 'rotate(-22deg)'}, {transform: 'translateX(10px) rotate(0deg)', offset: 0.35}, {transform: 'rotate(-22deg)'}],
+      {duration: 160}
+    );
+  }
+  let activated = false;
+  if (!inBonus && block.color !== yellow) {
+    charge++;
+    if (charge === chargeTarget) {
+      charge = 0;
+      bonusUntil = now + bonusDuration;
+      deadline += bonusDuration;
+      activated = true;
+      showTime(deadline - now);
+    }
+    showBonus(now);
+  }
+  block.hits -= inBonus ? block.hits : 1;
+  if (block.hits) {
+    drawBlocks();
+    $('status').textContent = activated ? '보너스 시작! 아무 색이나 누르세요.' : '큰 블록 · ' + block.hits + '번 남음';
+    return;
+  }
+  const distance = track.firstElementChild.offsetWidth + 8;
+  blocks.shift();
+  blocks.push(makeBlock(true));
+  score += inBonus ? 2 : 1;
+  if (block.color === yellow) {
+    deadline += bonusDuration;
+    showTime(deadline - performance.now());
+  }
+  drawBlocks();
+  slide?.cancel();
+  if (!reduceMotion.matches) {
+    slide = track.animate([{transform: 'translateX(' + distance + 'px)'}, {transform: 'translateX(0)'}], {duration: 120, easing: 'ease-out'});
+  }
+  showScore();
+  const points = inBonus ? '+2점' : '+1점';
+  if (activated) $('status').textContent = '보너스 시작! 아무 색이나 누르세요.';
+  else if (block.color === yellow) $('status').textContent = '+5초 · ' + points;
+  else $('status').textContent = '블록 파괴! ' + points;
+}
+buttons.forEach(button => button.addEventListener('click', () => hit(Number(button.dataset.color))));
+$('game-form').addEventListener('submit', start);
+const colorKeys = [
+  {key: 'ArrowLeft', legacyKey: 'Left', keyCode: 37},
+  {key: 'ArrowUp', legacyKey: 'Up', keyCode: 38},
+  {key: 'ArrowRight', legacyKey: 'Right', keyCode: 39}
+];
+window.addEventListener('keydown', event => {
+  if (timer === null || event.ctrlKey || event.metaKey || event.altKey) return;
+  const color = colorKeys.findIndex(arrow =>
+    event.key === arrow.key || event.key === arrow.legacyKey ||
+    event.code === arrow.key || event.keyCode === arrow.keyCode
+  );
+  if (color === -1) return;
+  event.preventDefault();
+  event.stopPropagation();
+  if (!event.repeat) hit(color);
+}, {capture: true, passive: false});
+blocks = Array.from({length: 14}, (_, index) => makeBlock(index > 2));
+drawBlocks();
+showScore();
+showBonus(performance.now());
+MiniHub.init('stack-breaker');
+MiniHub.onReady(() => { $('start').disabled = false; });
+$('exit').addEventListener('click', () => MiniHub.exit());
+</script>
+</html>
