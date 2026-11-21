@@ -4,10 +4,11 @@ const GAME_ID = 'memory-match';
 const TRAY_SIZE = 7;
 const MATCH_SIZE = 3;
 const REFILL_INTERVAL = 5;
-const SAVE_VERSION = 3;
+const SAVE_VERSION = 6;
 const MATCH_DURATION = 400;
-const STAGE_SECONDS = 120;
-const EXTRA_SECONDS = 30;
+const BONUS_PER_SECOND = 10;
+const RANK_LIMIT = 1000;
+const STARTING_ITEMS = { shuffle: 1, undo: 1, return: 1 };
 const PICTURES = [
   '선물 상자', '별', '편지', '블루베리 타르트',
   '리본', '버섯', '주전자', '고슴도치',
@@ -22,6 +23,8 @@ const scoreDisplay = document.querySelector('#score');
 const clockDisplay = document.querySelector('#clock');
 const message = document.querySelector('#status');
 const startButton = document.querySelector('#start');
+const gameoverListButton = document.querySelector('#gameover-stage-list');
+const playScreen = document.querySelector('#play-screen');
 const dock = document.querySelector('#dock');
 const trayDisplay = document.querySelector('#tray');
 const trayCount = document.querySelector('#tray-count');
@@ -29,11 +32,29 @@ const soundButton = document.querySelector('#sound');
 const shuffleButton = document.querySelector('#shuffle');
 const undoButton = document.querySelector('#undo');
 const returnButton = document.querySelector('#return');
-const timeItem = document.querySelector('#time-item');
-const finishButton = document.querySelector('#finish');
-const timeoutDialog = document.querySelector('#timeout');
-const extendButton = document.querySelector('#extend-time');
-const timeoutEndButton = document.querySelector('#timeout-end');
+const pauseButton = document.querySelector('#pause');
+const clearDialog = document.querySelector('#clear-dialog');
+const clearSummary = document.querySelector('#clear-summary');
+const pauseMenu = document.querySelector('#pause-menu');
+const rewardMenu = document.querySelector('#reward-menu');
+const rewardStage = document.querySelector('#reward-stage');
+const rewardNextButton = document.querySelector('#reward-next');
+const resumeButton = document.querySelector('#resume-game');
+const pauseListButton = document.querySelector('#pause-stage-list');
+const clearListButton = document.querySelector('#open-stage-list');
+const clearStageLabel = document.querySelector('#clear-stage-label');
+const clearTime = document.querySelector('#clear-time');
+const clearBonusDisplay = document.querySelector('#clear-bonus');
+const clearScore = document.querySelector('#clear-score');
+const clearRankLabel = document.querySelector('#clear-rank-label');
+const clearRank = document.querySelector('#clear-rank');
+const rankingScroll = document.querySelector('#ranking-scroll');
+const rankingRows = document.querySelector('#ranking-rows');
+const rankingNote = document.querySelector('#ranking-note');
+const nextStageButton = document.querySelector('#next-stage');
+const stageList = document.querySelector('#stage-list');
+const stageButtons = document.querySelector('#stage-buttons');
+const stageListStatus = document.querySelector('#stage-list-status');
 
 let stage = 1;
 let score = 0;
@@ -41,11 +62,17 @@ let cards = [];
 let tray = [];
 let items;
 let playing = false;
-let checkpoint = null;
+let progress = null;
+let stageStart;
+let playerId;
+let playerName = '나';
 let checkpointKey;
 let soundEnabled = true;
 let audioContext;
-let deadline = 0;
+let stageStartedAt = 0;
+let clearSeconds = 0;
+let clearResult = null;
+let pauseState = null;
 let clockInterval;
 const matchingCards = new Set();
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -182,13 +209,12 @@ function updateDock() {
   shuffleButton.textContent = '판 섞기 · ' + items.shuffle;
   undoButton.textContent = '한 장 되돌리기 · ' + items.undo;
   returnButton.textContent = '보관함 비우기 · ' + items.return;
-  timeItem.textContent = '시간 +30초 · ' + items.time;
-  timeItem.classList.toggle('spent', items.time === 0);
-  const canPlay = playing && performance.now() < deadline && matchingCards.size === 0;
+  const canPlay = stageIsActive() && matchingCards.size === 0;
   shuffleButton.disabled = !canPlay || items.shuffle === 0 || cards.length < 2;
   undoButton.disabled = !canPlay || items.undo === 0 || tray.length === 0;
   returnButton.disabled = !canPlay || items.return === 0 || tray.length === 0;
-  finishButton.disabled = !canPlay;
+  pauseButton.hidden = !playing || clearResult !== null;
+  pauseButton.disabled = pauseState !== null;
 }
 
 function stopClock() {
@@ -196,49 +222,79 @@ function stopClock() {
   clockInterval = undefined;
 }
 
-function updateClock() {
-  const left = Math.max(0, Math.ceil((deadline - performance.now()) / 1000));
-  const minutes = String(Math.floor(left / 60)).padStart(2, '0');
-  const seconds = String(left % 60).padStart(2, '0');
-  const label = minutes + ':' + seconds;
-  if (clockDisplay.textContent !== label) {
-    clockDisplay.textContent = label;
-    clockDisplay.classList.toggle('urgent', left <= 15);
-  }
-  if (left > 0 || !playing) return;
-
-  stopClock();
-  if (matchingCards.size > 0 || timeoutDialog.open) return;
-  if (items.time > 0) {
-    updateDock();
-    timeoutDialog.showModal();
-  } else {
-    finishGame('시간이 다 됐어요.');
-  }
+function bonusTarget(level) {
+  return level <= 5 ? 120 : 150;
 }
 
-function startClock(seconds) {
+function elapsedSeconds(now = performance.now()) {
+  return Math.max(0, Math.floor((now - stageStartedAt) / 1000));
+}
+
+function formatDuration(elapsed) {
+  const minutes = String(Math.floor(elapsed / 60)).padStart(2, '0');
+  const seconds = String(elapsed % 60).padStart(2, '0');
+  return minutes + ':' + seconds;
+}
+
+function updateClock(elapsed = elapsedSeconds()) {
+  const label = formatDuration(elapsed);
+  if (clockDisplay.textContent !== label) clockDisplay.textContent = label;
+}
+
+function startClock() {
   stopClock();
-  deadline = performance.now() + seconds * 1000;
+  stageStartedAt = performance.now();
   updateClock();
-  updateDock();
   clockInterval = setInterval(updateClock, 100);
 }
 
 function stageIsActive() {
-  if (!playing) return false;
-  if (performance.now() < deadline) return true;
-  updateClock();
-  return false;
+  return playing && clearResult === null && pauseState === null;
 }
 
-function extendTime() {
-  if (!playing || !timeoutDialog.open || items.time === 0) return;
-  items.time--;
-  timeoutDialog.close();
-  startClock(EXTRA_SECONDS);
-  message.textContent = '시간을 30초 연장했어요.';
-  board.querySelector('.card:not([hidden]):not(:disabled)')?.focus({ preventScroll: true });
+function pauseGame() {
+  if (!stageIsActive()) return;
+  const now = performance.now();
+  const clockRunning = clockInterval !== undefined;
+  if (clockRunning) updateClock(elapsedSeconds(now));
+  stopClock();
+  const animations = dock.getAnimations({ subtree: true }).filter(animation => animation.playState === 'running');
+  for (const animation of animations) animation.pause();
+  pauseState = { startedAt: now, clockRunning, animations, matches: [] };
+  playScreen.classList.add('concealed');
+  updateDock();
+  showDialogPanel('pause');
+  clearDialog.showModal();
+  resumeButton.focus();
+}
+
+function resumeGame() {
+  if (!pauseState) return;
+  const paused = pauseState;
+  pauseState = null;
+  stageStartedAt += performance.now() - paused.startedAt;
+  playScreen.classList.remove('concealed');
+  if (paused.clockRunning) {
+    updateClock();
+    clockInterval = setInterval(updateClock, 100);
+  }
+  updateDock();
+  clearDialog.close();
+  pauseButton.focus();
+  for (const animation of paused.animations) animation.play();
+  for (const match of paused.matches) completeMatch(match);
+}
+
+function endPausedAttempt() {
+  if (!pauseState) return;
+  const endingScore = score + matchingCards.size / MATCH_SIZE * 10;
+  for (const animation of pauseState.animations) animation.cancel();
+  matchingCards.clear();
+  pauseState = null;
+  playing = false;
+  playScreen.classList.remove('concealed');
+  clearDialog.close();
+  MiniHub.submitScore(endingScore, { toast: false }).catch(() => {});
 }
 
 function updateBoard() {
@@ -334,6 +390,7 @@ function animateMatch(matching) {
 }
 
 function collectCard(card) {
+  const now = performance.now();
   if (!stageIsActive() || tray.length >= TRAY_SIZE || card.button.disabled || !cards.includes(card)) return;
   const restoreFocus = document.activeElement === card.button;
   card.button.hidden = true;
@@ -343,6 +400,11 @@ function collectCard(card) {
   const matching = tray.filter(other => other.type === card.type && !matchingCards.has(other));
   if (matching.length === MATCH_SIZE) {
     matching.forEach(match => matchingCards.add(match));
+    if (cards.length === 0 && tray.every(other => matchingCards.has(other))) {
+      clearSeconds = elapsedSeconds(now);
+      stopClock();
+      updateClock(clearSeconds);
+    }
     updateBoard();
     animateMatch(matching);
   } else {
@@ -356,11 +418,16 @@ function collectCard(card) {
   }
   if (restoreFocus && playing) {
     const next = board.querySelector('.card:not(:disabled):not([hidden])');
-    (next ?? finishButton).focus({ preventScroll: true });
+    (next ?? pauseButton).focus({ preventScroll: true });
   }
 }
 
 function completeMatch(matching) {
+  if (!matching.every(card => matchingCards.has(card))) return;
+  if (pauseState) {
+    pauseState.matches.push(matching);
+    return;
+  }
   for (const card of matching) {
     matchingCards.delete(card);
     card.button.remove();
@@ -371,41 +438,218 @@ function completeMatch(matching) {
   message.textContent = PICTURES[matching[0].type] + ' 3장 완성! +10점';
 
   if (cards.length === 0 && tray.length === 0) {
-    if (stage === MAX_STAGE) {
-      updateBoard();
-      finishGame(MAX_STAGE + '개 스테이지를 모두 클리어했어요!');
-      return;
-    }
-    if (stage % REFILL_INTERVAL === 0) {
-      items.shuffle++;
-      items.undo++;
-      items.return++;
-      items.time = 1;
-    }
-    stage++;
-    saveStage();
-    startStage();
+    clearStage();
     return;
   }
 
   updateBoard();
-  updateClock();
 }
 
-function startStage(restarting = false) {
+function clearStage() {
+  const bonus = Math.max(0, bonusTarget(stage) - clearSeconds) * BONUS_PER_SECOND;
+  score += bonus;
+  scoreDisplay.textContent = score + '점';
+  const result = { stage, score, points: score - stageStart.score, bonus, seconds: clearSeconds };
+  const refilled = stage < MAX_STAGE && stage % REFILL_INTERVAL === 0;
+  clearResult = result;
+  if (stage < MAX_STAGE) {
+    const next = stage + 1;
+    const nextItems = { ...items };
+    if (refilled) {
+      for (const item of Object.keys(nextItems)) nextItems[item]++;
+    }
+    result.nextStart = { score, items: nextItems };
+    if (!progress.starts[next] || progress.starts[next].score < score) progress.starts[next] = result.nextStart;
+    progress.stage = next;
+    progress.unlocked = Math.max(progress.unlocked, next);
+  } else {
+    playing = false;
+    progress.completed = true;
+  }
+  const record = { points: result.points, score: result.score, seconds: result.seconds, estimated: Boolean(result.nextStart), rank: null, rankIsLowerBound: false };
+  progress.records[stage] = bestClearRecord(record, progress.records[stage]);
+  storeProgress();
+  updateBoard();
+  message.textContent = stage + '스테이지를 클리어했어요.';
+  if (refilled) showReward(result);
+  else showClearResult(result);
+}
+
+function showReward(result) {
+  rewardStage.textContent = result.stage + '스테이지 클리어 보상';
+  showDialogPanel('reward');
+  clearDialog.showModal();
+  rewardNextButton.focus();
+}
+
+function showClearResult(result) {
+  showDialogPanel('clear');
+  clearStageLabel.textContent = result.stage + '스테이지 클리어!';
+  clearTime.textContent = formatDuration(result.seconds);
+  clearBonusDisplay.textContent = '+' + result.bonus.toLocaleString('ko-KR') + '점';
+  clearScore.textContent = result.score.toLocaleString('ko-KR') + '점';
+  clearRankLabel.textContent = result.nextStart ? '예상 게임 순위' : '게임 순위';
+  clearRank.textContent = '확인 중…';
+  renderClearRanking([], result);
+  rankingScroll.scrollTop = 0;
+  rankingNote.textContent = '랭킹 기록을 불러오는 중이에요…';
+  nextStageButton.hidden = !result.nextStart;
+  if (!clearDialog.open) clearDialog.showModal();
+  nextStageButton.hidden ? document.querySelector('#retry-stage').focus() : nextStageButton.focus();
+  loadClearRank(result);
+}
+
+async function loadClearRank(result) {
+  let label = '순위 확인 불가';
+  let rank = null;
+  let rankIsLowerBound = false;
+  let rows = [];
+  let note = '—는 클리어 시간이 공개되지 않은 기록이에요.';
+  try {
+    if (!result.nextStart) {
+      const saved = await submitClearScore(result);
+      if (saved?.rank != null) rank = Number(saved.rank);
+    }
+    const ranking = await MiniHub.getGameRanking(GAME_ID, RANK_LIMIT);
+    if (!Array.isArray(ranking)) throw new TypeError('Invalid ranking response');
+    rows = ranking;
+    if (result.nextStart) {
+      const higher = rows.filter(row => row.player_id !== playerId && row.score > result.score).length;
+      rank = higher + 1;
+      rankIsLowerBound = rows.length >= RANK_LIMIT && rows.at(-1).score > result.score;
+    }
+  } catch {
+    note = '다른 플레이어의 기록을 불러오지 못했어요.';
+  }
+  if (Number.isSafeInteger(rank) && rank > 0) {
+    label = rank.toLocaleString('ko-KR') + (rankIsLowerBound ? '위 이후' : '위');
+    const record = progress.records[result.stage];
+    if (record?.points === result.points && record.score === result.score && record.seconds === result.seconds) {
+      progress.records[result.stage] = { ...record, rank, rankIsLowerBound };
+      storeProgress();
+      if (!stageList.hidden) renderStageList();
+    }
+  }
+  if (clearResult === result) {
+    clearRank.textContent = label;
+    renderClearRanking(rows, result);
+    rankingNote.textContent = note;
+  }
+}
+
+function renderClearRanking(rows, result) {
+  const entries = rows.filter(row => !result.nextStart || row.player_id !== playerId)
+    .map(row => ({ name: row.name, score: Number(row.score), playerId: row.player_id }));
+  const current = { name: playerName, score: result.score, seconds: result.seconds, playerId };
+  const savedIndex = entries.findIndex(row => playerId && row.playerId === playerId && row.score === result.score);
+  if (savedIndex !== -1) {
+    entries[savedIndex] = current;
+  } else {
+    const lower = entries.findIndex(row => row.score < current.score);
+    entries.splice(lower === -1 ? entries.length : lower, 0, current);
+  }
+
+  rankingRows.replaceChildren(...entries.map(entry => {
+    const row = document.createElement('tr');
+    const isCurrent = entry === current;
+    if (isCurrent) row.className = 'current-record';
+    for (const value of [
+      isCurrent ? entry.name + ' · 이번 기록' : entry.name,
+      entry.score.toLocaleString('ko-KR') + '점',
+      isCurrent ? formatDuration(entry.seconds) : '—',
+    ]) {
+      const cell = row.insertCell();
+      cell.textContent = value;
+      cell.title = value;
+    }
+    return row;
+  }));
+}
+
+function submitClearScore(result) {
+  result.submission ??= MiniHub.submitScore(result.score, { toast: false }).catch(() => null);
+  return result.submission;
+}
+
+function showDialogPanel(view) {
+  pauseMenu.hidden = view !== 'pause';
+  rewardMenu.hidden = view !== 'reward';
+  clearSummary.hidden = view !== 'clear';
+  clearDialog.dataset.view = view;
+  const heading = view === 'pause' ? 'pause-heading' : view === 'reward' ? 'reward-heading' : 'clear-stage-label';
+  clearDialog.setAttribute('aria-labelledby', heading);
+}
+
+function renderStageList() {
+  const focused = document.activeElement?.dataset.level;
+  const entries = Array.from({ length: MAX_STAGE }, (_, index) => {
+    const level = index + 1;
+    const entry = document.createElement('li');
+    const button = document.createElement('button');
+    const completed = level < progress.unlocked || (level === MAX_STAGE && progress.completed);
+    const record = progress.records[level];
+    button.type = 'button';
+    button.className = 'stage-row';
+    button.dataset.level = level;
+    button.disabled = level > progress.unlocked;
+    const state = button.disabled ? '잠김' : completed ? '클리어' : '도전 가능';
+    const points = record ? record.points.toLocaleString('ko-KR') + '점' : '—';
+    const time = record ? formatDuration(record.seconds) : '—';
+    const rank = record?.rank == null ? '—' :
+      (record.estimated ? '예상 ' : '') + record.rank.toLocaleString('ko-KR') + (record.rankIsLowerBound ? '위 이후' : '위');
+    const name = document.createElement('span');
+    const nameText = document.createElement('strong');
+    const stageState = document.createElement('small');
+    nameText.textContent = level + '스테이지';
+    stageState.textContent = state;
+    name.append(nameText, stageState);
+    button.appendChild(name);
+    for (const text of [points, time, rank]) {
+      const cell = document.createElement('span');
+      cell.textContent = text;
+      button.appendChild(cell);
+    }
+    button.setAttribute('aria-label', level + '스테이지 ' + state +
+      (record ? ', ' + points + ', ' + time + ', 게임 순위 ' + rank : ''));
+    if (completed) button.classList.add('completed');
+    button.addEventListener('click', () => beginStage(level));
+    entry.appendChild(button);
+    return entry;
+  });
+  stageButtons.replaceChildren(...entries);
+  if (focused) stageButtons.querySelector('[data-level="' + focused + '"]')?.focus({ preventScroll: true });
+}
+
+function showStageScreen() {
+  if (pauseState) endPausedAttempt();
+  if (clearResult) submitClearScore(clearResult);
+  clearResult = null;
+  playing = false;
+  stopClock();
+  if (clearDialog.open) clearDialog.close();
+  pauseButton.hidden = true;
+  playScreen.hidden = true;
+  stageList.hidden = false;
+  renderStageList();
+  window.scrollTo(0, 0);
+  document.querySelector('#stage-list-heading').focus({ preventScroll: true });
+}
+
+function leaveClearForStage(level, starter, continuing = false) {
+  const result = clearResult;
+  if (!result || level > progress.unlocked) return;
+  if (!continuing) submitClearScore(result);
+  clearResult = null;
+  clearDialog.close();
+  beginStage(level, starter);
+}
+
+function startStage() {
   const layout = createStageLayout(stage);
   deal(layout);
-  startClock(STAGE_SECONDS);
+  startClock();
   stageDisplay.textContent = stage;
-  const clearedStage = stage - 1;
-  if (restarting && stage > 1) {
-    message.textContent = stage + '스테이지를 처음부터 다시 시작했어요.';
-  } else if (clearedStage === 0) {
-    message.textContent = '카드를 오른쪽 클릭하거나 눌러 보관하세요. 같은 그림 3장이 모이면 사라져요.';
-  } else {
-    const refill = clearedStage % REFILL_INTERVAL === 0 ? ' 아이템이 보충됐어요.' : '';
-    message.textContent = clearedStage + '스테이지 통과! 새 카드 ' + layout.positions.length + '장이 나왔어요.' + refill;
-  }
+  message.textContent = stage + '스테이지 시작! ' + formatDuration(bonusTarget(stage)) + ' 안에 클리어하면 남은 1초당 +10점이에요.';
   board.querySelector('.card:not([hidden]):not(:disabled)')?.focus({ preventScroll: true });
 }
 
@@ -454,30 +698,38 @@ function returnCards(all) {
 
 function startGame() {
   if (playing || startButton.disabled) return;
-  stage = checkpoint?.stage ?? 1;
-  score = 0;
-  for (let cleared = 1; cleared < stage; cleared++) {
-    score += createStageLayout(cleared).positions.length / MATCH_SIZE * 10;
+  beginStage(progress?.stage ?? 1, stageStart);
+}
+
+function beginStage(level, starter) {
+  if (!progress || level > progress.unlocked) return;
+  stageStart = starter ?? progress.starts[level] ?? { score: baseScoreBefore(level), items: STARTING_ITEMS };
+  if (progress.stage !== level || !progress.starts[level]) {
+    progress.stage = level;
+    progress.starts[level] ??= stageStart;
+    storeProgress();
   }
+  stage = level;
+  score = stageStart.score;
   tray = [];
-  items = checkpoint ? { ...checkpoint.items } : { shuffle: 1, undo: 1, return: 1, time: 1 };
+  items = { ...stageStart.items };
   scoreDisplay.textContent = score + '점';
   playing = true;
+  stageList.hidden = true;
+  playScreen.hidden = false;
   startButton.hidden = true;
+  gameoverListButton.hidden = true;
   dock.hidden = false;
-  finishButton.hidden = false;
   board.hidden = false;
-  if (!checkpoint) saveStage();
-  startStage(true);
+  window.scrollTo(0, 0);
+  startStage();
 }
 
 async function finishGame(reason) {
   if (!playing || matchingCards.size > 0) return;
   playing = false;
   stopClock();
-  if (timeoutDialog.open) timeoutDialog.close();
   board.hidden = true;
-  finishButton.hidden = true;
   updateDock();
   startButton.textContent = stage + '스테이지 다시 하기';
   startButton.hidden = false;
@@ -492,24 +744,73 @@ async function finishGame(reason) {
     message.textContent = result + ' 기록을 저장하지 못했어요.';
   } finally {
     startButton.disabled = false;
+    gameoverListButton.hidden = false;
     startButton.focus();
   }
 }
 
-function readCheckpoint(data) {
-  if (!data || ![1, 2, SAVE_VERSION].includes(data.version) ||
-      !Number.isInteger(data.stage) || data.stage < 1 || data.stage > MAX_STAGE) return null;
-  const { stage, items } = data;
-  if (!['shuffle', 'undo', 'return'].every(item => Number.isSafeInteger(items?.[item]) && items[item] >= 0)) return null;
-  const time = items.time ?? 1;
-  if (time !== 0 && time !== 1) return null;
-  return { version: SAVE_VERSION, stage, items: { shuffle: items.shuffle, undo: items.undo, return: items.return, time } };
+const baseScores = [0, 0];
+
+function baseScoreBefore(level) {
+  while (baseScores.length <= level) {
+    const cleared = baseScores.length - 1;
+    baseScores.push(baseScores[cleared] + createStageLayout(cleared).positions.length / MATCH_SIZE * 10);
+  }
+  return baseScores[level];
 }
 
-function loadBrowserCheckpoint() {
+function readStageStart(level, entry) {
+  const baseScore = baseScoreBefore(level);
+  const cleared = level - 1;
+  const bonusCap = (Math.min(cleared, 5) * bonusTarget(1) + Math.max(0, cleared - 5) * bonusTarget(6)) * BONUS_PER_SECOND;
+  const score = entry?.score;
+  const items = entry?.items;
+  if (!Number.isInteger(score) || score < baseScore || score > baseScore + bonusCap ||
+      !Object.keys(STARTING_ITEMS).every(item => Number.isSafeInteger(items?.[item]) && items[item] >= 0)) return null;
+  return { score, items: { shuffle: items.shuffle, undo: items.undo, return: items.return } };
+}
+
+function bestClearRecord(first, second) {
+  if (!first || !second) return first ?? second;
+  if (first.points !== second.points) return first.points > second.points ? first : second;
+  if (first.seconds !== second.seconds) return first.seconds < second.seconds ? first : second;
+  if (first.score !== second.score) return first.score > second.score ? first : second;
+  return first.rank !== null || second.rank === null ? first : second;
+}
+
+function readClearRecord(entry) {
+  if (!entry || !['points', 'score', 'seconds'].every(key => Number.isSafeInteger(entry[key]) && entry[key] >= 0) ||
+      entry.points > entry.score) return null;
+  const rank = Number.isSafeInteger(entry.rank) && entry.rank > 0 ? entry.rank : null;
+  return { points: entry.points, score: entry.score, seconds: entry.seconds, estimated: entry.estimated === true, rank, rankIsLowerBound: entry.rankIsLowerBound === true };
+}
+
+function readProgress(data) {
+  if (!data || !Number.isInteger(data.stage) || data.stage < 1 || data.stage > MAX_STAGE) return null;
+  const { stage } = data;
+  if ([1, 2, 3, 4].includes(data.version)) {
+    const score = data.version === 4 ? data.score : baseScoreBefore(stage);
+    const entry = readStageStart(stage, { score, items: data.items });
+    return entry && { version: SAVE_VERSION, stage, unlocked: stage, starts: { [stage]: entry }, records: {}, completed: false, updatedAt: 0 };
+  }
+  const { unlocked, updatedAt } = data;
+  if ((data.version !== 5 && data.version !== SAVE_VERSION) || !Number.isInteger(unlocked) || unlocked < stage || unlocked > MAX_STAGE ||
+      !Number.isSafeInteger(updatedAt) || updatedAt < 0) return null;
+  const starts = {};
+  const records = {};
+  for (let level = 1; level <= unlocked; level++) {
+    const entry = readStageStart(level, data.starts?.[level]);
+    if (entry) starts[level] = entry;
+    const record = readClearRecord(data.records?.[level]);
+    if (record) records[level] = record;
+  }
+  return { version: SAVE_VERSION, stage, unlocked, starts, records, completed: unlocked === MAX_STAGE && data.completed === true, updatedAt };
+}
+
+function loadBrowserProgress() {
   if (!checkpointKey) return null;
   try {
-    return readCheckpoint(JSON.parse(localStorage.getItem(checkpointKey)));
+    return readProgress(JSON.parse(localStorage.getItem(checkpointKey)));
   } catch {
     return null;
   }
@@ -518,48 +819,66 @@ function loadBrowserCheckpoint() {
 function rememberStage() {
   if (!checkpointKey) return;
   try {
-    localStorage.setItem(checkpointKey, JSON.stringify(checkpoint));
+    localStorage.setItem(checkpointKey, JSON.stringify(progress));
   } catch {
     // Browser storage may be disabled.
   }
 }
 
-function syncStage() {
-  MiniHub.save(checkpoint).catch(() => {});
+function syncProgress() {
+  MiniHub.save(progress).catch(() => {});
 }
 
-function saveStage() {
-  checkpoint = { version: SAVE_VERSION, stage, items: { ...items } };
-  const local = loadBrowserCheckpoint();
-  if (local && local.stage > stage) return;
-  // Keep the reached stage even if the tab closes before the server write completes.
+function mergeProgress(local, remote) {
+  if (!local || !remote) return local ?? remote;
+  const latest = local.updatedAt !== remote.updatedAt
+    ? (local.updatedAt > remote.updatedAt ? local : remote)
+    : (local.unlocked >= remote.unlocked ? local : remote);
+  const starts = { ...remote.starts };
+  for (const [level, entry] of Object.entries(local.starts)) {
+    if (!starts[level] || starts[level].score < entry.score) starts[level] = entry;
+  }
+  const records = { ...remote.records };
+  for (const [level, entry] of Object.entries(local.records)) {
+    records[level] = bestClearRecord(entry, records[level]);
+  }
+  return { ...latest, starts, records, unlocked: Math.max(local.unlocked, remote.unlocked), completed: local.completed || remote.completed };
+}
+
+function storeProgress() {
+  progress.updatedAt = Math.max(Date.now(), progress.updatedAt + 1);
+  progress = mergeProgress(progress, loadBrowserProgress());
   rememberStage();
-  syncStage();
+  syncProgress();
 }
 
 if (typeof MiniHub === 'undefined') {
-  message.textContent = '공용 랭킹 파일을 불러오지 못했어요. 최신 저장소를 Live Server로 열어 주세요.';
+  stageListStatus.textContent = '공용 랭킹 파일을 불러오지 못했어요. 최신 저장소를 Live Server로 열어 주세요.';
 } else {
   MiniHub.init(GAME_ID);
   MiniHub.onReady(async player => {
-    if (player?.id) checkpointKey = GAME_ID + '_stage_' + player.id;
+    playerId = player?.id;
+    playerName = player?.name || '나';
+    if (playerId) checkpointKey = GAME_ID + '_stage_' + playerId;
     let remote = null;
     try {
-      remote = readCheckpoint(await MiniHub.load());
+      remote = readProgress(await MiniHub.load());
     } catch {
       // A browser checkpoint can still be used when the server is unavailable.
     }
-    const local = loadBrowserCheckpoint();
-    const localIsAhead = local && (!remote || local.stage > remote.stage);
-    checkpoint = localIsAhead ? local : remote;
+    const local = loadBrowserProgress();
+    progress = mergeProgress(local, remote);
     startButton.disabled = false;
-    if (checkpoint) {
+    if (progress) {
       rememberStage();
-      if (localIsAhead) syncStage();
-      startGame();
+      if (JSON.stringify(progress) !== JSON.stringify(remote)) syncProgress();
     }
+    progress ??= { version: SAVE_VERSION, stage: 1, unlocked: 1, starts: {}, records: {}, completed: false, updatedAt: 0 };
+    stageListStatus.textContent = '스테이지를 선택해 시작하세요. 순위는 클리어 당시의 게임 랭킹이에요.';
+    showStageScreen();
   });
   startButton.addEventListener('click', startGame);
+  gameoverListButton.addEventListener('click', showStageScreen);
   soundButton.addEventListener('click', () => {
     soundEnabled = !soundEnabled;
     soundButton.setAttribute('aria-pressed', String(soundEnabled));
@@ -568,13 +887,30 @@ if (typeof MiniHub === 'undefined') {
   shuffleButton.addEventListener('click', shuffleRemaining);
   undoButton.addEventListener('click', () => returnCards(false));
   returnButton.addEventListener('click', () => returnCards(true));
-  finishButton.addEventListener('click', () => {
-    if (stageIsActive()) finishGame('게임을 포기했어요.');
+  pauseButton.addEventListener('click', pauseGame);
+  resumeButton.addEventListener('click', resumeGame);
+  document.querySelector('#restart-stage').addEventListener('click', () => {
+    endPausedAttempt();
+    beginStage(stage, stageStart);
   });
-  extendButton.addEventListener('click', extendTime);
-  timeoutEndButton.addEventListener('click', () => finishGame('시간이 다 됐어요.'));
-  timeoutDialog.addEventListener('cancel', event => {
+  pauseListButton.addEventListener('click', showStageScreen);
+  document.querySelector('#retry-stage').addEventListener('click', () => leaveClearForStage(stage, stageStart));
+  nextStageButton.addEventListener('click', () => {
+    if (clearResult?.nextStart) leaveClearForStage(stage + 1, clearResult.nextStart, true);
+  });
+  clearListButton.addEventListener('click', showStageScreen);
+  rewardNextButton.addEventListener('click', () => {
+    if (clearResult && clearDialog.dataset.view === 'reward') showClearResult(clearResult);
+  });
+  document.querySelector('#clear-home').addEventListener('click', async event => {
     event.preventDefault();
-    finishGame('시간이 다 됐어요.');
+    const href = event.currentTarget.href;
+    const result = clearResult;
+    if (result) await submitClearScore(result);
+    if (clearResult === result) location.href = href;
+  });
+  clearDialog.addEventListener('cancel', event => {
+    event.preventDefault();
+    if (pauseState) resumeGame();
   });
 }

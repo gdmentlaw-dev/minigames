@@ -18,6 +18,8 @@
       --lavender: #f3ecff;
       --line: #e6dbf8;
       --shadow: rgba(143, 111, 224, .2);
+      --pause-bg: #ece5ff;
+      --stage-surface: #ffffffdb;
       --heading-font: "Dongle", "Gowun Dodum", sans-serif;
       --body-font: "Gowun Dodum", "Noto Sans KR", system-ui, sans-serif;
     }
@@ -32,16 +34,33 @@
       padding: max(10px, env(safe-area-inset-top)) clamp(10px, 3vw, 18px) max(14px, env(safe-area-inset-bottom));
     }
     header { text-align: center; }
-    .navigation { display: flex; justify-content: flex-start; }
+    .navigation { display: flex; justify-content: space-between; align-items: center; min-height: 42px; }
     .home { padding: 6px 11px; border-radius: 999px; background: #ffffffdf; box-shadow: 0 3px 10px var(--shadow); font-size: .78rem; text-decoration: none; }
     .home:hover { background: #fff; }
+    #pause { display: flex; align-items: center; justify-content: center; gap: 4px; width: 42px; height: 42px; padding: 0; border: 1px solid var(--line); border-radius: 14px; background: var(--lavender); color: var(--accent); box-shadow: 0 3px 10px var(--shadow); }
+    #pause::before, #pause::after { content: ""; width: 4px; height: 16px; border-radius: 2px; background: currentColor; }
     h1 { margin: 0; font-family: var(--heading-font); font-size: clamp(2.5rem, 10vw, 3.5rem); font-weight: 700; line-height: .9; }
+    #play-screen { display: flex; flex: 1; flex-direction: column; }
+    #play-screen.concealed :is(#board, #dock) { visibility: hidden; }
+    #stage-list { margin: 20px 0 0; }
+    #stage-list-heading { margin: 0; font: 700 2.4rem/1 var(--heading-font); }
+    #stage-list-status { margin: 4px 0 12px; color: var(--sub); font-size: .82rem; }
+    .stage-columns, .stage-row { display: grid; grid-template-columns: minmax(65px, 1.15fr) minmax(49px, 1fr) minmax(45px, .75fr) minmax(62px, 1fr); align-items: center; gap: 6px; padding: 5px 10px; }
+    .stage-columns { color: var(--sub); font-size: .76rem; }
+    #stage-buttons { list-style: none; display: grid; gap: 6px; margin: 0; padding: 0; }
+    .stage-row { width: 100%; min-height: 51px; border: 1px solid var(--line); border-radius: 14px; background: var(--stage-surface); text-align: left; font-size: clamp(.68rem, 3.2vw, .85rem); }
+    .stage-row :is(strong, small) { display: block; }
+    .stage-row small { margin-top: 2px; color: var(--sub); font-size: .69rem; }
+    .stage-row > span:not(:first-child), .stage-columns > span:not(:first-child) { text-align: right; font-variant-numeric: tabular-nums; }
+    .stage-row > span:last-child { line-height: 1.2; }
+    .stage-row.completed small { color: var(--accent); }
+    .stage-row:enabled:hover { background: var(--lavender); }
+    .stage-row:disabled { opacity: .64; box-shadow: none; }
     .hud { display: flex; justify-content: center; flex-wrap: wrap; gap: 6px; margin-top: 8px; font-size: .8rem; }
     .hud span { padding: 4px 11px; border-radius: 999px; background: #ffffffd9; box-shadow: 0 2px 5px var(--shadow); }
     .hud .level { color: var(--accent); background: var(--lavender); }
     #score, #clock { color: var(--accent); font-variant-numeric: tabular-nums; }
     #clock { display: inline-block; min-width: 5ch; }
-    #clock.urgent { color: #aa375e; }
     #status { min-height: 2.8em; margin: 10px 0 3px; text-align: center; color: var(--sub); font-size: .88rem; line-height: 1.4; }
     #board { position: relative; flex: none; width: min(100%, calc(var(--tile-width) * var(--board-width) / 100)); aspect-ratio: var(--board-width) / var(--board-height); margin: auto; isolation: isolate; }
     button, a { touch-action: manipulation; }
@@ -66,9 +85,6 @@
     .tray-tools { display: flex; gap: 8px; align-items: center; }
     #tray-count { color: var(--accent); font-variant-numeric: tabular-nums; }
     #sound { padding: 1px 6px; border: 0; border-radius: 999px; background: var(--lavender); color: var(--accent); font-size: .7rem; }
-    #finish { min-height: 32px; border: 0; background: none; color: var(--sub); padding: 2px 6px; text-decoration: underline; text-underline-offset: 2px; }
-    .game-actions { display: flex; justify-content: flex-end; margin-top: 7px; font-size: .8rem; }
-    .game-actions:has([hidden]) { display: none; }
     #tray, #items { display: grid; gap: 4px; }
     .tray-area { position: relative; display: flow-root; }
     #tray { grid-template-columns: repeat(7, minmax(0, 1fr)); padding: 0; list-style: none; margin: 4px 0 8px; }
@@ -122,13 +138,10 @@
       63% { opacity: .9; }
       100% { transform: translate(var(--spark-x), var(--spark-y)) rotate(145deg) scale(.26); opacity: 0; }
     }
-    #items { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-    #items button, #time-item { min-height: 38px; padding: 4px; border: 0; border-radius: 14px; background: var(--lavender); font-size: clamp(.69rem, 2.65vw, .85rem); font-weight: 700; box-shadow: inset 0 -3px #e1d5f6; }
-    #time-item { display: grid; place-items: center; text-align: center; color: var(--accent); }
-    @media (max-width: 390px) { #items { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    #items { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    #items button { min-height: 38px; padding: 4px; border: 0; border-radius: 14px; background: var(--lavender); font-size: clamp(.69rem, 2.65vw, .85rem); font-weight: 700; box-shadow: inset 0 -3px #e1d5f6; }
     #items button:hover:enabled { background: #eae0fb; }
     #items button:disabled { background: #f7f5fb; color: #817594; box-shadow: none; }
-    #time-item.spent { background: #f7f5fb; color: #817594; box-shadow: none; }
     #start {
       min-height: 44px; padding: 7px 24px; border: 0; border-radius: 999px;
       background: linear-gradient(135deg, #ff9cc2, #b69cff);
@@ -137,31 +150,90 @@
     #start:active:enabled { transform: translateY(2px); box-shadow: 0 2px #9a80e0; }
     #start:disabled { opacity: .55; box-shadow: none; }
     .footer { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: center; padding-top: 10px; font-size: .85rem; }
-    #timeout { width: min(340px, calc(100% - 28px)); border: 1px solid var(--line); border-radius: 24px; padding: 20px; background: #fff; color: var(--text); text-align: center; box-shadow: 0 12px 32px var(--shadow); }
-    #timeout::backdrop { background: rgba(74, 61, 110, .45); }
-    #timeout h2 { margin: 0; font: 700 2.5rem/1 var(--heading-font); }
-    #timeout p { margin: 6px 0 16px; color: var(--sub); font-size: .9rem; }
-    .timeout-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
-    .timeout-actions button { min-height: 40px; padding: 6px 12px; border: 0; border-radius: 999px; background: var(--lavender); font-size: .85rem; font-weight: 700; }
-    #extend-time { background: linear-gradient(135deg, #ff9cc2, #b69cff); color: #402b66; }
+    #clear-dialog { width: min(375px, calc(100% - 26px)); max-height: calc(100dvh - 26px); overflow: auto; border: 1px solid var(--line); border-radius: 26px; padding: 22px 17px 15px; background: #fff; color: var(--text); text-align: center; box-shadow: 0 12px 40px var(--shadow); }
+    #clear-dialog[open] { animation: result-open .34s cubic-bezier(.19, .78, .32, 1.22) both; }
+    #clear-dialog[data-view="pause"][open] {
+      position: fixed; inset: 0; display: grid; place-items: center; width: 100%; height: 100dvh;
+      max-width: none; max-height: none; margin: 0; border: 0; border-radius: 0; animation: none;
+      padding: 24px; background: var(--pause-bg);
+    }
+    #pause-menu { width: min(100%, 350px); padding: 28px 16px; border: 1px solid var(--line); border-radius: 26px; background: var(--stage-surface); box-shadow: 0 12px 40px var(--shadow); }
+    #clear-dialog::backdrop { background: rgba(74, 61, 110, .45); }
+    #clear-dialog h2 { margin: 0; font: 700 2.55rem/1 var(--heading-font); }
+    .clear-banner { position: relative; padding: 8px 5px 11px; }
+    .clear-stars { position: absolute; inset: 0; pointer-events: none; }
+    .clear-stars i {
+      position: absolute; top: 56%; left: 50%; width: var(--size, 12px); aspect-ratio: 1;
+      background: var(--color, #ffd26a); clip-path: polygon(50% 0, 63% 36%, 100% 50%, 63% 63%, 50% 100%, 36% 63%, 0 50%, 36% 36%);
+      animation: result-star .85s .04s ease-out both;
+    }
+    .clear-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin: 5px 0 13px; }
+    .clear-stats > div { border-radius: 13px; padding: 6px 2px 7px; background: var(--lavender); }
+    .clear-stats dt { color: var(--sub); font-size: .73rem; }
+    .clear-stats dd { margin: 1px 0 0; font-size: 1rem; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
+    .clear-stats #clear-bonus { color: #a44d17; }
+    .clear-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+    .clear-actions button, #gameover-stage-list { min-height: 40px; padding: 6px 9px; border: 0; border-radius: 999px; background: var(--lavender); font-size: .81rem; font-weight: 700; }
+    #next-stage, #resume-game, #reward-next { background: linear-gradient(135deg, #ff9cc2, #b69cff); color: #402b66; }
+    #pause-menu .clear-actions { margin-top: 13px; }
+    .reward-banner { position: relative; padding: 10px 4px 5px; }
+    #reward-stage { margin: 4px 0 0; color: var(--sub); font-size: .84rem; }
+    .reward-items { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; margin: 12px 0 16px; padding: 0; list-style: none; }
+    .reward-items li {
+      display: grid; align-content: start; justify-items: center; gap: 3px; padding: 10px 4px 8px;
+      background: var(--lavender); border: 1px solid var(--line); border-radius: 13px; font-size: .75rem;
+      animation: reward-pop .44s cubic-bezier(.23, .9, .42, 1.35) var(--delay, 0s) both;
+    }
+    .reward-items li:nth-child(2) { --delay: .07s; }
+    .reward-items li:nth-child(3) { --delay: .14s; }
+    .reward-items li > span { display: grid; place-items: center; width: 33px; height: 33px; border-radius: 11px; background: var(--stage-surface); color: var(--accent); font-size: 1.22rem; line-height: 1; }
+    .reward-items strong { color: var(--accent); }
+    #reward-next { min-width: 106px; }
+    @keyframes reward-pop {
+      from { opacity: 0; transform: translateY(14px) scale(.82); }
+      to { opacity: 1; transform: none; }
+    }
+    .clear-ranking { margin-top: 14px; text-align: left; }
+    .clear-ranking h3 { margin: 0 0 5px; font-size: .86rem; }
+    .ranking-scroll { max-height: min(215px, 28dvh); overflow-y: auto; overscroll-behavior: contain; border: 1px solid var(--line); border-radius: 12px; }
+    .ranking-scroll table { width: 100%; table-layout: fixed; border-spacing: 0; font-size: .77rem; }
+    .ranking-scroll th, .ranking-scroll td { padding: 7px 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ranking-scroll th { position: sticky; top: 0; background: var(--lavender); color: var(--sub); }
+    .ranking-scroll th:first-child { width: 44%; }
+    .ranking-scroll th:nth-child(2) { width: 29%; }
+    .ranking-scroll :is(th, td):not(:first-child) { text-align: right; font-variant-numeric: tabular-nums; }
+    .ranking-scroll td { border-top: 1px solid var(--line); }
+    .ranking-scroll .current-record { background: var(--lavender); color: var(--accent); font-weight: 700; }
+    #ranking-note { margin: 5px 1px 0; color: var(--sub); font-size: .7rem; }
+    #clear-home { display: inline-block; margin-top: 11px; font-size: .78rem; }
+    @keyframes result-open { from { transform: translateY(16px) scale(.9); opacity: 0; } to { transform: none; opacity: 1; } }
+    @keyframes result-star {
+      0% { opacity: 0; transform: translate(0, 0) scale(.24); }
+      32% { opacity: 1; }
+      100% { opacity: 0; transform: translate(var(--x), var(--y)) rotate(115deg) scale(.55); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      #clear-dialog[open], .reward-items li { animation: none; }
+      .clear-stars { display: none; }
+    }
     /* 어두운 모드 (메인페이지와 연동: shared/minihub-theme.js) — 카드 그림은 밝은 바탕이 어울려 카드 면은 밝게 둔다 */
-    :root[data-theme="dark"] { color-scheme: dark; --text: #eef0ff; --sub: #b8bde6; --accent: #b69cff; --lavender: #272f69; --line: #3a4382; --shadow: rgba(0, 0, 0, .35); }
+    :root[data-theme="dark"] { color-scheme: dark; --text: #eef0ff; --sub: #b8bde6; --accent: #b69cff; --lavender: #272f69; --line: #3a4382; --shadow: rgba(0, 0, 0, .35); --pause-bg: #121838; --stage-surface: #1d2455; }
     :root[data-theme="dark"] body { background: #121838; }
     :root[data-theme="dark"] body::before { background: linear-gradient(170deg, #1c1d4d, #121838 55%, #0e2446); }
     :root[data-theme="dark"] .home { background: #242c60e6; }
     :root[data-theme="dark"] .home:hover { background: #2b3473; }
     :root[data-theme="dark"] .hud span { background: #1d2455; }
     :root[data-theme="dark"] .hud .level { background: var(--lavender); }
-    :root[data-theme="dark"] #clock.urgent { color: #ff7aa8; }
     :root[data-theme="dark"] :focus-visible { outline-color: #b69cff; }
     :root[data-theme="dark"] .card, :root[data-theme="dark"] .tray-face { background: #f6f4ff; }
     :root[data-theme="dark"] .card.covered { background: #6a62a0; border-color: #554e8a; box-shadow: inset 0 -4px #473f78; }
-    :root[data-theme="dark"] #dock, :root[data-theme="dark"] #timeout { background: #1d2455; }
-    :root[data-theme="dark"] #timeout::backdrop { background: rgba(5, 8, 24, .65); }
-    :root[data-theme="dark"] #items button, :root[data-theme="dark"] #time-item { box-shadow: inset 0 -3px #1a2050; }
+    :root[data-theme="dark"] #dock, :root[data-theme="dark"] #clear-dialog { background: #1d2455; }
+    :root[data-theme="dark"] #clear-dialog::backdrop { background: rgba(5, 8, 24, .65); }
+    :root[data-theme="dark"] #items button { box-shadow: inset 0 -3px #1a2050; }
     :root[data-theme="dark"] #items button:hover:enabled { background: #333c7a; }
-    :root[data-theme="dark"] #items button:disabled, :root[data-theme="dark"] #time-item.spent { background: #1a2050; color: #6f76ad; box-shadow: none; }
-    :root[data-theme="dark"] #start, :root[data-theme="dark"] #extend-time { color: #2a1d4e; }
+    :root[data-theme="dark"] #items button:disabled { background: #1a2050; color: #6f76ad; box-shadow: none; }
+    :root[data-theme="dark"] #clear-bonus { color: #ffd284; }
+    :root[data-theme="dark"] :is(#start, #next-stage, #resume-game, #reward-next) { color: #2a1d4e; }
     a { color: var(--accent); text-underline-offset: 2px; }
   </style>
   <script defer src="../../shared/minihub-sdk.js"></script>
@@ -171,47 +243,112 @@
 <body>
   <main>
     <header>
-      <nav class="navigation" aria-label="미니게임"><a class="home" href="../../">‹ 메인으로</a></nav>
+      <nav class="navigation" aria-label="미니게임">
+        <a class="home" href="../../">‹ 메인으로</a>
+        <button id="pause" type="button" aria-label="일시정지" aria-haspopup="dialog" aria-controls="clear-dialog" hidden></button>
+      </nav>
       <h1>타일 톡톡</h1>
+    </header>
+    <section id="stage-list" aria-labelledby="stage-list-heading">
+      <h2 id="stage-list-heading" tabindex="-1">스테이지 목록</h2>
+      <p id="stage-list-status" role="status">스테이지를 불러오는 중이에요…</p>
+      <div class="stage-columns" aria-hidden="true"><span>스테이지</span><span>최고 점수</span><span>시간</span><span>게임 순위</span></div>
+      <ol id="stage-buttons"></ol>
+    </section>
+    <section id="play-screen" aria-label="타일 톡톡 플레이" hidden>
       <div class="hud">
         <span class="level">스테이지 <strong id="stage">1</strong> / 20</span>
         <span>남은 카드 <strong id="count">51장</strong></span>
         <span>점수 <strong id="score">0점</strong></span>
-        <span>시간 <strong id="clock" role="timer">02:00</strong></span>
+        <span>경과 <strong id="clock" role="timer">00:00</strong></span>
       </div>
-    </header>
-    <p id="status" role="status">같은 그림 3장을 모으세요. 도달한 스테이지는 자동으로 저장돼요.</p>
-    <div id="board" aria-label="겹쳐진 카드 게임판" hidden></div>
-    <section id="dock" aria-label="카드 보관함과 아이템" hidden>
-      <div class="tray-label">
-        <span>보관함</span>
-        <div class="tray-tools">
-          <button id="sound" type="button" aria-pressed="true">효과음 켜짐</button>
-          <span id="tray-count">0 / 7</span>
+      <p id="status" role="status">같은 그림 3장을 모으세요. 기준 시간 안에 클리어하면 남은 1초당 +10점이에요.</p>
+      <div id="board" aria-label="겹쳐진 카드 게임판" hidden></div>
+      <section id="dock" aria-label="카드 보관함과 아이템" hidden>
+        <div class="tray-label">
+          <span>보관함</span>
+          <div class="tray-tools">
+            <button id="sound" type="button" aria-pressed="true">효과음 켜짐</button>
+            <span id="tray-count">0 / 7</span>
+          </div>
         </div>
-      </div>
-      <div class="tray-area"><ul id="tray" aria-label="카드 보관함 7칸"></ul></div>
-      <div id="items" aria-label="아이템">
-        <button id="shuffle" type="button">판 섞기</button>
-        <button id="undo" type="button">한 장 되돌리기</button>
-        <button id="return" type="button">보관함 비우기</button>
-        <span id="time-item" title="시간이 다 되면 사용할 수 있어요.">시간 +30초 · 1</span>
-      </div>
-      <div class="game-actions">
-        <button id="finish" type="button" hidden>게임 포기</button>
+        <div class="tray-area"><ul id="tray" aria-label="카드 보관함 7칸"></ul></div>
+        <div id="items" aria-label="아이템">
+          <button id="shuffle" type="button">판 섞기</button>
+          <button id="undo" type="button">한 장 되돌리기</button>
+          <button id="return" type="button">보관함 비우기</button>
+        </div>
+      </section>
+      <div class="footer">
+        <button id="start" type="button" hidden disabled>다시하기</button>
+        <button id="gameover-stage-list" type="button" hidden>스테이지 목록</button>
       </div>
     </section>
-    <div class="footer">
-      <button id="start" type="button" disabled>게임 시작</button>
-    </div>
   </main>
-  <dialog id="timeout" aria-labelledby="timeout-title" aria-describedby="timeout-description">
-    <h2 id="timeout-title">시간이 다 됐어요</h2>
-    <p id="timeout-description">시간 연장 아이템 1개를 써서 이 판을 30초 더 이어갈까요?</p>
-    <div class="timeout-actions">
-      <button id="extend-time" type="button" autofocus>30초 연장</button>
-      <button id="timeout-end" type="button">게임 종료</button>
-    </div>
+  <dialog id="clear-dialog" aria-labelledby="clear-stage-label">
+    <section id="reward-menu" hidden>
+      <div class="reward-banner">
+        <div class="clear-stars" aria-hidden="true">
+          <i style="--x:-109px;--y:2px;--size:19px"></i>
+          <i style="--x:-82px;--y:-28px;--size:15px;--color:#ff8fb9"></i>
+          <i style="--x:-61px;--y:19px;--size:10px;--color:#b69cff"></i>
+          <i style="--x:59px;--y:-28px;--size:13px;--color:#b69cff"></i>
+          <i style="--x:86px;--y:20px;--size:15px;--color:#ff8fb9"></i>
+          <i style="--x:107px;--y:-9px;--size:18px"></i>
+        </div>
+        <h2 id="reward-heading">아이템 획득!</h2>
+        <p id="reward-stage"></p>
+      </div>
+      <ul class="reward-items" aria-label="받은 아이템">
+        <li><span aria-hidden="true">⇄</span>판 섞기 <strong>+1</strong></li>
+        <li><span aria-hidden="true">↶</span>한 장 되돌리기 <strong>+1</strong></li>
+        <li><span aria-hidden="true">⇧</span>보관함 비우기 <strong>+1</strong></li>
+      </ul>
+      <div class="clear-actions"><button id="reward-next" type="button">다음</button></div>
+    </section>
+    <section id="clear-summary">
+      <div class="clear-banner">
+        <div class="clear-stars" aria-hidden="true">
+          <i style="--x:-108px;--y:-15px"></i>
+          <i style="--x:-77px;--y:-29px;--size:17px;--color:#ff8fb9"></i>
+          <i style="--x:-52px;--y:17px;--size:9px;--color:#b69cff"></i>
+          <i style="--x:52px;--y:-29px;--size:10px;--color:#b69cff"></i>
+          <i style="--x:81px;--y:15px;--size:17px;--color:#ff8fb9"></i>
+          <i style="--x:106px;--y:-11px"></i>
+        </div>
+        <h2 id="clear-stage-label"></h2>
+      </div>
+      <dl class="clear-stats">
+        <div><dt>경과 시간</dt><dd id="clear-time"></dd></div>
+        <div><dt>시간 보너스</dt><dd id="clear-bonus"></dd></div>
+        <div><dt>누적 점수</dt><dd id="clear-score"></dd></div>
+        <div><dt id="clear-rank-label">예상 게임 순위</dt><dd id="clear-rank" role="status"></dd></div>
+      </dl>
+      <div class="clear-actions">
+        <button id="retry-stage" type="button">다시 도전</button>
+        <button id="open-stage-list" type="button">스테이지 목록</button>
+        <button id="next-stage" type="button">다음 스테이지</button>
+      </div>
+      <section class="clear-ranking" aria-labelledby="ranking-heading">
+        <h3 id="ranking-heading">게임 랭킹</h3>
+        <div id="ranking-scroll" class="ranking-scroll" role="region" aria-labelledby="ranking-heading" tabindex="0">
+          <table aria-labelledby="ranking-heading" aria-describedby="ranking-note">
+            <thead><tr><th scope="col">이름</th><th scope="col">점수</th><th scope="col">클리어 시간</th></tr></thead>
+            <tbody id="ranking-rows"></tbody>
+          </table>
+        </div>
+        <p id="ranking-note" role="status"></p>
+      </section>
+      <a id="clear-home" href="../../">메인으로</a>
+    </section>
+    <section id="pause-menu" hidden>
+      <h2 id="pause-heading">일시정지</h2>
+      <div class="clear-actions">
+        <button id="resume-game" type="button">계속하기</button>
+        <button id="restart-stage" type="button">다시하기</button>
+        <button id="pause-stage-list" type="button">스테이지 목록</button>
+      </div>
+    </section>
   </dialog>
 </body>
 </html>
