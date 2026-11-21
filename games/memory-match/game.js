@@ -16,6 +16,8 @@ const PICTURES = [
 ];
 const ATLAS_COLUMNS = 4;
 const ATLAS_ROWS = 3;
+const intro = document.querySelector('#game-intro');
+const gameMain = document.querySelector('main');
 const board = document.querySelector('#board');
 const stageDisplay = document.querySelector('#stage');
 const countDisplay = document.querySelector('#count');
@@ -852,10 +854,25 @@ function storeProgress() {
   syncProgress();
 }
 
+function playIntro() {
+  const fallback = setTimeout(dismiss, reducedMotion.matches ? 220 : 1600);
+  function dismiss() {
+    if (intro.hidden) return;
+    clearTimeout(fallback);
+    intro.hidden = true;
+    gameMain.inert = false;
+    if (typeof MiniHub !== 'undefined') MiniHub.init(GAME_ID);
+  }
+  if (reducedMotion.matches) return;
+  intro.addEventListener('animationend', event => {
+    if (event.target === intro && event.animationName === 'intro-exit') dismiss();
+  });
+  intro.classList.add('animate');
+}
+
 if (typeof MiniHub === 'undefined') {
   stageListStatus.textContent = '공용 랭킹 파일을 불러오지 못했어요. 최신 저장소를 Live Server로 열어 주세요.';
 } else {
-  MiniHub.init(GAME_ID);
   MiniHub.onReady(async player => {
     playerId = player?.id;
     playerName = player?.name || '나';
@@ -914,3 +931,4 @@ if (typeof MiniHub === 'undefined') {
     if (pauseState) resumeGame();
   });
 }
+playIntro();

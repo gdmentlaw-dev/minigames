@@ -20,6 +20,7 @@
       --shadow: rgba(143, 111, 224, .2);
       --pause-bg: #ece5ff;
       --stage-surface: #ffffffdb;
+      --intro-bg: linear-gradient(155deg, #ffe3f0, #ebe4ff 54%, #dcf1ff);
       --heading-font: "Dongle", "Gowun Dodum", sans-serif;
       --body-font: "Gowun Dodum", "Noto Sans KR", system-ui, sans-serif;
     }
@@ -27,6 +28,51 @@
     [hidden] { display: none !important; }
     body { margin: 0; background: #ebe4ff; color: var(--text); font-family: var(--body-font); word-break: keep-all; }
     body::before { content: ""; position: fixed; inset: 0; z-index: -1; background: linear-gradient(170deg, #ffe3f0, #ebe4ff 55%, #dcf1ff); }
+    #game-intro {
+      position: fixed; inset: 0; z-index: 20; display: grid; place-content: center; justify-items: center;
+      overflow: hidden; background: var(--intro-bg);
+    }
+    .intro-title { margin: 0; color: var(--text); font: 700 clamp(3.5rem, 16vw, 6rem)/.9 var(--heading-font); }
+    .intro-art { position: relative; width: 270px; height: 98px; margin-top: 15px; }
+    .intro-tile {
+      position: absolute; top: 50%; left: 50%; width: 47px; height: 55px; display: grid; place-items: center;
+      border: 1px solid #dac9f8; border-radius: 10px; background: #fff;
+      box-shadow: inset 0 -5px #ded0f6, 0 6px 16px var(--shadow);
+      transform: translate(-50%, -50%) translateX(var(--slot));
+    }
+    .intro-tile::before { content: ""; width: 89%; aspect-ratio: 1; background: url("./card-art.png") 33.333% 0 / 400% 300% no-repeat; }
+    .intro-blast, .intro-sparks { position: absolute; top: 50%; left: 50%; pointer-events: none; opacity: 0; }
+    .intro-blast {
+      width: 140px; height: 72px; border: 2px solid #fff8df; border-radius: 50%;
+      box-shadow: 0 0 0 2px #c297ff, 0 0 24px #ffc9eb;
+    }
+    .intro-sparks i {
+      position: absolute; width: var(--size, 14px); aspect-ratio: 1; opacity: 0;
+      background: var(--color, #ffca54);
+      clip-path: polygon(50% 0, 63% 36%, 100% 50%, 63% 63%, 50% 100%, 36% 63%, 0 50%, 36% 36%);
+    }
+    #game-intro.animate { --intro-duration: 1320ms; animation: intro-exit var(--intro-duration) linear both; }
+    #game-intro.animate .intro-tile { animation: intro-match var(--intro-duration) both; }
+    #game-intro.animate .intro-blast { animation: intro-blast var(--intro-duration) ease-out both; }
+    #game-intro.animate .intro-sparks { opacity: 1; }
+    #game-intro.animate .intro-sparks i { animation: intro-spark var(--intro-duration) ease-out both; }
+    @keyframes intro-match {
+      0% { transform: translate(-50%, -50%) translateX(var(--from)) rotate(var(--tilt)) scale(.84); opacity: .25; animation-timing-function: cubic-bezier(.22, .8, .3, 1); }
+      35% { transform: translate(-50%, -50%) translateX(var(--slot)); opacity: 1; animation-timing-function: ease-out; }
+      47% { transform: translate(-50%, -61%) translateX(var(--slot)) scale(1.14); opacity: 1; animation-timing-function: ease-in; }
+      67%, 100% { transform: translate(-50%, -73%) translateX(var(--slot)) scale(.24); opacity: 0; }
+    }
+    @keyframes intro-blast {
+      0%, 44% { transform: translate(-50%, -50%) scale(.3); opacity: 0; }
+      53% { opacity: .9; }
+      85%, 100% { transform: translate(-50%, -50%) scale(1.55); opacity: 0; }
+    }
+    @keyframes intro-spark {
+      0%, 43% { transform: translate(0, 0) scale(.3); opacity: 0; }
+      54% { opacity: 1; }
+      87%, 100% { transform: translate(var(--x), var(--y)) rotate(115deg) scale(.3); opacity: 0; }
+    }
+    @keyframes intro-exit { 0%, 85% { opacity: 1; } 100% { opacity: 0; } }
     main {
       --tile-width: clamp(23px, min(9.2vw, 5.7svh), 49px);
       display: flex; flex-direction: column;
@@ -34,7 +80,7 @@
       padding: max(10px, env(safe-area-inset-top)) clamp(10px, 3vw, 18px) max(14px, env(safe-area-inset-bottom));
     }
     header { text-align: center; }
-    .navigation { display: flex; justify-content: space-between; align-items: center; min-height: 42px; }
+    .navigation { display: flex; justify-content: flex-end; align-items: center; gap: 8px; min-height: 42px; }
     .home { padding: 6px 11px; border-radius: 999px; background: #ffffffdf; box-shadow: 0 3px 10px var(--shadow); font-size: .78rem; text-decoration: none; }
     .home:hover { background: #fff; }
     #pause { display: flex; align-items: center; justify-content: center; gap: 4px; width: 42px; height: 42px; padding: 0; border: 1px solid var(--line); border-radius: 14px; background: var(--lavender); color: var(--accent); box-shadow: 0 3px 10px var(--shadow); }
@@ -217,7 +263,7 @@
       .clear-stars { display: none; }
     }
     /* 어두운 모드 (메인페이지와 연동: shared/minihub-theme.js) — 카드 그림은 밝은 바탕이 어울려 카드 면은 밝게 둔다 */
-    :root[data-theme="dark"] { color-scheme: dark; --text: #eef0ff; --sub: #b8bde6; --accent: #b69cff; --lavender: #272f69; --line: #3a4382; --shadow: rgba(0, 0, 0, .35); --pause-bg: #121838; --stage-surface: #1d2455; }
+    :root[data-theme="dark"] { color-scheme: dark; --text: #eef0ff; --sub: #b8bde6; --accent: #b69cff; --lavender: #272f69; --line: #3a4382; --shadow: rgba(0, 0, 0, .35); --pause-bg: #121838; --stage-surface: #1d2455; --intro-bg: linear-gradient(155deg, #272350, #121838 56%, #0e2446); }
     :root[data-theme="dark"] body { background: #121838; }
     :root[data-theme="dark"] body::before { background: linear-gradient(170deg, #1c1d4d, #121838 55%, #0e2446); }
     :root[data-theme="dark"] .home { background: #242c60e6; }
@@ -241,11 +287,26 @@
   <script defer src="./game.js"></script>
 </head>
 <body>
-  <main>
+  <div id="game-intro" role="status" aria-label="타일 톡톡을 불러오는 중">
+    <p class="intro-title" aria-hidden="true">타일 톡톡</p>
+    <div class="intro-art" aria-hidden="true">
+      <span class="intro-tile" style="--from:-118px;--slot:-54px;--tilt:-20deg"></span>
+      <span class="intro-tile" style="--from:0px;--slot:0px;--tilt:8deg"></span>
+      <span class="intro-tile" style="--from:118px;--slot:54px;--tilt:20deg"></span>
+      <span class="intro-blast"></span>
+      <span class="intro-sparks">
+        <i style="--x:-117px;--y:-19px"></i><i style="--x:-85px;--y:-47px;--color:#f487bf"></i>
+        <i style="--x:-76px;--y:41px;--size:10px;--color:#fff"></i><i style="--x:-33px;--y:-49px;--color:#ad95fb"></i>
+        <i style="--x:25px;--y:42px;--color:#f487bf"></i><i style="--x:49px;--y:-52px;--size:10px;--color:#fff"></i>
+        <i style="--x:83px;--y:34px;--color:#ad95fb"></i><i style="--x:114px;--y:-16px"></i>
+      </span>
+    </div>
+  </div>
+  <main inert>
     <header>
       <nav class="navigation" aria-label="미니게임">
-        <a class="home" href="../../">‹ 메인으로</a>
         <button id="pause" type="button" aria-label="일시정지" aria-haspopup="dialog" aria-controls="clear-dialog" hidden></button>
+        <a class="home" href="../../index.html">메인으로</a>
       </nav>
       <h1>타일 톡톡</h1>
     </header>
@@ -339,7 +400,7 @@
         </div>
         <p id="ranking-note" role="status"></p>
       </section>
-      <a id="clear-home" href="../../">메인으로</a>
+      <a id="clear-home" href="../../index.html">메인으로</a>
     </section>
     <section id="pause-menu" hidden>
       <h2 id="pause-heading">일시정지</h2>
