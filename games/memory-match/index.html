@@ -91,7 +91,14 @@
     #stage-list { margin: 20px 0 0; }
     #stage-list-heading { margin: 0; font: 700 2.4rem/1 var(--heading-font); }
     #stage-list-status { margin: 4px 0 12px; color: var(--sub); font-size: .82rem; }
-    .stage-columns, .stage-row { display: grid; grid-template-columns: minmax(65px, 1.15fr) minmax(49px, 1fr) minmax(45px, .75fr) minmax(62px, 1fr); align-items: center; gap: 6px; padding: 5px 10px; }
+    .player-summary { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: 10px 0 12px; padding: 10px; border: 1px solid var(--line); border-radius: 16px; background: var(--stage-surface); }
+    .player-summary > div { min-width: 0; }
+    #profile-name { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .profile-stats { display: flex; flex-wrap: wrap; gap: 3px 11px; margin-top: 4px; color: var(--sub); font-size: .77rem; }
+    .profile-stats strong { color: var(--accent); font-variant-numeric: tabular-nums; }
+    #open-ranking, #close-ranking { flex: none; min-height: 36px; padding: 5px 10px; border: 0; border-radius: 999px; background: var(--lavender); color: var(--accent); font-size: .8rem; font-weight: 700; }
+    #open-ranking:disabled { opacity: .55; }
+    .stage-columns, .stage-row { display: grid; grid-template-columns: minmax(78px, 1.2fr) minmax(54px, 1fr) minmax(54px, .85fr); align-items: center; gap: 6px; padding: 5px 10px; }
     .stage-columns { color: var(--sub); font-size: .76rem; }
     #stage-buttons { list-style: none; display: grid; gap: 6px; margin: 0; padding: 0; }
     .stage-row { width: 100%; min-height: 51px; border: 1px solid var(--line); border-radius: 14px; background: var(--stage-surface); text-align: left; font-size: clamp(.68rem, 3.2vw, .85rem); }
@@ -196,7 +203,7 @@
     #start:active:enabled { transform: translateY(2px); box-shadow: 0 2px #9a80e0; }
     #start:disabled { opacity: .55; box-shadow: none; }
     .footer { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: center; padding-top: 10px; font-size: .85rem; }
-    #clear-dialog { width: min(375px, calc(100% - 26px)); max-height: calc(100dvh - 26px); overflow: auto; border: 1px solid var(--line); border-radius: 26px; padding: 22px 17px 15px; background: #fff; color: var(--text); text-align: center; box-shadow: 0 12px 40px var(--shadow); }
+    :is(#clear-dialog, #ranking-dialog) { width: min(375px, calc(100% - 26px)); max-height: calc(100dvh - 26px); overflow: auto; border: 1px solid var(--line); border-radius: 26px; padding: 22px 17px 15px; background: #fff; color: var(--text); text-align: center; box-shadow: 0 12px 40px var(--shadow); }
     #clear-dialog[open] { animation: result-open .34s cubic-bezier(.19, .78, .32, 1.22) both; }
     #clear-dialog[data-view="pause"][open] {
       position: fixed; inset: 0; display: grid; place-items: center; width: 100%; height: 100dvh;
@@ -204,8 +211,8 @@
       padding: 24px; background: var(--pause-bg);
     }
     #pause-menu { width: min(100%, 350px); padding: 28px 16px; border: 1px solid var(--line); border-radius: 26px; background: var(--stage-surface); box-shadow: 0 12px 40px var(--shadow); }
-    #clear-dialog::backdrop { background: rgba(74, 61, 110, .45); }
-    #clear-dialog h2 { margin: 0; font: 700 2.55rem/1 var(--heading-font); }
+    :is(#clear-dialog, #ranking-dialog)::backdrop { background: rgba(74, 61, 110, .45); }
+    :is(#clear-dialog, #ranking-dialog) h2 { margin: 0; font: 700 2.55rem/1 var(--heading-font); }
     .clear-banner { position: relative; padding: 8px 5px 11px; }
     .clear-stars { position: absolute; inset: 0; pointer-events: none; }
     .clear-stars i {
@@ -213,7 +220,7 @@
       background: var(--color, #ffd26a); clip-path: polygon(50% 0, 63% 36%, 100% 50%, 63% 63%, 50% 100%, 36% 63%, 0 50%, 36% 36%);
       animation: result-star .85s .04s ease-out both;
     }
-    .clear-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin: 5px 0 13px; }
+    .clear-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin: 5px 0 13px; }
     .clear-stats > div { border-radius: 13px; padding: 6px 2px 7px; background: var(--lavender); }
     .clear-stats dt { color: var(--sub); font-size: .73rem; }
     .clear-stats dd { margin: 1px 0 0; font-size: 1rem; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
@@ -239,18 +246,17 @@
       from { opacity: 0; transform: translateY(14px) scale(.82); }
       to { opacity: 1; transform: none; }
     }
-    .clear-ranking { margin-top: 14px; text-align: left; }
-    .clear-ranking h3 { margin: 0 0 5px; font-size: .86rem; }
-    .ranking-scroll { max-height: min(215px, 28dvh); overflow-y: auto; overscroll-behavior: contain; border: 1px solid var(--line); border-radius: 12px; }
-    .ranking-scroll table { width: 100%; table-layout: fixed; border-spacing: 0; font-size: .77rem; }
+    .ranking-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 9px; }
+    .ranking-scroll { max-height: min(390px, 60dvh); overflow-y: auto; overscroll-behavior: contain; border: 1px solid var(--line); border-radius: 12px; }
+    .ranking-scroll table { width: 100%; table-layout: fixed; border-spacing: 0; text-align: left; font-size: .81rem; }
     .ranking-scroll th, .ranking-scroll td { padding: 7px 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .ranking-scroll th { position: sticky; top: 0; background: var(--lavender); color: var(--sub); }
-    .ranking-scroll th:first-child { width: 44%; }
-    .ranking-scroll th:nth-child(2) { width: 29%; }
-    .ranking-scroll :is(th, td):not(:first-child) { text-align: right; font-variant-numeric: tabular-nums; }
+    .ranking-scroll :is(th, td):first-child { width: 23%; text-align: center; font-variant-numeric: tabular-nums; }
+    .ranking-scroll :is(th, td):last-child { width: 30%; text-align: right; font-variant-numeric: tabular-nums; }
     .ranking-scroll td { border-top: 1px solid var(--line); }
     .ranking-scroll .current-record { background: var(--lavender); color: var(--accent); font-weight: 700; }
     #ranking-note { margin: 5px 1px 0; color: var(--sub); font-size: .7rem; }
+    #ranking-note:empty { display: none; }
     #clear-home { display: inline-block; margin-top: 11px; font-size: .78rem; }
     @keyframes result-open { from { transform: translateY(16px) scale(.9); opacity: 0; } to { transform: none; opacity: 1; } }
     @keyframes result-star {
@@ -273,8 +279,8 @@
     :root[data-theme="dark"] :focus-visible { outline-color: #b69cff; }
     :root[data-theme="dark"] .card, :root[data-theme="dark"] .tray-face { background: #f6f4ff; }
     :root[data-theme="dark"] .card.covered { background: #6a62a0; border-color: #554e8a; box-shadow: inset 0 -4px #473f78; }
-    :root[data-theme="dark"] #dock, :root[data-theme="dark"] #clear-dialog { background: #1d2455; }
-    :root[data-theme="dark"] #clear-dialog::backdrop { background: rgba(5, 8, 24, .65); }
+    :root[data-theme="dark"] :is(#dock, #clear-dialog, #ranking-dialog) { background: #1d2455; }
+    :root[data-theme="dark"] :is(#clear-dialog, #ranking-dialog)::backdrop { background: rgba(5, 8, 24, .65); }
     :root[data-theme="dark"] #items button { box-shadow: inset 0 -3px #1a2050; }
     :root[data-theme="dark"] #items button:hover:enabled { background: #333c7a; }
     :root[data-theme="dark"] #items button:disabled { background: #1a2050; color: #6f76ad; box-shadow: none; }
@@ -313,7 +319,14 @@
     <section id="stage-list" aria-labelledby="stage-list-heading">
       <h2 id="stage-list-heading" tabindex="-1">스테이지 목록</h2>
       <p id="stage-list-status" role="status">스테이지를 불러오는 중이에요…</p>
-      <div class="stage-columns" aria-hidden="true"><span>스테이지</span><span>최고 점수</span><span>시간</span><span>게임 순위</span></div>
+      <section class="player-summary" aria-label="내 랭킹 기록">
+        <div>
+          <strong id="profile-name">—</strong>
+          <div class="profile-stats"><span>총점 <strong id="profile-score">—</strong></span><span>순위 <strong id="profile-rank">—</strong></span></div>
+        </div>
+        <button id="open-ranking" type="button" aria-haspopup="dialog" aria-controls="ranking-dialog" disabled>랭킹 목록</button>
+      </section>
+      <div class="stage-columns" aria-hidden="true"><span>스테이지</span><span>최고 점수</span><span>시간</span></div>
       <ol id="stage-buttons"></ol>
     </section>
     <section id="play-screen" aria-label="타일 톡톡 플레이" hidden>
@@ -383,23 +396,12 @@
         <div><dt>경과 시간</dt><dd id="clear-time"></dd></div>
         <div><dt>시간 보너스</dt><dd id="clear-bonus"></dd></div>
         <div><dt>누적 점수</dt><dd id="clear-score"></dd></div>
-        <div><dt id="clear-rank-label">예상 게임 순위</dt><dd id="clear-rank" role="status"></dd></div>
       </dl>
       <div class="clear-actions">
         <button id="retry-stage" type="button">다시 도전</button>
         <button id="open-stage-list" type="button">스테이지 목록</button>
         <button id="next-stage" type="button">다음 스테이지</button>
       </div>
-      <section class="clear-ranking" aria-labelledby="ranking-heading">
-        <h3 id="ranking-heading">게임 랭킹</h3>
-        <div id="ranking-scroll" class="ranking-scroll" role="region" aria-labelledby="ranking-heading" tabindex="0">
-          <table aria-labelledby="ranking-heading" aria-describedby="ranking-note">
-            <thead><tr><th scope="col">이름</th><th scope="col">점수</th><th scope="col">클리어 시간</th></tr></thead>
-            <tbody id="ranking-rows"></tbody>
-          </table>
-        </div>
-        <p id="ranking-note" role="status"></p>
-      </section>
       <a id="clear-home" href="../../index.html">메인으로</a>
     </section>
     <section id="pause-menu" hidden>
@@ -410,6 +412,19 @@
         <button id="pause-stage-list" type="button">스테이지 목록</button>
       </div>
     </section>
+  </dialog>
+  <dialog id="ranking-dialog" aria-labelledby="ranking-heading">
+    <div class="ranking-header">
+      <h2 id="ranking-heading">게임 랭킹</h2>
+      <button id="close-ranking" type="button" autofocus>닫기</button>
+    </div>
+    <div id="ranking-scroll" class="ranking-scroll" role="region" aria-labelledby="ranking-heading" tabindex="0">
+      <table aria-labelledby="ranking-heading">
+        <thead><tr><th scope="col">순위</th><th scope="col">이름</th><th scope="col">점수</th></tr></thead>
+        <tbody id="ranking-rows"></tbody>
+      </table>
+    </div>
+    <p id="ranking-note" role="status"></p>
   </dialog>
 </body>
 </html>

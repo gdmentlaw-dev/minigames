@@ -48,8 +48,11 @@ const clearStageLabel = document.querySelector('#clear-stage-label');
 const clearTime = document.querySelector('#clear-time');
 const clearBonusDisplay = document.querySelector('#clear-bonus');
 const clearScore = document.querySelector('#clear-score');
-const clearRankLabel = document.querySelector('#clear-rank-label');
-const clearRank = document.querySelector('#clear-rank');
+const profileName = document.querySelector('#profile-name');
+const profileScore = document.querySelector('#profile-score');
+const profileRank = document.querySelector('#profile-rank');
+const rankingButton = document.querySelector('#open-ranking');
+const rankingDialog = document.querySelector('#ranking-dialog');
 const rankingScroll = document.querySelector('#ranking-scroll');
 const rankingRows = document.querySelector('#ranking-rows');
 const rankingNote = document.querySelector('#ranking-note');
@@ -74,6 +77,9 @@ let audioContext;
 let stageStartedAt = 0;
 let clearSeconds = 0;
 let clearResult = null;
+let latestScoreWrite = null;
+let profileRequest = 0;
+let rankingRequest = 0;
 let pauseState = null;
 let clockInterval;
 const matchingCards = new Set();
@@ -296,7 +302,7 @@ function endPausedAttempt() {
   playing = false;
   playScreen.classList.remove('concealed');
   clearDialog.close();
-  MiniHub.submitScore(endingScore, { toast: false }).catch(() => {});
+  recordScore(endingScore, { toast: false });
 }
 
 function updateBoard() {
@@ -468,7 +474,7 @@ function clearStage() {
     playing = false;
     progress.completed = true;
   }
-  const record = { points: result.points, score: result.score, seconds: result.seconds, estimated: Boolean(result.nextStart), rank: null, rankIsLowerBound: false };
+  const record = { points: result.points, score: result.score, seconds: result.seconds };
   progress.records[stage] = bestClearRecord(record, progress.records[stage]);
   storeProgress();
   updateBoard();
@@ -490,75 +496,60 @@ function showClearResult(result) {
   clearTime.textContent = formatDuration(result.seconds);
   clearBonusDisplay.textContent = '+' + result.bonus.toLocaleString('ko-KR') + '점';
   clearScore.textContent = result.score.toLocaleString('ko-KR') + '점';
-  clearRankLabel.textContent = result.nextStart ? '예상 게임 순위' : '게임 순위';
-  clearRank.textContent = '확인 중…';
-  renderClearRanking([], result);
-  rankingScroll.scrollTop = 0;
-  rankingNote.textContent = '랭킹 기록을 불러오는 중이에요…';
   nextStageButton.hidden = !result.nextStart;
   if (!clearDialog.open) clearDialog.showModal();
   nextStageButton.hidden ? document.querySelector('#retry-stage').focus() : nextStageButton.focus();
-  loadClearRank(result);
+  if (!result.nextStart) submitClearScore(result);
 }
 
-async function loadClearRank(result) {
-  let label = '순위 확인 불가';
-  let rank = null;
-  let rankIsLowerBound = false;
-  let rows = [];
-  let note = '—는 클리어 시간이 공개되지 않은 기록이에요.';
+function formatRank(value) {
+  return value == null ? '—' : Number(value).toLocaleString('ko-KR') + '위';
+}
+
+async function refreshPlayerSummary() {
+  const request = ++profileRequest;
+  profileName.textContent = playerName;
+  let entry;
   try {
-    if (!result.nextStart) {
-      const saved = await submitClearScore(result);
-      if (saved?.rank != null) rank = Number(saved.rank);
-    }
+    await latestScoreWrite;
+    entry = await MiniHub.getMyGameEntry(GAME_ID);
+  } catch {
+    // Keep the ranking fields unavailable if the request fails.
+  }
+  if (request === profileRequest) {
+    profileScore.textContent = entry === undefined ? '—' : Number(entry?.score ?? 0).toLocaleString('ko-KR') + '점';
+    profileRank.textContent = formatRank(entry?.rank);
+  }
+}
+
+async function openRanking() {
+  const request = ++rankingRequest;
+  rankingRows.replaceChildren();
+  rankingScroll.scrollTop = 0;
+  rankingNote.textContent = '랭킹을 불러오는 중이에요…';
+  rankingDialog.showModal();
+  try {
+    await latestScoreWrite;
     const ranking = await MiniHub.getGameRanking(GAME_ID, RANK_LIMIT);
     if (!Array.isArray(ranking)) throw new TypeError('Invalid ranking response');
-    rows = ranking;
-    if (result.nextStart) {
-      const higher = rows.filter(row => row.player_id !== playerId && row.score > result.score).length;
-      rank = higher + 1;
-      rankIsLowerBound = rows.length >= RANK_LIMIT && rows.at(-1).score > result.score;
+    if (request === rankingRequest && rankingDialog.open) {
+      renderRanking(ranking);
+      rankingNote.textContent = ranking.length ? '' : '아직 등록된 점수가 없어요.';
     }
   } catch {
-    note = '다른 플레이어의 기록을 불러오지 못했어요.';
-  }
-  if (Number.isSafeInteger(rank) && rank > 0) {
-    label = rank.toLocaleString('ko-KR') + (rankIsLowerBound ? '위 이후' : '위');
-    const record = progress.records[result.stage];
-    if (record?.points === result.points && record.score === result.score && record.seconds === result.seconds) {
-      progress.records[result.stage] = { ...record, rank, rankIsLowerBound };
-      storeProgress();
-      if (!stageList.hidden) renderStageList();
-    }
-  }
-  if (clearResult === result) {
-    clearRank.textContent = label;
-    renderClearRanking(rows, result);
-    rankingNote.textContent = note;
+    if (request === rankingRequest && rankingDialog.open) rankingNote.textContent = '랭킹을 불러오지 못했어요.';
   }
 }
 
-function renderClearRanking(rows, result) {
-  const entries = rows.filter(row => !result.nextStart || row.player_id !== playerId)
-    .map(row => ({ name: row.name, score: Number(row.score), playerId: row.player_id }));
-  const current = { name: playerName, score: result.score, seconds: result.seconds, playerId };
-  const savedIndex = entries.findIndex(row => playerId && row.playerId === playerId && row.score === result.score);
-  if (savedIndex !== -1) {
-    entries[savedIndex] = current;
-  } else {
-    const lower = entries.findIndex(row => row.score < current.score);
-    entries.splice(lower === -1 ? entries.length : lower, 0, current);
-  }
-
+function renderRanking(entries) {
   rankingRows.replaceChildren(...entries.map(entry => {
     const row = document.createElement('tr');
-    const isCurrent = entry === current;
+    const isCurrent = playerId && entry.player_id === playerId;
     if (isCurrent) row.className = 'current-record';
     for (const value of [
-      isCurrent ? entry.name + ' · 이번 기록' : entry.name,
-      entry.score.toLocaleString('ko-KR') + '점',
-      isCurrent ? formatDuration(entry.seconds) : '—',
+      formatRank(entry.rank),
+      isCurrent ? entry.name + ' · 나' : entry.name,
+      Number(entry.score).toLocaleString('ko-KR') + '점',
     ]) {
       const cell = row.insertCell();
       cell.textContent = value;
@@ -568,8 +559,13 @@ function renderClearRanking(rows, result) {
   }));
 }
 
+function recordScore(points, options) {
+  latestScoreWrite = MiniHub.submitScore(points, options).catch(() => null);
+  return latestScoreWrite;
+}
+
 function submitClearScore(result) {
-  result.submission ??= MiniHub.submitScore(result.score, { toast: false }).catch(() => null);
+  result.submission ??= recordScore(result.score, { toast: false });
   return result.submission;
 }
 
@@ -597,8 +593,6 @@ function renderStageList() {
     const state = button.disabled ? '잠김' : completed ? '클리어' : '도전 가능';
     const points = record ? record.points.toLocaleString('ko-KR') + '점' : '—';
     const time = record ? formatDuration(record.seconds) : '—';
-    const rank = record?.rank == null ? '—' :
-      (record.estimated ? '예상 ' : '') + record.rank.toLocaleString('ko-KR') + (record.rankIsLowerBound ? '위 이후' : '위');
     const name = document.createElement('span');
     const nameText = document.createElement('strong');
     const stageState = document.createElement('small');
@@ -606,13 +600,13 @@ function renderStageList() {
     stageState.textContent = state;
     name.append(nameText, stageState);
     button.appendChild(name);
-    for (const text of [points, time, rank]) {
+    for (const text of [points, time]) {
       const cell = document.createElement('span');
       cell.textContent = text;
       button.appendChild(cell);
     }
     button.setAttribute('aria-label', level + '스테이지 ' + state +
-      (record ? ', ' + points + ', ' + time + ', 게임 순위 ' + rank : ''));
+      (record ? ', ' + points + ', ' + time : ''));
     if (completed) button.classList.add('completed');
     button.addEventListener('click', () => beginStage(level));
     entry.appendChild(button);
@@ -633,6 +627,7 @@ function showStageScreen() {
   playScreen.hidden = true;
   stageList.hidden = false;
   renderStageList();
+  refreshPlayerSummary();
   window.scrollTo(0, 0);
   document.querySelector('#stage-list-heading').focus({ preventScroll: true });
 }
@@ -740,7 +735,7 @@ async function finishGame(reason) {
   const result = reason + ' ' + stage + '스테이지 · 최종 ' + score + '점.';
   message.textContent = result + ' 기록 저장 중…';
   try {
-    const saved = await MiniHub.submitScore(score);
+    const saved = await recordScore(score);
     message.textContent = saved ? result : result + ' 기록을 저장하지 못했어요.';
   } catch {
     message.textContent = result + ' 기록을 저장하지 못했어요.';
@@ -777,14 +772,13 @@ function bestClearRecord(first, second) {
   if (first.points !== second.points) return first.points > second.points ? first : second;
   if (first.seconds !== second.seconds) return first.seconds < second.seconds ? first : second;
   if (first.score !== second.score) return first.score > second.score ? first : second;
-  return first.rank !== null || second.rank === null ? first : second;
+  return first;
 }
 
 function readClearRecord(entry) {
   if (!entry || !['points', 'score', 'seconds'].every(key => Number.isSafeInteger(entry[key]) && entry[key] >= 0) ||
       entry.points > entry.score) return null;
-  const rank = Number.isSafeInteger(entry.rank) && entry.rank > 0 ? entry.rank : null;
-  return { points: entry.points, score: entry.score, seconds: entry.seconds, estimated: entry.estimated === true, rank, rankIsLowerBound: entry.rankIsLowerBound === true };
+  return { points: entry.points, score: entry.score, seconds: entry.seconds };
 }
 
 function readProgress(data) {
@@ -891,11 +885,14 @@ if (typeof MiniHub === 'undefined') {
       if (JSON.stringify(progress) !== JSON.stringify(remote)) syncProgress();
     }
     progress ??= { version: SAVE_VERSION, stage: 1, unlocked: 1, starts: {}, records: {}, completed: false, updatedAt: 0 };
-    stageListStatus.textContent = '스테이지를 선택해 시작하세요. 순위는 클리어 당시의 게임 랭킹이에요.';
+    stageListStatus.textContent = '스테이지를 선택해 시작하세요.';
+    rankingButton.disabled = false;
     showStageScreen();
   });
   startButton.addEventListener('click', startGame);
   gameoverListButton.addEventListener('click', showStageScreen);
+  rankingButton.addEventListener('click', openRanking);
+  document.querySelector('#close-ranking').addEventListener('click', () => rankingDialog.close());
   soundButton.addEventListener('click', () => {
     soundEnabled = !soundEnabled;
     soundButton.setAttribute('aria-pressed', String(soundEnabled));
