@@ -242,6 +242,10 @@
       $("desc").textContent = g
         ? `${g.scoreOrder === "asc" ? "낮을수록" : "높을수록"} 좋은 기록 · 플레이어별 최고 기록 · 만든 사람 ${g.author}`
         : `게임마다 순위를 0~100 포인트로 바꿔 합산 (1등 100, 안 한 게임 0) · 최대 ${games.length * 100}`;
+      // 제목 오른쪽 플레이 버튼 (게임 → 바로 플레이, 종합 → 게임 고르기)
+      $("head-play").innerHTML = g
+        ? `<a class="btn-play sm" href="${esc(g.url)}">${PLAY}플레이하기</a>`
+        : games.length ? `<button class="btn-play sm" type="button" data-pick>${PLAY}게임 고르기</button>` : "";
       const [rows, me] = g
         ? await Promise.all([MiniHub.getGameRanking(g.id, 100), MiniHub.getMyGameEntry(g.id)])
         : await Promise.all([MiniHub.getOverall(ids, 100), MiniHub.getMyOverall(ids)]);
@@ -294,6 +298,7 @@
     const box = e.target.closest(".mybar-in.exp");
     if (box) box.classList.toggle("open");
   });
+  $("head-play").addEventListener("click", (e) => { if (e.target.closest("[data-pick]")) openSheet(); });
   $("sheet").addEventListener("click", (e) => { if (e.target === $("sheet")) closeSheet(); });
   $("sheet-x").addEventListener("click", closeSheet);
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeSheet(); });
