@@ -83,7 +83,7 @@ button { font: inherit; color: inherit; }
 .head h1 { grid-area: t; min-width: 0; overflow-wrap: anywhere; }
 .head .desc { grid-area: d; }
 .head .basis { grid-area: b; justify-self: end; align-self: center; margin-top: 6px; }
-#head-play { grid-area: p; }
+#head-play { grid-area: p; justify-self: end; }
 .empty { padding: 48px 16px; text-align: center; color: var(--soft); }
 
 /* 1위 카드 (버터 젤리) */
@@ -152,6 +152,11 @@ button { font: inherit; color: inherit; }
 .mr { font-family: var(--head); font-weight: 700; font-size: 40px; line-height: .9; color: var(--pink); min-width: 44px; padding-top: 4px; }
 .mi { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.35; }
 .mi > span { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mi > .ml { display: flex; align-items: center; gap: 4px; overflow: visible; } /* 순위 변동(▲1)은 잘리지 않게 */
+.mi .mt { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 479px) {
+  .mybar .btn-play { min-height: 42px; font-size: 24px; padding: 6px 16px 8px; }
+}
 .mi small { font-size: 11px; color: var(--soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .btn-play { display: inline-flex; align-items: center; gap: 6px; min-height: 46px; padding: 8px 22px 10px; border: 0; border-radius: 999px; background: linear-gradient(135deg, #ff9cc2, #b69cff); color: #fff; font-family: var(--head); font-weight: 700; font-size: 28px; line-height: 1; cursor: pointer; white-space: nowrap; text-decoration: none; flex: none; box-shadow: 0 4px 0 #9a80e0; }
 .btn-play:hover { color: #fff; filter: brightness(1.04); }
