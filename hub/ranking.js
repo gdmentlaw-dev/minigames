@@ -240,7 +240,7 @@
       const g = current === "overall" ? null : byId[current];
       $("title").textContent = g ? g.title : "종합 랭킹";
       $("desc").textContent = g
-        ? `${g.scoreOrder === "asc" ? "낮을수록" : "높을수록"} 좋은 기록 · 플레이어별 최고 기록 · 만든 사람 ${g.author}`
+        ? `${g.scoreOrder === "asc" ? "낮을수록" : "높을수록"} 좋은 기록 · 인당 최고 기록 · 만든 사람 ${g.author}`
         : `게임마다 순위를 0~100 포인트로 바꿔 합산 (1등 100, 안 한 게임 0) · 최대 ${games.length * 100}`;
       // 제목 오른쪽 플레이 버튼 (게임 → 바로 플레이, 종합 → 게임 고르기)
       $("head-play").innerHTML = g

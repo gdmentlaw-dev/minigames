@@ -128,7 +128,7 @@
       } else {
         const g = byId[current];
         $("board-desc").textContent =
-          `${g.scoreOrder === "asc" ? "낮을수록" : "높을수록"} 좋은 기록 · 플레이어별 최고 기록 · 만든 사람 ${g.author}`;
+          `${g.scoreOrder === "asc" ? "낮을수록" : "높을수록"} 좋은 기록 · 인당 최고 기록 · 만든 사람 ${g.author}`;
         const [rows, me] = await Promise.all([MiniHub.getGameRanking(g.id, 100), MiniHub.getMyGameEntry(g.id)]);
         $("board").innerHTML = rows.length
           ? gameTable(rows, g)
