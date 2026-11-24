@@ -220,7 +220,7 @@
     if (me) {
       const v = view(me, g), d = dl.of(me);
       body = `<span class="tag">내 순위</span><b class="mr">#${me.rank}</b>
-        <span class="mi"><span class="ml"><span class="mt">${g ? "최고 기록" : "종합"} · ${v.value}${esc(v.unit)}</span>${d.text ? `<span class="d ${d.cls}">${d.text}</span>` : ""}</span><small>${esc(gapText(me, rows, g))}</small></span>`;
+        <span class="mi"><span class="ml"><span class="mt">${g ? "" : "종합 · "}${v.value}${esc(v.unit)}</span>${d.text ? `<span class="d ${d.cls}">${d.text}</span>` : ""}</span><small>${esc(gapText(me, rows, g))}</small></span>`;
     } else {
       body = `<span class="tag">내 순위</span><span class="mi"><span>아직 기록이 없어요</span><small>한 판만 해도 순위에 올라가요</small></span>`;
     }
