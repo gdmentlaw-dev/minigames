@@ -154,6 +154,12 @@
     }
     .card::after { width: 94%; }
     .tray-face::after { width: min(94%, clamp(27px, 8.5vw - 4px, 40px)); }
+    :is(.card, .tray-face).gem-picture::after {
+      width: 70%;
+      background: conic-gradient(from -35deg at 50% 42%, #ddfbff 0deg 75deg, #87e5ff 75deg 128deg,
+        #326dc6 128deg 202deg, #42b3eb 202deg 279deg, #a7efff 279deg 360deg);
+      clip-path: polygon(50% 0, 83% 15%, 100% 41%, 50% 100%, 0 41%, 17% 15%);
+    }
     .match-burst { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
     .burst-origin, .burst-wave { position: absolute; }
     .burst-origin::before {
@@ -227,7 +233,7 @@
     .clear-stats #clear-bonus { color: #a44d17; }
     .clear-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
     .clear-actions button, #gameover-stage-list { min-height: 40px; padding: 6px 9px; border: 0; border-radius: 999px; background: var(--lavender); font-size: .81rem; font-weight: 700; }
-    #next-stage, #resume-game, #reward-next { background: linear-gradient(135deg, #ff9cc2, #b69cff); color: #402b66; }
+    #next-stage, #resume-game, #reward-next, #unlock-start { background: linear-gradient(135deg, #ff9cc2, #b69cff); color: #402b66; }
     #pause-menu .clear-actions { margin-top: 13px; }
     .reward-banner { position: relative; padding: 10px 4px 5px; }
     #reward-stage { margin: 4px 0 0; color: var(--sub); font-size: .84rem; }
@@ -242,6 +248,11 @@
     .reward-items li > span { display: grid; place-items: center; width: 33px; height: 33px; border-radius: 11px; background: var(--stage-surface); color: var(--accent); font-size: 1.22rem; line-height: 1; }
     .reward-items strong { color: var(--accent); }
     #reward-next { min-width: 106px; }
+    .unlock-preview { position: relative; display: grid; place-items: center; min-height: 122px; margin: 6px 0 3px; }
+    #unlock-tile { width: 66px; height: 79px; border-radius: 14px; box-shadow: inset 0 -5px #ded0f6, 0 5px 16px var(--shadow); animation: reward-pop .55s cubic-bezier(.23, .9, .42, 1.35) both; }
+    #tile-unlock p { margin: 0 0 15px; color: var(--sub); font-size: .86rem; }
+    #tile-unlock p strong { color: var(--accent); }
+    #unlock-start { min-width: 110px; }
     @keyframes reward-pop {
       from { opacity: 0; transform: translateY(14px) scale(.82); }
       to { opacity: 1; transform: none; }
@@ -265,7 +276,7 @@
       100% { opacity: 0; transform: translate(var(--x), var(--y)) rotate(115deg) scale(.55); }
     }
     @media (prefers-reduced-motion: reduce) {
-      #clear-dialog[open], .reward-items li { animation: none; }
+      #clear-dialog[open], .reward-items li, #unlock-tile { animation: none; }
       .clear-stars { display: none; }
     }
     /* 어두운 모드 (메인페이지와 연동: shared/minihub-theme.js) — 카드 그림은 밝은 바탕이 어울려 카드 면은 밝게 둔다 */
@@ -285,7 +296,7 @@
     :root[data-theme="dark"] #items button:hover:enabled { background: #333c7a; }
     :root[data-theme="dark"] #items button:disabled { background: #1a2050; color: #6f76ad; box-shadow: none; }
     :root[data-theme="dark"] #clear-bonus { color: #ffd284; }
-    :root[data-theme="dark"] :is(#start, #next-stage, #resume-game, #reward-next) { color: #2a1d4e; }
+    :root[data-theme="dark"] :is(#start, #next-stage, #resume-game, #reward-next, #unlock-start) { color: #2a1d4e; }
     a { color: var(--accent); text-underline-offset: 2px; }
   </style>
   <script defer src="../../shared/minihub-sdk.js"></script>
@@ -360,6 +371,22 @@
     </section>
   </main>
   <dialog id="clear-dialog" aria-labelledby="clear-stage-label">
+    <section id="tile-unlock" hidden>
+      <h2 id="unlock-heading">새 카드 등장!</h2>
+      <div class="unlock-preview">
+        <div class="clear-stars" aria-hidden="true">
+          <i style="--x:-96px;--y:4px;--size:17px;--color:#79d9ff"></i>
+          <i style="--x:-64px;--y:-45px;--size:15px"></i>
+          <i style="--x:-52px;--y:42px;--size:11px;--color:#b69cff"></i>
+          <i style="--x:59px;--y:-46px;--size:13px;--color:#b69cff"></i>
+          <i style="--x:68px;--y:40px;--size:15px"></i>
+          <i style="--x:96px;--y:-10px;--size:18px;--color:#79d9ff"></i>
+        </div>
+        <span id="unlock-tile" class="tray-face" role="img"></span>
+      </div>
+      <p><strong>하늘색 보석</strong>이 10스테이지부터 등장해요.</p>
+      <div class="clear-actions"><button id="unlock-start" type="button">시작</button></div>
+    </section>
     <section id="reward-menu" hidden>
       <div class="reward-banner">
         <div class="clear-stars" aria-hidden="true">

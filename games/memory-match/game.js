@@ -9,11 +9,13 @@ const MATCH_DURATION = 400;
 const BONUS_PER_SECOND = 10;
 const RANK_LIMIT = 1000;
 const STARTING_ITEMS = { shuffle: 1, undo: 1, return: 1 };
+const GEM_STAGE = 10;
 const PICTURES = [
   '선물 상자', '별', '편지', '블루베리 타르트',
   '리본', '버섯', '주전자', '고슴도치',
-  '사과', '털모자', '도토리', '랜턴',
+  '사과', '털모자', '도토리', '랜턴', '하늘색 보석',
 ];
+const GEM_TYPE = PICTURES.length - 1;
 const ATLAS_COLUMNS = 4;
 const ATLAS_ROWS = 3;
 const intro = document.querySelector('#game-intro');
@@ -41,6 +43,9 @@ const pauseMenu = document.querySelector('#pause-menu');
 const rewardMenu = document.querySelector('#reward-menu');
 const rewardStage = document.querySelector('#reward-stage');
 const rewardNextButton = document.querySelector('#reward-next');
+const unlockMenu = document.querySelector('#tile-unlock');
+const unlockTile = document.querySelector('#unlock-tile');
+const unlockStartButton = document.querySelector('#unlock-start');
 const resumeButton = document.querySelector('#resume-game');
 const pauseListButton = document.querySelector('#pause-stage-list');
 const clearListButton = document.querySelector('#open-stage-list');
@@ -111,12 +116,16 @@ function givePictures(positions) {
 
   // A valid route exists, but finding a set often means uncovering cards in another layer.
   // Interleave up to three distinct sets at a time so this route fits the seven slots.
-  const types = PICTURES.map((_, index) => index);
+  const typeCount = stage >= GEM_STAGE ? PICTURES.length : GEM_TYPE;
+  const types = Array.from({ length: typeCount }, (_, index) => index);
   const packetSize = MATCH_SIZE * MATCH_SIZE;
   let availableTypes = [];
   for (let start = 0; start < order.length; start += packetSize) {
-    if (availableTypes.length === 0) availableTypes = shuffle([...types]);
     const count = Math.min(MATCH_SIZE, (order.length - start) / MATCH_SIZE);
+    if (availableTypes.length < count) {
+      const freshTypes = types.filter(type => !availableTypes.includes(type));
+      availableTypes.push(...shuffle(freshTypes));
+    }
     const packet = availableTypes.splice(0, count);
     for (let index = 0; index < count * MATCH_SIZE; index++) {
       order[start + index].type = packet[index % count];
@@ -156,12 +165,14 @@ function deal({ positions, width, height }) {
 }
 
 function showPicture(element, picture) {
+  element.classList.toggle('gem-picture', picture === GEM_TYPE);
+  element.setAttribute('aria-label', PICTURES[picture]);
+  if (picture === GEM_TYPE) return;
   const column = picture % ATLAS_COLUMNS;
   const row = Math.floor(picture / ATLAS_COLUMNS);
   const x = column * 100 / (ATLAS_COLUMNS - 1);
   const y = row * 100 / (ATLAS_ROWS - 1);
   element.style.setProperty('--picture-position', x + '% ' + y + '%');
-  element.setAttribute('aria-label', PICTURES[picture]);
 }
 
 const storageSlots = Array.from({ length: TRAY_SIZE }, () => {
@@ -572,10 +583,11 @@ function submitClearScore(result) {
 function showDialogPanel(view) {
   pauseMenu.hidden = view !== 'pause';
   rewardMenu.hidden = view !== 'reward';
+  unlockMenu.hidden = view !== 'unlock';
   clearSummary.hidden = view !== 'clear';
   clearDialog.dataset.view = view;
-  const heading = view === 'pause' ? 'pause-heading' : view === 'reward' ? 'reward-heading' : 'clear-stage-label';
-  clearDialog.setAttribute('aria-labelledby', heading);
+  const heading = { pause: 'pause-heading', reward: 'reward-heading', unlock: 'unlock-heading', clear: 'clear-stage-label' };
+  clearDialog.setAttribute('aria-labelledby', heading[view]);
 }
 
 function renderStageList() {
@@ -642,6 +654,9 @@ function leaveClearForStage(level, starter, continuing = false) {
 }
 
 function startStage() {
+  playing = true;
+  board.hidden = false;
+  dock.hidden = false;
   const layout = createStageLayout(stage);
   deal(layout);
   startClock();
@@ -711,14 +726,26 @@ function beginStage(level, starter) {
   tray = [];
   items = { ...stageStart.items };
   scoreDisplay.textContent = score + '점';
-  playing = true;
   stageList.hidden = true;
   playScreen.hidden = false;
   startButton.hidden = true;
   gameoverListButton.hidden = true;
-  dock.hidden = false;
-  board.hidden = false;
   window.scrollTo(0, 0);
+  if (stage === GEM_STAGE) {
+    playing = false;
+    stopClock();
+    board.hidden = true;
+    dock.hidden = true;
+    pauseButton.hidden = true;
+    stageDisplay.textContent = stage;
+    updateClock(0);
+    message.textContent = '10스테이지 준비 중이에요.';
+    showPicture(unlockTile, GEM_TYPE);
+    showDialogPanel('unlock');
+    clearDialog.showModal();
+    unlockStartButton.focus();
+    return;
+  }
   startStage();
 }
 
@@ -915,6 +942,11 @@ if (typeof MiniHub === 'undefined') {
   clearListButton.addEventListener('click', showStageScreen);
   rewardNextButton.addEventListener('click', () => {
     if (clearResult && clearDialog.dataset.view === 'reward') showClearResult(clearResult);
+  });
+  unlockStartButton.addEventListener('click', () => {
+    if (!clearDialog.open || clearDialog.dataset.view !== 'unlock') return;
+    clearDialog.close();
+    startStage();
   });
   document.querySelector('#clear-home').addEventListener('click', async event => {
     event.preventDefault();
